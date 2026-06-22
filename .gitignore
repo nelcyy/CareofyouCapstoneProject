@@ -1,0 +1,19 @@
+# ===== Python / Django (backend) =====
+__pycache__/
+*.pyc
+venv/
+*.sqlite3
+media/
+
+# ===== Node / Next.js (frontend) =====
+node_modules/
+.next/
+npm-debug.log*
+
+# ===== Rahasia / environment =====
+.env
+.env.local
+
+# ===== OS / file sampah =====
+.DS_Store
+Thumbs.db
