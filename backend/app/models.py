@@ -23,7 +23,11 @@ class User(models.Model):
 
 class OtpSession(models.Model):
     """Kode OTP + statusnya. 90 detik, maks salah 2x, sekali pakai."""
-    PURPOSE_CHOICES = [('login', 'Login'), ('register', 'Register')]
+    PURPOSE_CHOICES = [
+        ('login', 'Login'),
+        ('register', 'Register'),
+        ('admin_action', 'Admin Action'),
+    ]
 
     id = models.BigAutoField(primary_key=True, db_column='ID')
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True,
@@ -160,9 +164,15 @@ class Order(models.Model):
     """Header pesanan customer yang sudah checkout."""
     STATUS_CHOICES = [
         ('waiting_admin_approval', 'Waiting Admin Approval'),
+        ('rejected', 'Rejected'),
         ('pengemasan', 'Pengemasan'),
         ('pengiriman', 'Pengiriman'),
         ('selesai', 'Selesai'),
+    ]
+    DECISION_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
     ]
 
     id = models.BigAutoField(primary_key=True, db_column='ID')
@@ -186,6 +196,25 @@ class Order(models.Model):
     grand_total = models.BigIntegerField(default=0, db_column='GRAND_TOTAL')
     status = models.CharField(max_length=30, choices=STATUS_CHOICES,
                               default='waiting_admin_approval', db_column='STATUS')
+    processed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='PROCESSED_BY',
+        related_name='processed_orders',
+    )
+    processed_at = models.DateTimeField(null=True, blank=True, db_column='PROCESSED_AT')
+    decision = models.CharField(
+        max_length=20,
+        choices=DECISION_CHOICES,
+        default='pending',
+        db_column='DECISION',
+    )
+    decision_reason = models.CharField(max_length=255, blank=True, default='', db_column='DECISION_REASON')
+    otp_verified_for_action = models.BooleanField(default=False, db_column='OTP_VERIFIED_FOR_ACTION')
+    decision_risk_score = models.IntegerField(null=True, blank=True, db_column='DECISION_RISK_SCORE')
+    decision_risk_level = models.CharField(max_length=10, blank=True, default='', db_column='DECISION_RISK_LEVEL')
     created_at = models.DateTimeField(auto_now_add=True, db_column='CREATED_AT')
     updated_at = models.DateTimeField(auto_now=True, db_column='UPDATED_AT')
 
@@ -250,6 +279,41 @@ class OrderMonitoring(models.Model):
         db_table = 'order_monitoring'
 
 
+class AdminOrderActionSession(models.Model):
+    """Session action admin yang mungkin menunggu OTP sebelum order diproses."""
+    ACTION_CHOICES = [
+        ('approve', 'Approve'),
+        ('reject', 'Reject'),
+    ]
+
+    id = models.BigAutoField(primary_key=True, db_column='ID')
+    session_id = models.CharField(max_length=64, unique=True, db_column='SESSION_ID')
+    admin_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        db_column='ADMIN_USER_ID',
+        related_name='admin_order_action_sessions',
+    )
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        db_column='ORDER_ID',
+        related_name='admin_action_sessions',
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES, db_column='ACTION')
+    decision_reason = models.CharField(max_length=255, blank=True, default='', db_column='DECISION_REASON')
+    decision_risk_score = models.IntegerField(default=0, db_column='DECISION_RISK_SCORE')
+    decision_risk_level = models.CharField(max_length=10, blank=True, default='', db_column='DECISION_RISK_LEVEL')
+    otp_required = models.BooleanField(default=False, db_column='OTP_REQUIRED')
+    otp_verified = models.BooleanField(default=False, db_column='OTP_VERIFIED')
+    is_completed = models.BooleanField(default=False, db_column='IS_COMPLETED')
+    created_at = models.DateTimeField(auto_now_add=True, db_column='CREATED_AT')
+    completed_at = models.DateTimeField(null=True, blank=True, db_column='COMPLETED_AT')
+
+    class Meta:
+        db_table = 'admin_order_action_session'
+
+
 class OrderItem(models.Model):
     """Snapshot item produk di dalam satu pesanan."""
     id = models.BigAutoField(primary_key=True, db_column='ID')
@@ -264,3 +328,36 @@ class OrderItem(models.Model):
 
     class Meta:
         db_table = 'order_item'
+
+
+class EReceipt(models.Model):
+    """E-receipt hasil approval admin untuk kebutuhan view/download."""
+    id = models.BigAutoField(primary_key=True, db_column='ID')
+    receipt_id = models.CharField(max_length=30, unique=True, blank=True, default='', db_column='RECEIPT_ID')
+    order = models.OneToOneField(
+        Order,
+        on_delete=models.CASCADE,
+        db_column='ORDER_ID',
+        related_name='e_receipt',
+    )
+    customer_name = models.CharField(max_length=150, blank=True, default='', db_column='CUSTOMER_NAME')
+    customer_email = models.CharField(max_length=254, blank=True, default='', db_column='CUSTOMER_EMAIL')
+    total = models.BigIntegerField(default=0, db_column='TOTAL')
+    signature_hash = models.CharField(max_length=64, db_column='SIGNATURE_HASH')
+    generated_at = models.DateTimeField(db_column='GENERATED_AT')
+    pdf_b64 = models.TextField(db_column='PDF_B64')
+    is_revoked = models.BooleanField(default=False, db_column='IS_REVOKED')
+    created_at = models.DateTimeField(auto_now_add=True, db_column='CREATED_AT')
+    updated_at = models.DateTimeField(auto_now=True, db_column='UPDATED_AT')
+
+    class Meta:
+        db_table = 'e_receipts'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.receipt_id:
+            self.receipt_id = f'RCP-{self.pk:03d}'
+            type(self).objects.filter(pk=self.pk).update(receipt_id=self.receipt_id)
+
+    def __str__(self):
+        return f'{self.receipt_id} ({self.order.order_code})'

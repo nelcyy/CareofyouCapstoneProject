@@ -30,29 +30,164 @@ export default function DetailPesananPage() {
   const orderCode = decodeURIComponent(params?.orderCode || '');
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState('');
 
-  function handleAdminAction(action) {
-    window.alert(`Tombol ${action} belum diproses ke backend.`);
+  async function loadDetail() {
+    setDetail(null);
+    setError('');
+    setActionMessage('');
+
+    try {
+      const res = await fetch(`${API}/detail?order_code=${encodeURIComponent(orderCode)}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal mengambil detail pesanan.');
+      }
+      setDetail(data);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Gagal mengambil detail pesanan.');
+    }
+  }
+
+  async function postAction(path, payload) {
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    return { res, data };
+  }
+
+  async function handleOtpChallenge(action, initialPayload, adminUser) {
+    let payload = initialPayload;
+
+    while (payload?.otp_required) {
+      if (!payload.otp?.verify_allowed) {
+        setError(payload.error || 'OTP belum bisa diverifikasi.');
+        return;
+      }
+
+      const promptLines = [
+        payload.message || `Masukkan OTP untuk ${action}.`,
+        `Risk: ${payload.risk_level || '-'}`,
+      ];
+      if (payload.otp?.expires_in_seconds > 0) {
+        promptLines.push(`Sisa waktu OTP: ${payload.otp.expires_in_seconds} detik`);
+      }
+      const otp = window.prompt(promptLines.join('\n'), '');
+      if (otp === null) {
+        setActionMessage('Verifikasi OTP dibatalkan.');
+        return;
+      }
+
+      setActionLoading(true);
+      setError('');
+
+      try {
+        const confirmResult = await postAction(`${API}/${action}/confirm`, {
+          action_session_id: payload.action_session_id,
+          admin_user_id: adminUser.id,
+          otp,
+        });
+        const confirmData = confirmResult.data;
+        if (confirmResult.res.ok) {
+          setDetail(confirmData.order || null);
+          setActionMessage(confirmData.message || `Pesanan berhasil di-${action}.`);
+          return;
+        }
+
+        if (confirmData.otp?.resend_allowed) {
+          const wantsResend = window.confirm(
+            `${confirmData.error || 'OTP gagal diverifikasi.'}\n\nKirim ulang OTP sekarang?`,
+          );
+          if (wantsResend) {
+            const resendResult = await postAction(`${API}/${action}/resend`, {
+              action_session_id: payload.action_session_id,
+              admin_user_id: adminUser.id,
+            });
+            if (!resendResult.res.ok) {
+              setError(resendResult.data.error || 'Gagal mengirim ulang OTP.');
+              return;
+            }
+            payload = resendResult.data;
+            continue;
+          }
+        }
+
+        setError(confirmData.error || 'Verifikasi OTP gagal.');
+        return;
+      } finally {
+        setActionLoading(false);
+      }
+    }
+  }
+
+  async function handleAdminAction(action) {
+    if (!orderCode || actionLoading) return;
+
+    const adminUser = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!adminUser?.id || adminUser.role !== 'admin') {
+      setError('User admin tidak ditemukan. Silakan login ulang sebagai admin.');
+      return;
+    }
+
+    const actionSlug = action.toLowerCase();
+    let decisionReason = '';
+    if (action === 'Reject') {
+      const promptReason = window.prompt('Tulis alasan / remarks untuk reject pesanan:', '');
+      if (promptReason === null) {
+        setActionMessage('Reject dibatalkan.');
+        return;
+      }
+      decisionReason = promptReason.trim();
+      if (!decisionReason) {
+        setError('Alasan reject wajib diisi.');
+        return;
+      }
+    }
+
+    setActionLoading(true);
+    setActionMessage('');
+    setError('');
+
+    try {
+      const result = await postAction(`${API}/${actionSlug}`, {
+        order_code: orderCode,
+        admin_user_id: adminUser.id,
+        decision_reason: decisionReason,
+      });
+      const data = result.data;
+
+      if (data.otp_required) {
+        setActionLoading(false);
+        await handleOtpChallenge(actionSlug, data, adminUser);
+        return;
+      }
+
+      if (!result.res.ok) {
+        throw new Error(data.error || `Gagal ${actionSlug} pesanan.`);
+      }
+
+      setDetail(data.order || null);
+      setActionMessage(data.message || `Pesanan berhasil di-${actionSlug}.`);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || `Gagal ${actionSlug} pesanan.`);
+    } finally {
+      setActionLoading(false);
+    }
   }
 
   useEffect(() => {
     if (!orderCode) return;
 
-    setDetail(null);
-    setError('');
-    fetch(`${API}/detail?order_code=${encodeURIComponent(orderCode)}`)
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || 'Gagal mengambil detail pesanan.');
-        }
-        setDetail(data);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError(err.message || 'Gagal mengambil detail pesanan.');
-      });
+    loadDetail();
   }, [orderCode]);
+
+  const canProcess = detail?.status === 'waiting_admin_approval';
 
   return (
     <div>
@@ -60,6 +195,7 @@ export default function DetailPesananPage() {
 
       {!detail && !error && <p>Memuat detail pesanan...</p>}
       {error && <p style={{ color: 'red' }}>{error}</p>}
+      {actionMessage && <p style={{ color: 'green' }}>{actionMessage}</p>}
 
       {detail && (
         <>
@@ -81,6 +217,18 @@ export default function DetailPesananPage() {
               <tr>
                 <td>Status</td>
                 <td>{detail.status || '-'}</td>
+              </tr>
+              <tr>
+                <td>Risk Level</td>
+                <td>{detail.risk_level || '-'}</td>
+              </tr>
+              <tr>
+                <td>Approve Butuh OTP</td>
+                <td>{detail.approve_requires_otp ? 'Ya' : 'Tidak'}</td>
+              </tr>
+              <tr>
+                <td>Reject Butuh OTP</td>
+                <td>{detail.reject_requires_otp ? 'Ya' : 'Tidak'}</td>
               </tr>
               <tr>
                 <td>Tanggal Order</td>
@@ -335,6 +483,40 @@ export default function DetailPesananPage() {
             </tbody>
           </table>
 
+          <p style={{ marginTop: 12, marginBottom: 0 }}><b>Keputusan Admin</b></p>
+          <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td>Decision</td>
+                <td>{detail.decision || '-'}</td>
+              </tr>
+              <tr>
+                <td>Diproses Oleh</td>
+                <td>{detail.processed_by_name || '-'}</td>
+              </tr>
+              <tr>
+                <td>Diproses Pada</td>
+                <td>{formatTanggal(detail.processed_at)}</td>
+              </tr>
+              <tr>
+                <td>OTP Verified For Action</td>
+                <td>{detail.otp_verified_for_action ? 'Ya' : 'Tidak'}</td>
+              </tr>
+              <tr>
+                <td>Decision Risk Score</td>
+                <td>{detail.decision_risk_score ?? '-'}</td>
+              </tr>
+              <tr>
+                <td>Decision Risk Level</td>
+                <td>{detail.decision_risk_level || '-'}</td>
+              </tr>
+              <tr>
+                <td>Decision Reason</td>
+                <td>{detail.decision_reason || '-'}</td>
+              </tr>
+            </tbody>
+          </table>
+
           <div style={{ marginTop: 24, marginBottom: 24 }}>
             <p>
               <b>Subtotal: Rp {formatRibuan(detail.subtotal)}</b>
@@ -346,13 +528,26 @@ export default function DetailPesananPage() {
               <b>Grand Total: Rp {formatRibuan(detail.grand_total)}</b>
             </p>
             <p style={{ marginTop: 16, marginBottom: 0 }}>
-              <button type="button" onClick={() => handleAdminAction('Approve')}>
-                Approve
+              <button
+                type="button"
+                onClick={() => handleAdminAction('Approve')}
+                disabled={actionLoading || !canProcess}
+              >
+                {actionLoading ? 'Memproses...' : 'Approve'}
               </button>{' '}
-              <button type="button" onClick={() => handleAdminAction('Reject')}>
+              <button
+                type="button"
+                onClick={() => handleAdminAction('Reject')}
+                disabled={actionLoading || !canProcess}
+              >
                 Reject
               </button>
             </p>
+            {!canProcess && (
+              <p style={{ marginTop: 8, marginBottom: 0 }}>
+                Order ini sudah tidak berada di tahap waiting admin approval.
+              </p>
+            )}
           </div>
         </>
       )}
