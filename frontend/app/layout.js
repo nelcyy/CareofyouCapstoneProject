@@ -1,6 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import AuthShell from "./components/AuthShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,9 +19,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body suppressHydrationWarning>
-        <AuthShell>{children}</AuthShell>
-      </body>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

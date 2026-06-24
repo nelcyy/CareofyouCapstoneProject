@@ -3,12 +3,13 @@ import secrets
 from datetime import timedelta
 
 from django.utils import timezone
+from rest_framework import status as http_status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from ..models import User, OtpSession, ActivityLog, TrustedDevice
-from ..common import (OTP_TTL_SECONDS, generate_otp, send_otp_email,
-                      client_ip, user_public, create_trusted_device)
+from ..common import (OTP_TTL_SECONDS, MAX_OTP_ATTEMPTS, generate_otp, send_otp_email,
+                      client_ip, user_public, create_trusted_device, otp_session_state)
 
 
 def _new_login_id():
@@ -47,6 +48,13 @@ def _trusted_device(user, trust_token):
             .first())
 
 
+def _latest_login_otp_session(user, login_id):
+    otp_rows = OtpSession.objects.filter(user=user, purpose='login', is_used=False)
+    if login_id:
+        otp_rows = otp_rows.filter(login_id=login_id)
+    return otp_rows.order_by('-created_at').first()
+
+
 @api_view(['POST'])
 def login(request):
     """Cek email+password. Kalau bener, putuskan perlu OTP atau langsung masuk (adaptif)."""
@@ -68,15 +76,43 @@ def login(request):
     need_otp = (user.role == 'admin') or (device is None) or (fails >= 2)
 
     if need_otp:
+        existing_otp = _latest_login_otp_session(user, login_id)
+        existing_otp_state = otp_session_state(existing_otp)
+        if existing_otp and not existing_otp_state['resend_allowed']:
+            error_message = 'OTP masih aktif. Tunggu countdown selesai untuk kirim ulang OTP.'
+            if existing_otp_state['is_locked']:
+                error_message = (
+                    'Batas percobaan OTP habis. '
+                    'Tunggu countdown selesai untuk kirim ulang OTP.'
+                )
+            return Response({
+                'need_otp': True,
+                'login_id': login_id,
+                'can_trust': device is None and user.role != 'admin',
+                'error': error_message,
+                'otp': existing_otp_state,
+            }, status=http_status.HTTP_429_TOO_MANY_REQUESTS)
+
+        if existing_otp:
+            existing_otp.is_used = True
+            existing_otp.save(update_fields=['is_used'])
+
         code = generate_otp()
-        OtpSession.objects.create(user=user, login_id=login_id, email=email, code=code, purpose='login',
-                                  expires_at=timezone.now() + timedelta(seconds=OTP_TTL_SECONDS))
+        otp_row = OtpSession.objects.create(
+            user=user,
+            login_id=login_id,
+            email=email,
+            code=code,
+            purpose='login',
+            expires_at=timezone.now() + timedelta(seconds=OTP_TTL_SECONDS),
+        )
         send_otp_email(user.name, email, code)
         _log_login_event(user, email, 'login_otp_sent', 'sukses', '', request, login_id)
         return Response({'need_otp': True,
                          'login_id': login_id,
                          'can_trust': device is None and user.role != 'admin',
-                         'message': 'OTP dikirim ke email.'}, status=200)
+                         'message': 'OTP dikirim ke email.',
+                         'otp': otp_session_state(otp_row)}, status=200)
 
     if device:
         device.last_used = timezone.now()
@@ -97,31 +133,56 @@ def verify_otp(request):
     if user is None:
         return Response({'error': 'User tidak ditemukan.'}, status=400)
 
-    otp_rows = OtpSession.objects.filter(user=user, purpose='login', is_used=False)
-    if login_id:
-        otp_rows = otp_rows.filter(login_id=login_id)
-    otp_row = otp_rows.order_by('-created_at').first()
+    otp_row = _latest_login_otp_session(user, login_id)
 
     if otp_row is None:
-        return Response({'error': 'OTP tidak ditemukan, login ulang.'}, status=400)
+        return Response({
+            'error': 'OTP tidak ditemukan, login ulang.',
+            'otp': otp_session_state(None),
+        }, status=http_status.HTTP_400_BAD_REQUEST)
     login_id = otp_row.login_id or login_id or _new_login_id()
-    if timezone.now() > otp_row.expires_at:
+    otp_state = otp_session_state(otp_row)
+
+    if otp_state['is_expired']:
         otp_row.is_used = True
         otp_row.save(update_fields=['is_used'])
         _log_login_event(user, email, 'login_otp_failed', 'gagal', 'otp_kadaluarsa', request, login_id)
-        return Response({'error': 'OTP kadaluarsa, login ulang.'}, status=400)
-    if otp_row.attempts >= 2:
-        otp_row.is_used = True
-        otp_row.save(update_fields=['is_used'])
-        return Response({'error': 'Sudah salah 2x, OTP hangus. Login ulang.'}, status=400)
+        return Response({
+            'error': 'OTP kadaluarsa. Kirim ulang OTP untuk lanjut.',
+            'login_id': login_id,
+            'otp': otp_session_state(otp_row),
+        }, status=http_status.HTTP_400_BAD_REQUEST)
+    if otp_state['is_locked']:
+        return Response({
+            'error': (
+                f'Sudah salah {MAX_OTP_ATTEMPTS}x. '
+                'Tunggu countdown selesai untuk kirim ulang OTP.'
+            ),
+            'login_id': login_id,
+            'otp': otp_state,
+        }, status=http_status.HTTP_400_BAD_REQUEST)
     if otp_row.code != otp:
         otp_row.attempts += 1
-        otp_row.save()
+        otp_row.save(update_fields=['attempts'])
         _log_login_event(user, email, 'login_otp_failed', 'gagal', 'salah_otp', request, login_id)
-        return Response({'error': f'Kode OTP salah. Sisa percobaan: {2 - otp_row.attempts}.'}, status=400)
+        otp_state = otp_session_state(otp_row)
+        if otp_state['verify_allowed']:
+            return Response({
+                'error': f'Kode OTP salah. Sisa percobaan: {otp_state["attempts_left"]}.',
+                'login_id': login_id,
+                'otp': otp_state,
+            }, status=http_status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'error': (
+                f'Kode OTP salah. Batas percobaan habis. '
+                'Tunggu countdown selesai untuk kirim ulang OTP.'
+            ),
+            'login_id': login_id,
+            'otp': otp_state,
+        }, status=http_status.HTTP_400_BAD_REQUEST)
 
     otp_row.is_used = True
-    otp_row.save()
+    otp_row.save(update_fields=['is_used'])
     _log_login_event(user, email, 'login', 'sukses', '', request, login_id)
 
     resp = {'logged_in': True, 'login_id': login_id, 'user': user_public(user)}
