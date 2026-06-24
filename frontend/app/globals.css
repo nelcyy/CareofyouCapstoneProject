@@ -1,17 +1,15 @@
 :root {
-  --background: #ffffff;
+  --background: #fdf6f5;
   --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* App ini full tema terang. Kunci ke light biar dark-mode OS nggak
+     ngebalik warna jadi hitam (yang tadinya kelihatan pas overscroll). */
+  color-scheme: light;
 }
 
 html {
   height: 100%;
+  /* warna canvas/overscroll ikut background brand, bukan hitam */
+  background: var(--background);
 }
 
 html,
@@ -40,10 +38,4 @@ body {
 a {
   color: inherit;
   text-decoration: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
 }

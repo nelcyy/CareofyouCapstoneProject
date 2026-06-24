@@ -1,0 +1,376 @@
+/* ── PAGE ROOT ─────────────────────────────────────────── */
+.wl-page {
+  min-height: 100vh;
+  background: #fdf6f5;
+  font-family: var(--font-body);
+  color: #2d2d2d;
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+/* ─── MAIN ────────────────────────────────────── */
+.wl-main {
+  flex: 1;
+  padding: 48px 40px 64px;
+}
+
+.wl-container {
+  max-width: 1080px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.wl-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.wl-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: #2d2d2d;
+  letter-spacing: -0.5px;
+}
+
+.wl-subtitle {
+  font-size: 14px;
+  color: #aaa;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.wl-add-all-btn {
+  padding: 11px 22px;
+  background: #d6867c;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  font-family: inherit;
+  letter-spacing: 0.2px;
+}
+
+.wl-add-all-btn:hover {
+  background: #c4706a;
+  transform: translateY(-1px);
+}
+
+.wl-divider {
+  height: 1px;
+  background: #f0e0de;
+  margin-bottom: 28px;
+}
+
+/* ─── LOGIN / GUARD STATE ─────────────────────── */
+.wl-guard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  gap: 10px;
+  text-align: center;
+}
+
+.wl-guard-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #555;
+}
+
+.wl-guard-sub {
+  font-size: 14px;
+  color: #aaa;
+}
+
+/* ─── EMPTY STATE ─────────────────────────────── */
+.wl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  gap: 12px;
+}
+
+.wl-empty-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #555;
+  margin-top: 8px;
+}
+
+.wl-empty-sub {
+  font-size: 14px;
+  color: #aaa;
+}
+
+.wl-browse-btn {
+  margin-top: 8px;
+  padding: 11px 24px;
+  background: #d6867c;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+
+.wl-browse-btn:hover {
+  background: #c4706a;
+}
+
+/* ─── ITEM LIST ───────────────────────────────── */
+.wl-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 720px) {
+  .wl-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wl-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #f0e0de;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  box-shadow: 0 2px 12px rgba(214, 134, 124, 0.06);
+  transition: box-shadow 0.2s, transform 0.2s;
+  position: relative;
+  min-height: 150px;
+}
+
+.wl-card:hover {
+  box-shadow: 0 6px 24px rgba(214, 134, 124, 0.14);
+  transform: translateY(-2px);
+}
+
+.wl-card-img-wrap {
+  flex-shrink: 0;
+  width: 110px;
+  height: 110px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fce8e6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wl-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wl-card-img-placeholder {
+  color: #e0b0ac;
+}
+
+.wl-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-right: 40px;
+  min-width: 0;
+}
+
+.wl-card-brand {
+  font-size: 12px;
+  font-weight: 600;
+  color: #d6867c;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wl-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d2d2d;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wl-card-price {
+  font-size: 15px;
+  font-weight: 700;
+  color: #c4706a;
+  margin-top: 2px;
+}
+
+.wl-card-size {
+  font-size: 13px;
+  color: #aaa;
+  font-weight: 400;
+}
+
+.wl-add-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #e8907f 0%, #c97269 100%);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 14px rgba(201, 114, 105, 0.35);
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+
+.wl-add-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(201, 114, 105, 0.48);
+}
+
+.wl-add-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ─── KONFIRMASI "MASUK KERANJANG" (animasi sesaat) ─── */
+.wl-add-wrap {
+  position: relative;
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 12px;
+}
+
+.wl-add-wrap .wl-add-btn {
+  margin-top: 0;
+}
+
+.wl-add-confirm {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  background: linear-gradient(135deg, #bbf7d0, #86efac);
+  color: #166534;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(34, 197, 94, 0.3);
+  pointer-events: none;
+  z-index: 4;
+  animation: wl-confirm-pop 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* segitiga kecil di bawah bubble */
+.wl-add-confirm::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #86efac;
+}
+
+@keyframes wl-confirm-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) scale(0.8);
+  }
+  18% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-2px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-18px) scale(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wl-add-confirm {
+    animation-duration: 1.4s;
+    animation-name: wl-confirm-fade;
+  }
+  @keyframes wl-confirm-fade {
+    0%, 80% { opacity: 1; transform: translateX(-50%); }
+    100% { opacity: 0; transform: translateX(-50%); }
+  }
+}
+
+.wl-remove-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #fce8e6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #c4706a;
+  transition: background 0.2s, color 0.2s;
+}
+
+.wl-remove-btn:hover {
+  background: #d6867c;
+  color: #fff;
+}
+
+/* ─── RESPONSIVE ──────────────────────────────── */
+@media (max-width: 640px) {
+  .wl-card {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .wl-card-img-wrap {
+    width: 80px;
+    height: 80px;
+  }
+
+  .wl-title {
+    font-size: 24px;
+  }
+
+  .wl-main {
+    padding: 32px 16px 48px;
+  }
+}
