@@ -204,6 +204,10 @@ export default function DetailPesananPage() {
                 <td>Status Saat Order</td>
                 <td>{detail.monitoring?.device?.trusted_device_status_label || '-'}</td>
               </tr>
+              <tr>
+                <td>Score Device</td>
+                <td>{detail.monitoring?.device?.device_risk_score ?? 0}</td>
+              </tr>
             </tbody>
           </table>
 
@@ -213,6 +217,10 @@ export default function DetailPesananPage() {
               <tr>
                 <td>Jumlah Salah Password</td>
                 <td>{detail.monitoring?.password?.failed_password_count ?? 0}</td>
+              </tr>
+              <tr>
+                <td>Score Password</td>
+                <td>{detail.monitoring?.password?.failed_password_score ?? 0}</td>
               </tr>
             </tbody>
           </table>
@@ -224,6 +232,88 @@ export default function DetailPesananPage() {
                 <td>Jumlah Gagal OTP</td>
                 <td>{detail.monitoring?.otp?.failed_otp_count ?? 0}</td>
               </tr>
+              <tr>
+                <td>Score OTP</td>
+                <td>{detail.monitoring?.otp?.failed_otp_score ?? 0}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p style={{ marginTop: 12, marginBottom: 0 }}><b>Fraud - Alamat</b></p>
+          <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td>Umur Alamat Saat Order</td>
+                <td>{detail.monitoring?.fraud?.address?.address_age_minutes ?? 0} menit</td>
+              </tr>
+              <tr>
+                <td>Score Alamat Baru</td>
+                <td>{detail.monitoring?.fraud?.address?.new_address_score ?? 0}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p style={{ marginTop: 12, marginBottom: 0 }}><b>Fraud - Nominal</b></p>
+          <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td>Rasio Nominal vs Kebiasaan</td>
+                <td>
+                  {detail.monitoring?.fraud?.amount?.order_amount_ratio_percent
+                    ? `${detail.monitoring?.fraud?.amount?.order_amount_ratio_percent}%`
+                    : '-'}
+                </td>
+              </tr>
+              <tr>
+                <td>Score Nominal</td>
+                <td>{detail.monitoring?.fraud?.amount?.amount_anomaly_score ?? 0}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p style={{ marginTop: 12, marginBottom: 0 }}><b>Fraud - Qty</b></p>
+          <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td>Total Qty Item</td>
+                <td>{detail.monitoring?.fraud?.qty?.total_item_quantity ?? 0}</td>
+              </tr>
+              <tr>
+                <td>Qty Terbanyak per Produk</td>
+                <td>{detail.monitoring?.fraud?.qty?.max_single_product_quantity ?? 0}</td>
+              </tr>
+              <tr>
+                <td>Score Borong</td>
+                <td>{detail.monitoring?.fraud?.qty?.bulk_order_score ?? 0}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p style={{ marginTop: 12, marginBottom: 0 }}><b>Fraud - Akun Baru</b></p>
+          <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td>Umur Akun Saat Order</td>
+                <td>{detail.monitoring?.fraud?.new_account?.account_age_days ?? 0} hari</td>
+              </tr>
+              <tr>
+                <td>Score Akun Baru + Order Besar</td>
+                <td>{detail.monitoring?.fraud?.new_account?.new_account_big_order_score ?? 0}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p style={{ marginTop: 12, marginBottom: 0 }}><b>Fraud - Order Cepat</b></p>
+          <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td>Order Sebelumnya 30 Menit</td>
+                <td>{detail.monitoring?.fraud?.rapid_order?.recent_orders_30m_count ?? 0}</td>
+              </tr>
+              <tr>
+                <td>Score Order Cepat</td>
+                <td>{detail.monitoring?.fraud?.rapid_order?.rapid_order_score ?? 0}</td>
+              </tr>
             </tbody>
           </table>
 
@@ -231,8 +321,16 @@ export default function DetailPesananPage() {
           <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse' }}>
             <tbody>
               <tr>
+                <td>Hijack Risk Score</td>
+                <td>{detail.monitoring?.summary?.hijack_risk_score ?? 0}</td>
+              </tr>
+              <tr>
+                <td>Fraud Risk Score</td>
+                <td>{detail.monitoring?.summary?.fraud_risk_score ?? 0}</td>
+              </tr>
+              <tr>
                 <td>Total Risk Score</td>
-                <td>{detail.monitoring?.total_risk_score ?? '-'}</td>
+                <td>{detail.monitoring?.summary?.total_risk_score ?? 0}</td>
               </tr>
             </tbody>
           </table>
