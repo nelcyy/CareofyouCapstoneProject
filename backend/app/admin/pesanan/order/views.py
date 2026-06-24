@@ -1,7 +1,10 @@
 """Backend ADMIN > PESANAN > ORDER."""
+import os
 import secrets
+import uuid
 from datetime import timedelta
 
+from django.core.files.storage import default_storage
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.utils import timezone
@@ -10,12 +13,16 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from ....common import OTP_TTL_SECONDS, MAX_OTP_ATTEMPTS, generate_otp, otp_session_state, send_otp_email
-from ....models import ActivityLog, AdminOrderActionSession, Order, OtpSession, User
+from ....models import ActivityLog, AdminOrderActionSession, Order, OtpSession, ProductUnit, User
 from ..monitoring.views import get_order_monitoring_payload
 
 
 def _order_queryset():
-    return Order.objects.select_related('user', 'processed_by', 'e_receipt').prefetch_related('items')
+    return (
+        Order.objects
+        .select_related('user', 'processed_by', 'shipped_by', 'completed_by', 'e_receipt')
+        .prefetch_related('items')
+    )
 
 
 def _decision_risk_level(score):
@@ -77,9 +84,39 @@ def _schedule_approved_order_receipt(order_id):
     transaction.on_commit(_generate)
 
 
+def _save_delivery_proof(order_code, uploaded_file):
+    ext = os.path.splitext(uploaded_file.name or '')[1] or '.jpg'
+    filename = f'delivery_proofs/{order_code}-{uuid.uuid4().hex}{ext}'
+    return default_storage.save(filename, uploaded_file)
+
+
+def _expected_order_unit_ids(order):
+    unit_ids = []
+    for item_index, item in enumerate(order.items.all().order_by('id')):
+        qty = int(item.quantity or 0)
+        for unit_index in range(1, qty + 1):
+            unit_ids.append(f'{order.order_code}-ITEM{item_index:02d}-U{unit_index}')
+    return unit_ids
+
+
+def _missing_qr_units_count(order):
+    expected_unit_ids = _expected_order_unit_ids(order)
+    if not expected_unit_ids:
+        return 0
+
+    generated_unit_ids = set(
+        ProductUnit.objects
+        .filter(order_id=order.order_code, order_item_id__in=expected_unit_ids)
+        .values_list('order_item_id', flat=True)
+        .distinct()
+    )
+    return len(expected_unit_ids) - len(generated_unit_ids)
+
+
 def _detail_order_payload(order):
     risk_policy = _order_risk_policy(order)
     receipt = _active_order_receipt(order)
+    missing_qr_units = _missing_qr_units_count(order) if order.status in ('pengemasan', 'pengiriman', 'selesai') else 0
     return {
         'order_code': order.order_code,
         'customer_name': (order.user.name if order.user else '') or order.recipient_name or '',
@@ -101,6 +138,16 @@ def _detail_order_payload(order):
         'ereceipt_available': receipt is not None,
         'ereceipt_id': receipt.receipt_id if receipt else '',
         'ereceipt_generated_at': receipt.generated_at.isoformat() if receipt and receipt.generated_at else '',
+        'tracking_number': order.tracking_number,
+        'shipping_notes': order.shipping_notes,
+        'shipped_at': order.shipped_at.isoformat() if order.shipped_at else '',
+        'shipped_by_id': order.shipped_by_id,
+        'shipped_by_name': order.shipped_by.name if order.shipped_by else '',
+        'delivery_proof': order.delivery_proof,
+        'completed_at': order.completed_at.isoformat() if order.completed_at else '',
+        'completed_by_id': order.completed_by_id,
+        'completed_by_name': order.completed_by.name if order.completed_by else '',
+        'missing_qr_units_count': missing_qr_units,
         'created_at': order.created_at.isoformat() if order.created_at else '',
         'recipient_name': order.recipient_name,
         'recipient_phone': order.recipient_phone,
@@ -120,6 +167,7 @@ def _detail_order_payload(order):
         'monitoring': risk_policy['monitoring'],
         'items': [{
             'id': item.id,
+            'product_id': item.product_id,
             'product_name': item.product_name,
             'product_price': item.product_price,
             'quantity': item.quantity,
@@ -315,6 +363,38 @@ def _apply_order_decision(order, admin_user, action, decision_reason, otp_verifi
     )
     if action == 'approve':
         _schedule_approved_order_receipt(order.id)
+
+
+def _ship_order(order, admin_user, tracking_number, shipping_notes):
+    order.status = 'pengiriman'
+    order.tracking_number = tracking_number
+    order.shipping_notes = shipping_notes
+    order.shipped_by = admin_user
+    order.shipped_at = timezone.now()
+    order.save(update_fields=[
+        'status',
+        'tracking_number',
+        'shipping_notes',
+        'shipped_by',
+        'shipped_at',
+        'updated_at',
+    ])
+    _log_admin_activity(admin_user, order, 'admin_order_ship', 'sukses', tracking_number)
+
+
+def _complete_order(order, admin_user, delivery_proof_path):
+    order.status = 'selesai'
+    order.delivery_proof = delivery_proof_path
+    order.completed_by = admin_user
+    order.completed_at = timezone.now()
+    order.save(update_fields=[
+        'status',
+        'delivery_proof',
+        'completed_by',
+        'completed_at',
+        'updated_at',
+    ])
+    _log_admin_activity(admin_user, order, 'admin_order_complete', 'sukses', delivery_proof_path)
 
 
 def _complete_action_session(action_session, otp_verified):
@@ -592,3 +672,87 @@ def confirm_reject_order(request):
 def resend_reject_order_otp(request):
     """Kirim ulang OTP reject order."""
     return _resend_admin_order_action_otp(request, 'reject')
+
+
+@api_view(['POST'])
+def ship_order(request):
+    """Ubah status pengemasan menjadi pengiriman dengan nomor resi."""
+    order_code = str(request.data.get('order_code') or '').strip()
+    admin_user_id = request.data.get('admin_user_id')
+    tracking_number = str(request.data.get('tracking_number') or '').strip()
+    shipping_notes = str(request.data.get('shipping_notes') or '').strip()
+
+    if not order_code:
+        return Response({'error': 'order_code wajib diisi.'}, status=http_status.HTTP_400_BAD_REQUEST)
+    if not admin_user_id:
+        return Response({'error': 'admin_user_id wajib diisi.'}, status=http_status.HTTP_400_BAD_REQUEST)
+    if not tracking_number:
+        return Response({'error': 'Nomor resi wajib diisi.'}, status=http_status.HTTP_400_BAD_REQUEST)
+
+    admin_user = _get_admin_user(admin_user_id)
+    if not admin_user:
+        return Response({'error': 'Admin tidak valid.'}, status=http_status.HTTP_400_BAD_REQUEST)
+
+    order = _get_order(order_code)
+    if not order:
+        return Response({'error': 'Pesanan tidak ditemukan.'}, status=http_status.HTTP_404_NOT_FOUND)
+    if order.status != 'pengemasan':
+        return Response({
+            'error': 'Hanya pesanan dengan status pengemasan yang bisa dikirim.',
+            'order': _detail_order_payload(order),
+        }, status=http_status.HTTP_400_BAD_REQUEST)
+
+    missing_qr_units = _missing_qr_units_count(order)
+    if missing_qr_units > 0:
+        return Response({
+            'error': f'Masih ada {missing_qr_units} QR unit yang belum digenerate. Lengkapi dulu sebelum kirim.',
+            'order': _detail_order_payload(order),
+        }, status=http_status.HTTP_400_BAD_REQUEST)
+
+    with transaction.atomic():
+        _ship_order(order, admin_user, tracking_number, shipping_notes)
+    order = _get_order(order.order_code) or order
+
+    return Response({
+        'message': 'Pesanan berhasil dikirim dan status berubah ke pengiriman.',
+        'order': _detail_order_payload(order),
+    }, status=http_status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def complete_order(request):
+    """Ubah status pengiriman menjadi selesai dengan bukti pengiriman/terkirim."""
+    order_code = str(request.data.get('order_code') or '').strip()
+    admin_user_id = request.data.get('admin_user_id')
+    delivery_proof = request.FILES.get('delivery_proof')
+
+    if not order_code:
+        return Response({'error': 'order_code wajib diisi.'}, status=http_status.HTTP_400_BAD_REQUEST)
+    if not admin_user_id:
+        return Response({'error': 'admin_user_id wajib diisi.'}, status=http_status.HTTP_400_BAD_REQUEST)
+    if delivery_proof is None:
+        return Response({'error': 'Bukti selesai / terkirim wajib diupload.'}, status=http_status.HTTP_400_BAD_REQUEST)
+
+    admin_user = _get_admin_user(admin_user_id)
+    if not admin_user:
+        return Response({'error': 'Admin tidak valid.'}, status=http_status.HTTP_400_BAD_REQUEST)
+
+    order = _get_order(order_code)
+    if not order:
+        return Response({'error': 'Pesanan tidak ditemukan.'}, status=http_status.HTTP_404_NOT_FOUND)
+    if order.status != 'pengiriman':
+        return Response({
+            'error': 'Hanya pesanan dengan status pengiriman yang bisa diselesaikan.',
+            'order': _detail_order_payload(order),
+        }, status=http_status.HTTP_400_BAD_REQUEST)
+
+    proof_path = _save_delivery_proof(order.order_code, delivery_proof)
+
+    with transaction.atomic():
+        _complete_order(order, admin_user, proof_path)
+    order = _get_order(order.order_code) or order
+
+    return Response({
+        'message': 'Pesanan selesai dan bukti pengiriman berhasil disimpan.',
+        'order': _detail_order_payload(order),
+    }, status=http_status.HTTP_200_OK)

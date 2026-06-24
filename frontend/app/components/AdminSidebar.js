@@ -28,11 +28,6 @@ const IcReturn = () => (
     <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
   </svg>
 );
-const IcStore = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
-  </svg>
-);
 const IcLogOut = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
@@ -42,8 +37,8 @@ const IcLogOut = () => (
 // Menu = route yang memang ADA di project ini.
 const NAV_ITEMS = [
   { href: '/admin', label: 'Dasbor', icon: <IcGrid />, exact: true },
-  { href: '/admin/pesanan', label: 'Pesanan', icon: <IcOrders />, badge: 'orders' },
   { href: '/admin/produk', label: 'Produk', icon: <IcProducts /> },
+  { href: '/admin/pesanan', label: 'Pesanan', icon: <IcOrders />, badge: 'orders' },
   { href: '/admin/retur', label: 'Retur', icon: <IcReturn />, badge: 'returns' },
 ];
 
@@ -113,16 +108,8 @@ export default function AdminSidebar({ pendingOrders = 0, pendingReturns = 0 }) 
           ))}
         </nav>
 
-        {/* Bawah: lihat toko + keluar */}
+        {/* Bawah: keluar */}
         <div className="adm-sidebar-bottom">
-          <Link
-            href="/customer/home"
-            className="adm-nav-item adm-nav-item--store"
-            onClick={() => setOpen(false)}
-          >
-            <span className="adm-nav-icon"><IcStore /></span>
-            <span className="adm-nav-label">Lihat Toko</span>
-          </Link>
           <button className="adm-nav-item adm-nav-item--logout" onClick={handleLogout}>
             <span className="adm-nav-icon"><IcLogOut /></span>
             <span className="adm-nav-label">Keluar</span>

@@ -1,8 +1,5 @@
-export default function ProfilePage() {
-  return (
-    <div>
-      <h2>Profile</h2>
-      <p>(data profil customer — nyusul)</p>
-    </div>
-  );
+import { redirect } from 'next/navigation';
+
+export default function CustomerProfileIndexPage() {
+  redirect('/customer/profile/edit');
 }

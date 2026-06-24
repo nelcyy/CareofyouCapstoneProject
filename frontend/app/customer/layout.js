@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import { usePathname } from 'next/navigation';
 import Navbar from '../components/Navbar';
@@ -9,9 +9,11 @@ export default function CustomerLayout({ children }) {
   const hideNavbar = pathname === '/customer/cart/checkout';
 
   return (
-    <div>
+    <div className={`customer-shell${hideNavbar ? '' : ' customer-shell--with-navbar'}`}>
       {!hideNavbar && <Navbar />}
-      <main>{children}</main>
+      <main className={`customer-main${hideNavbar ? '' : ' customer-main--with-navbar'}`}>
+        {children}
+      </main>
     </div>
   );
 }

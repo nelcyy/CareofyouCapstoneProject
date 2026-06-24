@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 
 
@@ -215,6 +217,27 @@ class Order(models.Model):
     otp_verified_for_action = models.BooleanField(default=False, db_column='OTP_VERIFIED_FOR_ACTION')
     decision_risk_score = models.IntegerField(null=True, blank=True, db_column='DECISION_RISK_SCORE')
     decision_risk_level = models.CharField(max_length=10, blank=True, default='', db_column='DECISION_RISK_LEVEL')
+    tracking_number = models.CharField(max_length=100, blank=True, default='', db_column='TRACKING_NUMBER')
+    shipping_notes = models.CharField(max_length=255, blank=True, default='', db_column='SHIPPING_NOTES')
+    shipped_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='SHIPPED_BY',
+        related_name='shipped_orders',
+    )
+    shipped_at = models.DateTimeField(null=True, blank=True, db_column='SHIPPED_AT')
+    delivery_proof = models.TextField(blank=True, default='', db_column='DELIVERY_PROOF')
+    completed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='COMPLETED_BY',
+        related_name='completed_orders',
+    )
+    completed_at = models.DateTimeField(null=True, blank=True, db_column='COMPLETED_AT')
     created_at = models.DateTimeField(auto_now_add=True, db_column='CREATED_AT')
     updated_at = models.DateTimeField(auto_now=True, db_column='UPDATED_AT')
 
@@ -361,3 +384,43 @@ class EReceipt(models.Model):
 
     def __str__(self):
         return f'{self.receipt_id} ({self.order.order_code})'
+
+
+class ProductUnit(models.Model):
+    """QR unik untuk satu unit fisik produk dalam satu order."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order_id = models.CharField(max_length=30)
+    order_item_id = models.CharField(max_length=100)
+    product_id = models.CharField(max_length=100, blank=True, default='')
+    qr_token = models.CharField(max_length=120, unique=True)
+    qr_image_url = models.TextField(blank=True, default='')
+    qr_status = models.CharField(max_length=20, default='active')
+    generated_at = models.DateTimeField(null=True, blank=True)
+    generated_by = models.CharField(max_length=100, blank=True, default='')
+    is_returned = models.BooleanField(default=False)
+    verification_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'product_units'
+
+
+class QrVerification(models.Model):
+    """Log verifikasi scan QR untuk proses retur."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product_unit = models.ForeignKey(
+        ProductUnit,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='verifications',
+    )
+    raw_qr_token = models.CharField(max_length=120, blank=True, default='')
+    scanned_by = models.CharField(max_length=100, blank=True, default='')
+    verification_result = models.CharField(max_length=30)
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'qr_verifications'

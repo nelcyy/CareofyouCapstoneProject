@@ -1,10 +1,32 @@
 /* ── SHARED NAVBAR ──────────────────────────────────────────── */
 .navbar {
   background: #fdf6f5;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   box-shadow: 0 1px 0 #f0e0de, 0 4px 24px rgba(214, 134, 124, 0.07);
+}
+
+.customer-shell {
+  min-height: 100vh;
+}
+
+.customer-shell--with-navbar {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.customer-main {
+  min-height: 100vh;
+}
+
+.customer-main--with-navbar {
+  height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-top: 72px;
 }
 
 /* gradient rule at the very bottom of the bar */

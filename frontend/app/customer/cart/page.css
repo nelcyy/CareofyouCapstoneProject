@@ -1,6 +1,6 @@
 /* ── PAGE ROOT ─────────────────────────────────────────── */
 .cart-page {
-  min-height: 100vh;
+  min-height: calc(100vh - 72px);
   background: #fdf6f5;
   font-family: var(--font-body);
   color: #2d2d2d;

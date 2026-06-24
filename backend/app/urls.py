@@ -6,6 +6,9 @@ from .customer.product import views as customer_product_views
 from .customer.cart import views as customer_cart_views
 from .customer.cart.checkout import views as customer_checkout_views
 from .customer.favorites import views as customer_favorites_views
+from .customer.profile.address import views as customer_profile_address_views
+from .customer.profile.edit import views as customer_profile_edit_views
+from .customer.profile.pesanan import views as customer_profile_order_views
 
 urlpatterns = [
     # register
@@ -40,6 +43,19 @@ urlpatterns = [
     path('api/customer/favorites/add', customer_favorites_views.add_to_favorite),
     path('api/customer/favorites/list', customer_favorites_views.list_favorites),
     path('api/customer/favorites/delete', customer_favorites_views.remove_from_favorite),
+
+    # customer > profile
+    path('api/customer/profile/detail', customer_profile_edit_views.detail_profile),
+    path('api/customer/profile/update', customer_profile_edit_views.update_profile),
+    path('api/customer/profile/address/list', customer_profile_address_views.list_addresses),
+    path('api/customer/profile/address/create', customer_profile_address_views.create_address),
+    path('api/customer/profile/address/update', customer_profile_address_views.update_address),
+    path('api/customer/profile/address/delete', customer_profile_address_views.delete_address),
+    path('api/customer/profile/address/set-default', customer_profile_address_views.set_default_address),
+    path('api/customer/profile/order/list', customer_profile_order_views.list_orders),
+    path('api/customer/profile/order/detail', customer_profile_order_views.detail_order),
+    path('api/customer/profile/order/ereceipt/view', customer_profile_order_views.view_receipt),
+    path('api/customer/profile/order/ereceipt/download', customer_profile_order_views.download_receipt),
 
     # customer > cart > checkout
     path('api/customer/cart/checkout/user', customer_checkout_views.checkout_user),
