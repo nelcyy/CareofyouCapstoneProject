@@ -1,0 +1,297 @@
+/* ════════════════════════════════════════════════════════
+   ADMIN SIDEBAR — rose/cream theme (versi dipercantik)
+   ════════════════════════════════════════════════════════ */
+.adm-sidebar {
+  --adm-sidebar-w: 248px;
+  --adm-sidebar-border: #f3dedb;
+  --adm-sidebar-hover: #fdf0ef;
+  --adm-brand: #c97269;
+  --adm-brand-2: #b85f58;
+  --adm-brand-light: #f9d4cf;
+  --adm-text: #2d2d2d;
+  --adm-text-2: #7a7a7a;
+  --adm-text-3: #b0a8a6;
+
+  width: var(--adm-sidebar-w);
+  background:
+    radial-gradient(120% 60% at 100% 0%, rgba(249, 212, 207, 0.28) 0%, transparent 60%),
+    linear-gradient(180deg, #ffffff 0%, #fffaf9 100%);
+  border-right: 1.5px solid var(--adm-sidebar-border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 50;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.6) inset, 6px 0 30px rgba(214, 134, 124, 0.08);
+  overflow: hidden;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  transition: transform 0.25s ease;
+}
+
+/* Geser konten halaman (main) supaya nggak ketutup sidebar.
+   Selector ini cuma aktif saat sidebar benar2 ada di DOM. */
+.adm-sidebar ~ main {
+  margin-left: 248px;
+  min-height: 100vh;
+}
+
+/* ── Logo ── */
+.adm-sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 18px;
+  border-bottom: 1px solid var(--adm-sidebar-border);
+  margin-bottom: 8px;
+}
+
+.adm-sidebar-logo-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--adm-brand-light), 0 4px 12px rgba(214, 134, 124, 0.28);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.adm-sidebar-logo:hover .adm-sidebar-logo-img {
+  transform: scale(1.06) rotate(-3deg);
+  box-shadow: 0 0 0 2px var(--adm-brand), 0 6px 18px rgba(214, 134, 124, 0.4);
+}
+
+.adm-sidebar-brand {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  line-height: 1;
+  background: linear-gradient(135deg, #d6867c 0%, #b85f58 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.adm-sidebar-role {
+  display: block;
+  font-size: 9.5px;
+  color: var(--adm-text-3);
+  font-weight: 700;
+  margin-top: 4px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+/* ── Nav ── */
+.adm-sidebar-nav {
+  flex: 1;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+}
+
+.adm-sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.adm-sidebar-nav::-webkit-scrollbar-thumb {
+  background: #f0d5d2;
+  border-radius: 6px;
+}
+
+.adm-nav-group-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--adm-text-3);
+  padding: 12px 10px 8px;
+  margin: 0;
+}
+
+.adm-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--adm-text-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background 0.18s, color 0.18s, transform 0.16s, box-shadow 0.18s;
+  position: relative;
+  letter-spacing: 0.1px;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.adm-nav-item:hover {
+  background: var(--adm-sidebar-hover);
+  color: var(--adm-brand);
+  transform: translateX(3px);
+}
+
+.adm-nav-item--active {
+  background: linear-gradient(135deg, #fde4e0 0%, #fdf0ef 100%) !important;
+  color: var(--adm-brand) !important;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(201, 114, 105, 0.14);
+}
+
+/* batang aksen kiri pada item aktif */
+.adm-nav-item--active::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3.5px;
+  height: 20px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #d6867c, #b85f58);
+}
+
+.adm-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: inherit;
+  transition: transform 0.16s;
+}
+
+.adm-nav-item--active .adm-nav-icon {
+  transform: scale(1.08);
+}
+
+.adm-nav-label {
+  flex: 1;
+}
+
+.adm-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  margin-left: auto;
+  color: #fff;
+}
+
+.adm-nav-badge--amber {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.adm-nav-badge--rose {
+  background: linear-gradient(135deg, #fb7185, #f43f5e);
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.4);
+}
+
+/* ── Bottom ── */
+.adm-sidebar-bottom {
+  padding: 12px;
+  border-top: 1px solid var(--adm-sidebar-border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.adm-nav-item--store {
+  color: var(--adm-text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.adm-nav-item--store:hover {
+  color: var(--adm-brand);
+  background: var(--adm-sidebar-hover);
+}
+
+.adm-nav-item--logout {
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.adm-nav-item--logout:hover {
+  background: rgba(239, 68, 68, 0.07);
+  transform: translateX(3px);
+}
+
+/* ── Hamburger toggle + overlay (mobile only) ── */
+.adm-sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 45;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #c97269;
+  border: 1.5px solid #f0d5d2;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(214, 134, 124, 0.2);
+  transition: background 0.16s, transform 0.16s;
+}
+
+.adm-sidebar-toggle:hover {
+  background: #fdf0ef;
+  transform: translateY(-1px);
+}
+
+.adm-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.4);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  z-index: 49;
+}
+
+/* ════════════════════════════════════════════════════════
+   RESPONSIVE — sidebar jadi drawer di layar kecil
+   ════════════════════════════════════════════════════════ */
+@media (max-width: 860px) {
+  .adm-sidebar {
+    transform: translateX(-100%);
+    box-shadow: 12px 0 50px rgba(0, 0, 0, 0.2);
+  }
+
+  .adm-sidebar--open {
+    transform: translateX(0);
+  }
+
+  .adm-sidebar ~ main {
+    margin-left: 0;
+    padding-top: 64px;
+  }
+
+  .adm-sidebar-toggle {
+    display: flex;
+  }
+
+  .adm-sidebar-overlay {
+    display: block;
+  }
+}

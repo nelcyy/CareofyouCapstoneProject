@@ -1,16 +1,16 @@
  'use client';
 
 import { usePathname } from 'next/navigation';
-import AdminNavbar from '../components/AdminNavbar';
+import AdminSidebar from '../components/AdminSidebar';
 
-// Layout buat semua halaman admin: navbar admin di atas + isi halaman di bawah.
+// Layout buat semua halaman admin: sidebar admin di kiri + isi halaman di kanan.
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
-  const hideNavbar = pathname.startsWith('/admin/pesanan/detail/');
+  const hideSidebar = pathname.startsWith('/admin/pesanan/detail/');
 
   return (
     <div>
-      {!hideNavbar && <AdminNavbar />}
+      {!hideSidebar && <AdminSidebar />}
       <main>{children}</main>
     </div>
   );
