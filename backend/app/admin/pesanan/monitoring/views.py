@@ -45,14 +45,78 @@ def serialize_otp_monitoring(monitoring):
     }
 
 
+# ======================= FRAUD: ALAMAT =======================
+def serialize_address_fraud_monitoring(monitoring):
+    return {
+        'address_age_minutes': monitoring.address_age_minutes,
+        'new_address_score': monitoring.new_address_score,
+    }
+
+
+# ======================= FRAUD: NOMINAL =======================
+def serialize_amount_fraud_monitoring(monitoring):
+    return {
+        'order_amount_ratio_percent': monitoring.order_amount_ratio_percent,
+        'amount_anomaly_score': monitoring.amount_anomaly_score,
+    }
+
+
+# ======================= FRAUD: QTY =======================
+def serialize_qty_fraud_monitoring(monitoring):
+    return {
+        'total_item_quantity': monitoring.total_item_quantity,
+        'max_single_product_quantity': monitoring.max_single_product_quantity,
+        'bulk_order_score': monitoring.bulk_order_score,
+    }
+
+
+# ======================= FRAUD: AKUN BARU =======================
+def serialize_new_account_fraud_monitoring(monitoring):
+    return {
+        'account_age_days': monitoring.account_age_days,
+        'new_account_big_order_score': monitoring.new_account_big_order_score,
+    }
+
+
+# ======================= FRAUD: ORDER CEPAT =======================
+def serialize_rapid_order_fraud_monitoring(monitoring):
+    return {
+        'recent_orders_30m_count': monitoring.recent_orders_30m_count,
+        'rapid_order_score': monitoring.rapid_order_score,
+    }
+
+
+# ======================= FRAUD: GABUNGAN =======================
+def serialize_fraud_monitoring(monitoring):
+    return {
+        'address': serialize_address_fraud_monitoring(monitoring),
+        'amount': serialize_amount_fraud_monitoring(monitoring),
+        'qty': serialize_qty_fraud_monitoring(monitoring),
+        'new_account': serialize_new_account_fraud_monitoring(monitoring),
+        'rapid_order': serialize_rapid_order_fraud_monitoring(monitoring),
+        'fraud_risk_score': monitoring.fraud_risk_score,
+    }
+
+
+# ======================= RINGKASAN =======================
+def serialize_summary_monitoring(monitoring):
+    return {
+        'hijack_risk_score': monitoring.hijack_risk_score,
+        'fraud_risk_score': monitoring.fraud_risk_score,
+        'total_risk_score': monitoring.total_risk_score,
+    }
+
+
 # ======================= GABUNGAN MONITORING =======================
 def serialize_order_monitoring(monitoring):
     return {
         'device': serialize_device_monitoring(monitoring),
         'password': serialize_password_monitoring(monitoring),
         'otp': serialize_otp_monitoring(monitoring),
-        'total_risk_score': monitoring.total_risk_score,
+        'fraud': serialize_fraud_monitoring(monitoring),
+        'summary': serialize_summary_monitoring(monitoring),
     }
+
 
 # ======================= HELPER ORDER =======================
 def get_order_monitoring_payload(order):

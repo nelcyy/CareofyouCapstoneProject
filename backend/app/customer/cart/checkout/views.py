@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Avg, Count
 from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -26,22 +26,28 @@ PAYMENT_OPTIONS = {
 }
 
 DEVICE_NEW_WINDOW = timedelta(days=1)
+# Hijack indicators stay the most important, but a single device anomaly
+# should not jump straight to an extreme score on its own.
 DEVICE_RISK_SCORES = {
     'usual': 0,
-    'known_rare': 30,
-    'new_trusted': 75,
-    'not_registered': 90,
+    'known_rare': 12,
+    'new_trusted': 22,
+    'not_registered': 35,
 }
 FAILED_PASSWORD_SCORES = {
     0: 0,
-    1: 20,
-    2: 40,
+    1: 8,
+    2: 18,
 }
 FAILED_OTP_SCORES = {
     0: 0,
-    1: 15,
-    2: 30,
+    1: 6,
+    2: 14,
 }
+ADDRESS_FRESH_WINDOW_MINUTES = 30
+ADDRESS_RECENT_WINDOW_MINUTES = 24 * 60
+RAPID_ORDER_WINDOW = timedelta(minutes=30)
+TOTAL_RISK_SUPPORTING_WEIGHT = 0.45
 
 
 def _serialize_address(item):
@@ -145,7 +151,7 @@ def _failed_password_count_for_login(user, login_id):
 
 def _failed_password_score_for_count(failed_password_count):
     if failed_password_count >= 3:
-        return 60
+        return 30
     return FAILED_PASSWORD_SCORES.get(failed_password_count, 0)
 
 
@@ -168,12 +174,136 @@ def _failed_otp_count_for_login(user, login_id):
 
 def _failed_otp_score_for_count(failed_otp_count):
     if failed_otp_count >= 3:
-        return 45
+        return 24
     return FAILED_OTP_SCORES.get(failed_otp_count, 0)
 
 
-def _total_risk_score_for_order(device_risk_score, failed_password_score, failed_otp_score):
+# ======================= HIJACK SCORE =======================
+def _hijack_risk_score_for_order(device_risk_score, failed_password_score, failed_otp_score):
     return min(100, device_risk_score + failed_password_score + failed_otp_score)
+
+
+# ======================= FRAUD: ALAMAT BARU =======================
+def _address_age_minutes_for_order(address, current_time):
+    if not address or not address.created_at:
+        return 0
+    delta = current_time - address.created_at
+    return max(0, int(delta.total_seconds() // 60))
+
+
+def _new_address_score_for_age(address_age_minutes):
+    if address_age_minutes <= ADDRESS_FRESH_WINDOW_MINUTES:
+        return 12
+    if address_age_minutes <= ADDRESS_RECENT_WINDOW_MINUTES:
+        return 6
+    return 0
+
+
+# ======================= FRAUD: NOMINAL TIDAK WAJAR =======================
+def _order_amount_ratio_percent_for_order(user, grand_total):
+    previous_orders = Order.objects.filter(user=user)
+    if previous_orders.count() < 3:
+        return 0
+    average_total = previous_orders.aggregate(avg_total=Avg('grand_total'))['avg_total'] or 0
+    if not average_total:
+        return 0
+    return int(round((grand_total * 100) / average_total))
+
+
+def _amount_anomaly_score_for_ratio(order_amount_ratio_percent):
+    if order_amount_ratio_percent <= 150:
+        return 0
+    if order_amount_ratio_percent <= 250:
+        return 8
+    if order_amount_ratio_percent <= 400:
+        return 18
+    return 30
+
+
+# ======================= FRAUD: BORONG / QTY =======================
+def _order_quantity_snapshot(cart_items):
+    quantities = [int(it.quantity or 0) for it in cart_items]
+    return {
+        'total_item_quantity': sum(quantities),
+        'max_single_product_quantity': max(quantities, default=0),
+    }
+
+
+def _bulk_order_score_for_quantities(total_item_quantity, max_single_product_quantity):
+    if max_single_product_quantity >= 10 or total_item_quantity >= 18:
+        return 16
+    if max_single_product_quantity >= 7 or total_item_quantity >= 12:
+        return 10
+    if max_single_product_quantity >= 5 or total_item_quantity >= 8:
+        return 5
+    return 0
+
+
+# ======================= FRAUD: AKUN BARU + ORDER BESAR =======================
+def _account_age_days_for_order(user, current_time):
+    if not user or not user.created_at:
+        return 0
+    delta = current_time - user.created_at
+    return max(0, int(delta.total_seconds() // 86400))
+
+
+def _new_account_big_order_score_for_order(account_age_days, grand_total):
+    if account_age_days <= 1 and grand_total >= 500000:
+        return 20
+    if account_age_days <= 7 and grand_total >= 1000000:
+        return 14
+    if account_age_days <= 30 and grand_total >= 1500000:
+        return 8
+    return 0
+
+
+# ======================= FRAUD: BANYAK ORDER CEPAT =======================
+def _recent_orders_30m_count_for_order(user, current_time):
+    return (
+        Order.objects
+        .filter(user=user, created_at__gte=current_time - RAPID_ORDER_WINDOW)
+        .count()
+    )
+
+
+def _rapid_order_score_for_count(recent_orders_30m_count):
+    if recent_orders_30m_count <= 0:
+        return 0
+    if recent_orders_30m_count == 1:
+        return 6
+    if recent_orders_30m_count == 2:
+        return 12
+    return 18
+
+
+# ======================= FRAUD SCORE =======================
+def _fraud_risk_score_for_order(
+    new_address_score,
+    amount_anomaly_score,
+    bulk_order_score,
+    new_account_big_order_score,
+    rapid_order_score,
+):
+    return min(
+        100,
+        new_address_score
+        + amount_anomaly_score
+        + bulk_order_score
+        + new_account_big_order_score
+        + rapid_order_score,
+    )
+
+
+# ======================= TOTAL SCORE =======================
+def _total_risk_score_for_order(hijack_risk_score, fraud_risk_score):
+    dominant_risk = max(hijack_risk_score, fraud_risk_score)
+    supporting_risk = min(hijack_risk_score, fraud_risk_score)
+    # The strongest category sets the baseline; the second category only
+    # amplifies it partially so we avoid inflated totals from simple addition.
+    return min(
+        100,
+        dominant_risk + int(round(supporting_risk * TOTAL_RISK_SUPPORTING_WEIGHT)),
+    )
 
 
 @api_view(['GET'])
@@ -273,6 +403,7 @@ def create_order(request):
     subtotal = sum((it.product.price if it.product else 0) * it.quantity for it in cart_items)
     shipping_fee = courier['fee']
     grand_total = subtotal + shipping_fee
+    current_time = timezone.now()
     proof_path = _save_payment_proof(user.id, payment_proof)
     trusted_device = _trusted_device_for_order(user, trust_token)
     trusted_device_status = _trusted_device_status_for_order(user, trusted_device)
@@ -281,11 +412,31 @@ def create_order(request):
     failed_password_score = _failed_password_score_for_count(failed_password_count)
     failed_otp_count = _failed_otp_count_for_login(user, login_id)
     failed_otp_score = _failed_otp_score_for_count(failed_otp_count)
-    total_risk_score = _total_risk_score_for_order(
+    hijack_risk_score = _hijack_risk_score_for_order(
         device_risk_score,
         failed_password_score,
         failed_otp_score,
     )
+    address_age_minutes = _address_age_minutes_for_order(address, current_time)
+    new_address_score = _new_address_score_for_age(address_age_minutes)
+    order_amount_ratio_percent = _order_amount_ratio_percent_for_order(user, grand_total)
+    amount_anomaly_score = _amount_anomaly_score_for_ratio(order_amount_ratio_percent)
+    quantity_snapshot = _order_quantity_snapshot(cart_items)
+    total_item_quantity = quantity_snapshot['total_item_quantity']
+    max_single_product_quantity = quantity_snapshot['max_single_product_quantity']
+    bulk_order_score = _bulk_order_score_for_quantities(total_item_quantity, max_single_product_quantity)
+    account_age_days = _account_age_days_for_order(user, current_time)
+    new_account_big_order_score = _new_account_big_order_score_for_order(account_age_days, grand_total)
+    recent_orders_30m_count = _recent_orders_30m_count_for_order(user, current_time)
+    rapid_order_score = _rapid_order_score_for_count(recent_orders_30m_count)
+    fraud_risk_score = _fraud_risk_score_for_order(
+        new_address_score,
+        amount_anomaly_score,
+        bulk_order_score,
+        new_account_big_order_score,
+        rapid_order_score,
+    )
+    total_risk_score = _total_risk_score_for_order(hijack_risk_score, fraud_risk_score)
     current_device_label = device_label(request)
 
     with transaction.atomic():
@@ -321,6 +472,19 @@ def create_order(request):
             failed_password_score=failed_password_score,
             failed_otp_count=failed_otp_count,
             failed_otp_score=failed_otp_score,
+            hijack_risk_score=hijack_risk_score,
+            address_age_minutes=address_age_minutes,
+            new_address_score=new_address_score,
+            order_amount_ratio_percent=order_amount_ratio_percent,
+            amount_anomaly_score=amount_anomaly_score,
+            total_item_quantity=total_item_quantity,
+            max_single_product_quantity=max_single_product_quantity,
+            bulk_order_score=bulk_order_score,
+            account_age_days=account_age_days,
+            new_account_big_order_score=new_account_big_order_score,
+            recent_orders_30m_count=recent_orders_30m_count,
+            rapid_order_score=rapid_order_score,
+            fraud_risk_score=fraud_risk_score,
             total_risk_score=total_risk_score,
             trusted_device_created_at_snapshot=trusted_device.created_at if trusted_device else None,
         )
