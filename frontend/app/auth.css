@@ -248,15 +248,51 @@
 .auth-checkbox-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 13px;
   color: #666;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .auth-checkbox-row input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--auth-primary);
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1.5px solid var(--auth-border);
+  background: #fff;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-checkbox-row input:hover {
+  border-color: var(--auth-primary);
+}
+
+.auth-checkbox-row input:checked {
+  background: linear-gradient(135deg, #d6867c 0%, #c0605a 100%);
+  border-color: var(--auth-primary-deep);
+}
+
+.auth-checkbox-row input:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.auth-checkbox-row input:focus-visible {
+  box-shadow: 0 0 0 4px var(--auth-primary-soft);
 }
 
 .auth-error {
