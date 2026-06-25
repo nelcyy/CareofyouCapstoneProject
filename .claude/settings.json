@@ -57,7 +57,10 @@
       "Bash(curl -s --retry 12 --retry-delay 1 --retry-connrefused \"http://localhost:8000/api/admin/produk/list\")",
       "Bash(MSYS_NO_PATHCONV=1 curl -s -o /dev/null -w \"/customer/product = %{http_code}\\\\n\" --retry 12 --retry-delay 1 --retry-connrefused http://localhost:3000/customer/product)",
       "Bash(MSYS_NO_PATHCONV=1 curl -s -o /dev/null -w \"/customer/favorites = %{http_code}\\\\n\" http://localhost:3000/customer/favorites)",
-      "Bash(MSYS_NO_PATHCONV=1 curl -s -o /dev/null -w \"/customer/favorites = %{http_code}\\\\n\" --retry 12 --retry-delay 1 --retry-connrefused http://localhost:3000/customer/favorites)"
+      "Bash(MSYS_NO_PATHCONV=1 curl -s -o /dev/null -w \"/customer/favorites = %{http_code}\\\\n\" --retry 12 --retry-delay 1 --retry-connrefused http://localhost:3000/customer/favorites)",
+      "Bash(cd \"/c/Users/User/Documents/CareofyouCapstoneProject/backend\")",
+      "Bash(ls *.py)",
+      "Bash(printf '')"
     ],
     "additionalDirectories": [
       "c:\\Users\\lodar\\CareOfYou\\frontend\\.git"

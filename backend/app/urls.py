@@ -2,6 +2,7 @@ from django.urls import include, path
 from .login import views as login_views
 from .register import views as register_views
 from .admin.produk import views as admin_produk_views
+from .admin.dashboard import views as admin_dashboard_views
 from .customer.product import views as customer_product_views
 from .customer.cart import views as customer_cart_views
 from .customer.cart.checkout import views as customer_checkout_views
@@ -18,6 +19,9 @@ urlpatterns = [
     # login
     path('api/login', login_views.login),
     path('api/login/verify-otp', login_views.verify_otp),
+
+    # admin > dashboard
+    path('api/admin/dashboard/stats', admin_dashboard_views.dashboard_stats),
 
     # admin > produk
     path('api/admin/produk/categories', admin_produk_views.list_categories),
