@@ -36,6 +36,27 @@ const CartIcon = () => (
   </svg>
 );
 
+const SearchIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+    <line x1="4" y1="4" x2="16" y2="16" /><line x1="16" y1="4" x2="4" y2="16" />
+  </svg>
+);
+
+function matchesSearch(product, query) {
+  const q = query.toLowerCase();
+  return (
+    product.name.toLowerCase().includes(q) ||
+    (product.category || '').toLowerCase().includes(q)
+  );
+}
+
 export default function ProductPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,6 +64,7 @@ export default function ProductPage() {
   const [favMap, setFavMap] = useState({}); // { product_id: favorite_id }
   const [userId, setUserId] = useState(null);
   const [quickView, setQuickView] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   function loadProducts() {
     fetch(`${API}/list`).then((r) => r.json()).then(setProducts).catch(console.error);
@@ -111,8 +133,11 @@ export default function ProductPage() {
   const categoryTabs = [ALL_CATEGORY, ...categoryNames];
   const categoryParam = searchParams.get('category');
   const activeCategory = categoryNames.includes(categoryParam) ? categoryParam : ALL_CATEGORY;
+  const trimmedQuery = searchQuery.trim();
 
-  const filteredProducts = activeCategory === ALL_CATEGORY
+  const filteredProducts = trimmedQuery
+    ? products.filter((p) => matchesSearch(p, trimmedQuery))
+    : activeCategory === ALL_CATEGORY
     ? products
     : products.filter((p) => p.category === activeCategory);
 
@@ -195,37 +220,67 @@ export default function ProductPage() {
         </div>
       </section>
 
+      <section className="catalog-search-wrap">
+        <div className="catalog-search-bar">
+          <SearchIcon />
+          <input
+            type="text"
+            className="catalog-search-input"
+            placeholder="Cari produk, misal: serum, lip cream..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button className="catalog-search-clear" onClick={() => setSearchQuery('')} aria-label="Hapus pencarian">
+              <CloseIcon />
+            </button>
+          )}
+        </div>
+      </section>
+
       <section className="catalog-section">
         <div className="catalog-section-header">
           <div>
             <h2 className="catalog-section-title">
-              {activeCategory !== ALL_CATEGORY ? `Kategori: ${activeCategory}` : 'Semua Produk'}
+              {trimmedQuery
+                ? `Hasil untuk "${trimmedQuery}"`
+                : activeCategory !== ALL_CATEGORY
+                ? `Kategori: ${activeCategory}`
+                : 'Semua Produk'}
             </h2>
             <p className="catalog-subline">{filteredProducts.length} produk ditemukan</p>
           </div>
-          {activeCategory !== ALL_CATEGORY && (
+          {trimmedQuery ? (
+            <button className="catalog-clear-btn" onClick={() => setSearchQuery('')}>
+              Reset pencarian
+            </button>
+          ) : activeCategory !== ALL_CATEGORY && (
             <button className="catalog-clear-btn" onClick={() => handleCategorySelect(ALL_CATEGORY)}>
               Tampilkan semua produk
             </button>
           )}
         </div>
 
-        <div className="catalog-tabs">
-          {categoryTabs.map((category) => (
-            <button
-              key={category}
-              className={`catalog-tab${activeCategory === category ? ' catalog-tab--active' : ''}`}
-              onClick={() => handleCategorySelect(category)}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
+        {!trimmedQuery && (
+          <div className="catalog-tabs">
+            {categoryTabs.map((category) => (
+              <button
+                key={category}
+                className={`catalog-tab${activeCategory === category ? ' catalog-tab--active' : ''}`}
+                onClick={() => handleCategorySelect(category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        )}
 
         {filteredProducts.length === 0 ? (
           <div className="catalog-empty">
-            <p className="catalog-empty-title">Belum ada produk</p>
-            <p className="catalog-empty-sub">Coba pilih kategori lain.</p>
+            <p className="catalog-empty-title">Produk tidak ditemukan</p>
+            <p className="catalog-empty-sub">
+              {trimmedQuery ? 'Coba kata kunci lain.' : 'Coba pilih kategori lain.'}
+            </p>
           </div>
         ) : (
           <div className="catalog-grid">

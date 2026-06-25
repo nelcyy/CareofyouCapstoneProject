@@ -141,6 +141,65 @@
   .catalog-stat { min-width: calc(50% - 7px); }
 }
 
+/* ── SEARCH BAR (paten di halaman produk) ───────────────── */
+.catalog-search-wrap {
+  max-width: 1200px;
+  margin: 28px auto 0;
+  padding: 0 40px;
+}
+
+.catalog-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1.5px solid #f0d5d2;
+  border-radius: 18px;
+  padding: 15px 22px;
+  box-shadow: 0 6px 22px rgba(201, 114, 105, 0.08);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.catalog-search-bar:focus-within {
+  border-color: #d6867c;
+  box-shadow: 0 0 0 4px rgba(214, 134, 124, 0.12);
+}
+
+.catalog-search-bar svg:first-child { flex-shrink: 0; color: #c0968f; }
+
+.catalog-search-input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 14.5px;
+  color: #333;
+  font-family: inherit;
+}
+
+.catalog-search-input::placeholder { color: #c7b3b0; }
+
+.catalog-search-clear {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: #fdf0ef;
+  color: #c4706a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.catalog-search-clear:hover { background: #fce0de; }
+
+@media (max-width: 640px) {
+  .catalog-search-wrap { padding: 0 20px; margin: 20px auto 0; }
+  .catalog-search-bar { padding: 13px 18px; }
+}
+
 /* ── CATALOG SECTION ────────────────────────────────────── */
 .catalog-section {
   max-width: 1200px;

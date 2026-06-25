@@ -200,58 +200,6 @@
   box-shadow: 0 1px 4px rgba(214, 134, 124, 0.4);
 }
 
-/* ── Search bar dropdown ── */
-.navbar-search-bar {
-  border-top: 1px solid #f5eeee;
-  padding: 14px 48px 16px;
-  background: rgba(255, 255, 255, 0.98);
-  display: flex;
-  justify-content: center;
-  animation: searchSlideDown 0.18s ease;
-}
-
-@keyframes searchSlideDown {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.navbar-search-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #fdf6f5;
-  border: 1.5px solid #f0d5d2;
-  border-radius: 30px;
-  padding: 10px 20px;
-  max-width: 560px;
-  width: 100%;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 12px rgba(214, 134, 124, 0.08);
-}
-
-.navbar-search-wrap:focus-within {
-  border-color: #d6867c;
-  box-shadow: 0 0 0 4px rgba(214, 134, 124, 0.1);
-}
-
-.navbar-search-wrap svg {
-  flex-shrink: 0;
-  color: #c0968f;
-}
-
-.navbar-search-input {
-  flex: 1;
-  border: none;
-  background: none;
-  outline: none;
-  font-size: 14px;
-  color: #555;
-}
-
-.navbar-search-input::placeholder {
-  color: #cbb8b5;
-}
-
 /* ── Responsive ── */
 @media (max-width: 640px) {
   .navbar-inner {
@@ -261,9 +209,5 @@
 
   .navbar-links {
     display: none;
-  }
-
-  .navbar-search-bar {
-    padding: 12px 20px 14px;
   }
 }

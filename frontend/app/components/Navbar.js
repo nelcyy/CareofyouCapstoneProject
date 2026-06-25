@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import './Navbar.css';
@@ -11,12 +10,10 @@ import './Navbar.css';
 //   - cartCount  : jumlah item di keranjang buat angka badge. Dibiarkan prop
 //                  opsional dengan default 0 -> badge otomatis disembunyikan.
 //                  Gak ada angka palsu / aturan di sini.
-//   - search     : tombol + dropdown search cuma UI (buka/tutup). Pencarian
-//                  produk butuh data/handler dari backend; belum disambungkan.
+// Search dipindah ke halaman Produk (lihat app/customer/product/page.js).
 // Sisanya (link aktif berdasarkan route) murni frontend, gak butuh backend.
 export default function Navbar({ cartCount = 0 }) {
   const pathname = usePathname();
-  const [searchOpen, setSearchOpen] = useState(false);
 
   const isActive = (href) => pathname === href || pathname?.startsWith(href + '/');
 
@@ -47,17 +44,6 @@ export default function Navbar({ cartCount = 0 }) {
 
         {/* Right icons */}
         <div className="navbar-icons">
-          <button
-            className="navbar-icon-btn"
-            title="Cari"
-            onClick={() => setSearchOpen((o) => !o)}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </button>
-
           <Link
             href="/customer/favorites"
             className={`navbar-icon-btn${isActive('/customer/favorites') ? ' navbar-icon-active' : ''}`}
@@ -94,25 +80,6 @@ export default function Navbar({ cartCount = 0 }) {
           </Link>
         </div>
       </div>
-
-      {/* Search bar dropdown — UI saja, pencarian produk nunggu di-wire backend */}
-      {searchOpen && (
-        <div className="navbar-search-bar">
-          <div className="navbar-search-wrap">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              className="navbar-search-input"
-              type="text"
-              placeholder="Cari produk..."
-              onBlur={() => setSearchOpen(false)}
-              autoFocus
-            />
-          </div>
-        </div>
-      )}
     </header>
   );
 }
