@@ -1,29 +1,53 @@
 .catalog-page {
+  --rose: #c97269;
+  --rose-deep: #a85850;
+  --rose-light: #e8907f;
+  --ink: #1e1211;
   min-height: 100vh;
   background: #fdf6f5;
   font-family: var(--font-body);
   color: #2d2d2d;
 }
 
-/* ── HERO ───────────────────────────────────────────────── */
+/* ── HERO — sama persis dengan efek bubble di home hero ──── */
 .catalog-hero {
+  position: relative;
+  overflow: hidden;
   max-width: 1200px;
   width: calc(100% - 80px);
   margin: 28px auto 0;
-  padding: 48px 56px;
+  padding: 44px 48px;
   border-radius: 32px;
-  background: linear-gradient(135deg, #fff8f6 0%, #fdddd7 50%, #f8cec6 100%);
+  background: linear-gradient(135deg, #fff1ef 0%, #fde2dd 45%, #f6c9c1 100%);
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
   gap: 32px;
-  align-items: stretch;
-  box-shadow: 0 20px 56px rgba(201, 114, 105, 0.2);
+  align-items: center;
+  box-shadow: 0 24px 64px rgba(201, 114, 105, 0.22);
+}
+
+.catalog-hero-blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(2px);
+  animation: catalogBlobFloat 4.5s ease-in-out infinite alternate;
+}
+.catalog-hero-blob--1 { width: 320px; height: 320px; background: rgba(255, 255, 255, 0.32); top: -120px; right: 80px; }
+.catalog-hero-blob--2 { width: 200px; height: 200px; background: rgba(255, 255, 255, 0.22); bottom: -80px; left: 40px; animation-duration: 5.5s; animation-delay: 0.4s; }
+.catalog-hero-blob--3 { width: 140px; height: 140px; background: rgba(255, 200, 190, 0.4); top: 40%; left: 38%; animation-duration: 3.2s; }
+
+@keyframes catalogBlobFloat {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(48px, 54px, 0) scale(1.15); }
 }
 
 .catalog-hero-copy {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   justify-content: center;
 }
 
@@ -32,80 +56,101 @@
   width: fit-content;
   padding: 7px 16px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(201, 114, 105, 0.2);
-  color: #c97269;
+  color: var(--rose);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 1.6px;
   text-transform: uppercase;
 }
 
 .catalog-title {
   font-family: var(--font-display);
   margin: 0;
-  font-size: 42px;
+  font-size: 46px;
   font-weight: 700;
-  line-height: 1.1;
-  color: #1e1211;
+  line-height: 1.12;
+  letter-spacing: -0.8px;
+  color: var(--ink);
 }
 
 .catalog-desc {
   margin: 0;
   max-width: 480px;
-  font-size: 14px;
-  line-height: 1.8;
-  color: #888;
+  font-size: 14.5px;
+  font-weight: 400;
+  line-height: 1.85;
+  letter-spacing: 0.1px;
+  color: #7d7574;
 }
 
 .catalog-stats {
   display: flex;
-  gap: 14px;
+  align-items: center;
+  gap: 20px;
 }
 
 .catalog-stat {
-  min-width: 120px;
-  padding: 14px 18px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(201, 114, 105, 0.14);
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.catalog-stat-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(201, 114, 105, 0.25);
 }
 
 .catalog-stat strong {
   font-size: 22px;
   font-weight: 800;
-  color: #c97269;
+  letter-spacing: -0.3px;
+  color: var(--rose-deep);
+  line-height: 1;
 }
 
 .catalog-stat span {
-  font-size: 10.5px;
-  color: #aaa;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  font-weight: 600;
+  font-size: 12.5px;
+  color: #8d7e7b;
+  font-weight: 500;
 }
 
 .catalog-hero-card {
+  position: relative;
+  z-index: 1;
   border-radius: 24px;
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(201, 114, 105, 0.15);
+  padding: 22px 24px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 32px rgba(201, 114, 105, 0.1);
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 14px;
+}
+
+.catalog-hero-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .catalog-hero-card-label {
   margin: 0;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
-  color: #c97269;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  color: var(--ink);
+  letter-spacing: -0.1px;
+}
+
+.catalog-hero-card-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: #a89490;
+  line-height: 1.5;
 }
 
 .catalog-chip-list {
@@ -115,30 +160,49 @@
 }
 
 .catalog-chip {
-  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 9px 8px 16px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #fff8f6, #ffeeed);
-  border: 1px solid rgba(201, 114, 105, 0.2);
-  color: #b9655d;
+  background: #fff;
+  border: 1px solid rgba(201, 114, 105, 0.16);
+  color: #8a5a54;
   font-size: 12.5px;
   font-weight: 600;
+  letter-spacing: 0.1px;
   cursor: pointer;
-  transition: transform 0.18s, box-shadow 0.2s;
+  transition: transform 0.18s, box-shadow 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.catalog-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(201, 114, 105, 0.12);
+  color: var(--rose-deep);
+  font-size: 10.5px;
+  font-weight: 700;
 }
 
 .catalog-chip:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(201, 114, 105, 0.18);
+  background: #fff8f6;
+  border-color: rgba(201, 114, 105, 0.3);
+  box-shadow: 0 6px 16px rgba(201, 114, 105, 0.16);
 }
 
 @media (max-width: 900px) {
-  .catalog-hero { grid-template-columns: 1fr; padding: 32px 28px; }
+  .catalog-hero { grid-template-columns: 1fr; padding: 36px 28px; }
 }
 
 @media (max-width: 640px) {
-  .catalog-hero { width: calc(100% - 32px); margin: 16px auto 0; padding: 28px 20px; }
-  .catalog-title { font-size: 30px; }
-  .catalog-stat { min-width: calc(50% - 7px); }
+  .catalog-hero { width: calc(100% - 32px); margin: 16px auto 0; padding: 32px 22px; border-radius: 28px; }
+  .catalog-title { font-size: 30px; letter-spacing: -0.4px; }
 }
 
 /* ── SEARCH BAR (paten di halaman produk) ───────────────── */

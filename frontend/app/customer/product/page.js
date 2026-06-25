@@ -130,6 +130,14 @@ export default function ProductPage() {
     () => [...new Set(products.map((p) => p.category).filter(Boolean))],
     [products]
   );
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    products.forEach((p) => {
+      if (!p.category) return;
+      counts[p.category] = (counts[p.category] || 0) + 1;
+    });
+    return counts;
+  }, [products]);
   const categoryTabs = [ALL_CATEGORY, ...categoryNames];
   const categoryParam = searchParams.get('category');
   const activeCategory = categoryNames.includes(categoryParam) ? categoryParam : ALL_CATEGORY;
@@ -189,19 +197,25 @@ export default function ProductPage() {
   return (
     <div className="catalog-page">
       <section className="catalog-hero">
+        <div className="catalog-hero-blob catalog-hero-blob--1" />
+        <div className="catalog-hero-blob catalog-hero-blob--2" />
+        <div className="catalog-hero-blob catalog-hero-blob--3" />
+
         <div className="catalog-hero-copy">
           <span className="catalog-kicker">Katalog Careofyou</span>
           <h1 className="catalog-title">
             {activeCategory !== ALL_CATEGORY ? activeCategory : 'Jelajahi Produk Kami'}
           </h1>
           <p className="catalog-desc">
-            Semua produk beauty original careofyou ada di sini. Pilih kategori atau lihat semua produk sekaligus.
+            Skincare, makeup, dan perawatan diri pilihan — original dan siap dipakai
+            untuk rutinitas kecantikanmu setiap hari.
           </p>
           <div className="catalog-stats">
             <div className="catalog-stat">
               <strong>{filteredProducts.length}</strong>
               <span>produk {activeCategory !== ALL_CATEGORY ? 'di kategori ini' : 'tersedia'}</span>
             </div>
+            <div className="catalog-stat-divider" />
             <div className="catalog-stat">
               <strong>{categoryNames.length}</strong>
               <span>kategori</span>
@@ -209,11 +223,15 @@ export default function ProductPage() {
           </div>
         </div>
         <div className="catalog-hero-card">
-          <p className="catalog-hero-card-label">Kategori Populer</p>
+          <div className="catalog-hero-card-head">
+            <p className="catalog-hero-card-label">Jelajahi Kategori</p>
+            <p className="catalog-hero-card-hint">Klik buat langsung lihat produknya</p>
+          </div>
           <div className="catalog-chip-list">
             {categoryNames.map((category) => (
               <span key={category} className="catalog-chip" onClick={() => handleCategorySelect(category)}>
                 {category}
+                <span className="catalog-chip-count">{categoryCounts[category] || 0}</span>
               </span>
             ))}
           </div>
