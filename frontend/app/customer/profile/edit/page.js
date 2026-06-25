@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiUrl } from '@/api';
 import './page.css';
 
-const API = 'http://localhost:8000/api/customer/profile';
+const API = apiUrl('/api/customer/profile');
 
 function formatTanggal(value) {
   if (!value) return '-';

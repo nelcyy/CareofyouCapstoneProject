@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { apiUrl, mediaUrl } from '@/api';
 
-const API = 'http://localhost:8000/api/customer/profile/order';
-const BACKEND = 'http://localhost:8000';
+const API = apiUrl('/api/customer/profile/order');
 
 function formatRibuan(value) {
   const digits = String(value ?? '').replace(/\D/g, '');
@@ -20,9 +20,12 @@ function formatTanggal(value) {
   return date.toLocaleString('id-ID');
 }
 
+function imgUrl(path) {
+  return mediaUrl(path);
+}
+
 function fileUrl(path) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : `${BACKEND}${path}`;
+  return mediaUrl(path);
 }
 
 function getStoredUser() {

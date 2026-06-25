@@ -1,18 +1,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { mediaUrl } from '@/api';
 import { useCart } from './CartContext';
 import './CartSidebar.css';
-
-const BACKEND = 'http://localhost:8000';
 
 function formatRupiah(value) {
   return 'Rp ' + Number(value || 0).toLocaleString('id-ID');
 }
 
 function imgUrl(path) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : BACKEND + path;
+  return mediaUrl(path);
 }
 
 const BagIcon = () => (

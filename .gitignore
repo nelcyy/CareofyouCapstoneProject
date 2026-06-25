@@ -11,12 +11,10 @@ node_modules/
 npm-debug.log*
 
 # ===== Rahasia / environment =====
-.env
-.env.local
 
-# ===== Editor / local config =====
-.vscode/settings.json
-backend/requirements.txt
+# ===== Local tool / workspace =====
+.agents/
+.claude/
 
 # ===== OS / file sampah =====
 .DS_Store

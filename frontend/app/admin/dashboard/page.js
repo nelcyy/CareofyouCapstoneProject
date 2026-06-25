@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiUrl, mediaUrl } from '@/api';
 import './page.css';
 
-const API = 'http://localhost:8000/api/admin/dashboard';
-const BACKEND = 'http://localhost:8000';
+const API = apiUrl('/api/admin/dashboard');
 
 function formatRibuan(value) {
   const digits = String(value ?? '').replace(/\D/g, '');
@@ -14,8 +14,7 @@ function formatRibuan(value) {
 }
 
 function imgUrl(path) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : BACKEND + path;
+  return mediaUrl(path);
 }
 
 // warna pill status — MURNI presentasi; nilai status tetap dari backend

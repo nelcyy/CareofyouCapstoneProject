@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { apiUrl, mediaUrl } from '@/api';
 
-const API = 'http://localhost:8000/api/admin/pesanan';
-const BACKEND = 'http://localhost:8000';
+const API = apiUrl('/api/admin/pesanan');
 const QR_READY_STATUSES = ['pengemasan', 'pengiriman', 'selesai'];
 
 function formatRibuan(value) {
@@ -21,9 +21,12 @@ function formatTanggal(value) {
   return date.toLocaleString('id-ID');
 }
 
+function imgUrl(path) {
+  return mediaUrl(path);
+}
+
 function fileUrl(path) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : `${BACKEND}${path}`;
+  return mediaUrl(path);
 }
 
 function isQrReadyStatus(status) {

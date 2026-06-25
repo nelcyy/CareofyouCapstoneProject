@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { apiUrl, mediaUrl } from '@/api';
 import Footer from '../../components/Footer';
 import { useCart } from '../../components/CartContext';
 import './page.css';
 
-const API = 'http://localhost:8000/api/customer/product';
-const FAV_API = 'http://localhost:8000/api/customer/favorites';
-const BACKEND = 'http://localhost:8000';
+const API = apiUrl('/api/customer/product');
+const FAV_API = apiUrl('/api/customer/favorites');
 
 const ALL_CATEGORY = 'Semua';
 
@@ -19,8 +19,7 @@ function formatRibuan(value) {
 }
 
 function imgUrl(path) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : BACKEND + path;
+  return mediaUrl(path);
 }
 
 const HeartIcon = ({ filled }) => (
@@ -64,6 +63,28 @@ function matchesSearch(product, query) {
 }
 
 export default function ProductPage() {
+  return (
+    <Suspense fallback={<ProductPageFallback />}>
+      <ProductPageContent />
+    </Suspense>
+  );
+}
+
+function ProductPageFallback() {
+  return (
+    <div className="catalog-page">
+      <section className="catalog-section">
+        <div className="catalog-empty">
+          <p className="catalog-empty-title">Memuat katalog...</p>
+          <p className="catalog-empty-sub">Tunggu sebentar ya.</p>
+        </div>
+      </section>
+      <Footer />
+    </div>
+  );
+}
+
+function ProductPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addToCart } = useCart();

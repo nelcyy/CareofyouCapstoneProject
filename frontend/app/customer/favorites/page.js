@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiUrl, mediaUrl } from '@/api';
 import { useCart } from '../../components/CartContext';
 import './page.css';
 
-const API = 'http://localhost:8000/api/customer/favorites';
-const BACKEND = 'http://localhost:8000';
+const API = apiUrl('/api/customer/favorites');
 
 function formatRibuan(value) {
   const digits = String(value).replace(/\D/g, '');
@@ -14,8 +14,7 @@ function formatRibuan(value) {
 }
 
 function imgUrl(path) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : BACKEND + path;
+  return mediaUrl(path);
 }
 
 export default function FavoritesPage() {

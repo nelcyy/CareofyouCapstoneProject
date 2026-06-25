@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { apiUrl } from '@/api';
 import styles from './page.module.css';
 
-const REGISTER_API = 'http://localhost:8000/api/register';
+const REGISTER_API = apiUrl('/api/register');
 
 function getVisibleOtpError(message) {
   if (!message) return '';

@@ -1,9 +1,9 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { apiUrl } from '@/api';
 
-const BACKEND = 'http://localhost:8000';
-const API = `${BACKEND}/api/customer/cart`;
+const API = apiUrl('/api/customer/cart');
 
 const CartContext = createContext(null);
 

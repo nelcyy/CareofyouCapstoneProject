@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiUrl, mediaUrl } from '@/api';
 import Footer from '../../components/Footer';
 import { useCart } from '../../components/CartContext';
 import './page.css';
 
-const BACKEND = 'http://localhost:8000';
-const SUMMARY_API = `${BACKEND}/api/customer/home/summary`;
-const PRODUCT_API = `${BACKEND}/api/customer/product`;
-const FAV_API = `${BACKEND}/api/customer/favorites`;
+const SUMMARY_API = apiUrl('/api/customer/home/summary');
+const PRODUCT_API = apiUrl('/api/customer/product');
+const FAV_API = apiUrl('/api/customer/favorites');
 
 // ── KONTAK TOKO ────────────────────────────────────────────
 // Instagram diambil dari profil asli @careofyou.id.
@@ -30,8 +30,7 @@ function formatRibuan(value) {
 }
 
 function imgUrl(path) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : BACKEND + path;
+  return mediaUrl(path);
 }
 
 /* ── ICONS ──────────────────────────────────────────────── */

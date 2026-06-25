@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiUrl } from '@/api';
 
-const API = 'http://localhost:8000/api/admin/pesanan';
+const API = apiUrl('/api/admin/pesanan');
 
 function formatRibuan(value) {
   const digits = String(value).replace(/\D/g, '');

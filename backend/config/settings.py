@@ -10,22 +10,38 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
+
+
+def env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def env_list(name, default=''):
+    value = os.getenv(name, default)
+    return [item.strip() for item in value.split(',') if item.strip()]
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-bzp*w=-gvuz%1o)n7$+8yf1qg0d@=gg6!o%2v1nnrrnnlije8q'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-bzp*w=-gvuz%1o)n7$+8yf1qg0d@=gg6!o%2v1nnrrnnlije8q')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool('DEBUG', True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS')
 
 
 # Application definition
@@ -73,12 +89,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',  # pakai PostgreSQL
-        'NAME': 'CareOfYou',        # nama database yang sudah dibuat
-        'USER': 'postgres',         # user default PostgreSQL
-        'PASSWORD': 'user',         # TODO: pindahin ke file .env sebelum push ke Git
-        'HOST': 'localhost',        # database ada di laptop sendiri
-        'PORT': '5432',             # pintu default PostgreSQL
+        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
+        'NAME': os.getenv('DB_NAME', 'CareOfYou'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'user'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 
@@ -131,17 +147,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Frontend (Next.js) yang boleh ngobrol ke backend ini
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
+    *env_list('CORS_ALLOWED_ORIGINS', 'http://localhost:3000'),
 ]
 
 
 # Email -> Mailpit (penangkap email lokal buat tes OTP)
 # Email "dikirim" ke Mailpit (localhost:1025), dilihat di browser http://localhost:8025
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'localhost'
-EMAIL_PORT = 1025
-EMAIL_USE_TLS = False
-DEFAULT_FROM_EMAIL = 'CareOfYou <noreply@careofyou.com>'
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '1025'))
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', False)
+EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', False)
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'CareOfYou <noreply@careofyou.com>')
 
 
 # Django REST Framework — endpoint publik (belum pakai login/token, buat tes flow)

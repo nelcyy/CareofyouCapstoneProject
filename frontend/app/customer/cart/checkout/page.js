@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiUrl, mediaUrl } from '@/api';
 import './page.css';
 
-const CART_API = 'http://localhost:8000/api/customer/cart';
-const CHECKOUT_API = 'http://localhost:8000/api/customer/cart/checkout';
-const BACKEND = 'http://localhost:8000';
+const CART_API = apiUrl('/api/customer/cart');
+const CHECKOUT_API = apiUrl('/api/customer/cart/checkout');
 
 function formatRibuan(value) {
   const digits = String(value).replace(/\D/g, '');
@@ -16,8 +16,7 @@ function formatRibuan(value) {
 }
 
 function imgUrl(path) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : BACKEND + path;
+  return mediaUrl(path);
 }
 
 const EMPTY_ADDRESS_FORM = {

@@ -1,0 +1,51 @@
+{
+  "files.exclude": {
+    // Global build / cache / dependency folders
+    "**/.git": true,
+    "**/.next": true,
+    "**/node_modules": true,
+    "**/venv": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+
+    // frontend/
+    "frontend/AGENTS.md": true,
+    "frontend/CLAUDE.md": true,
+    "frontend/api.js": true,
+    "frontend/.env.local": true,
+    "frontend/jsconfig.json": true,
+    "frontend/next.config.mjs": true,
+    "frontend/package.json": true,
+    "frontend/package-lock.json": true,
+    "frontend/public": true,
+    "frontend/README.md": true,
+
+    // frontend/app/
+    "frontend/app/layout.js": true,
+    "frontend/app/page.js": true,
+
+    // backend/
+    "backend/.env": true,
+    "backend/config": true,
+    "backend/manage.py": true,
+    "backend/requirements.txt": true,
+
+    // backend/app/
+    "backend/app/__init__.py": true,
+    "backend/app/apps.py": true,
+    "backend/app/common.py": true,
+    "backend/app/models.py": true,
+    "backend/app/urls.py": true,
+
+    // Root local tooling
+    ".agents": true,
+    ".claude": true
+  },
+  "search.exclude": {
+    // Global search exclusions
+    "**/.next": true,
+    "**/node_modules": true,
+    "**/venv": true,
+    "**/__pycache__": true
+  }
+}

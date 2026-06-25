@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiUrl, mediaUrl } from '@/api';
 import './page.css';
 
-const API = 'http://localhost:8000/api/admin/produk';
+const API = apiUrl('/api/admin/produk');
 
 // kasih separator ribuan, mis. 50000 -> "50.000" (tanpa "Rp")
 function formatRibuan(value) {
@@ -13,10 +14,8 @@ function formatRibuan(value) {
 }
 
 // foto disimpan sebagai PATH (mis. /media/products/x.jpg); pas nampilin tambahin host backend
-const BACKEND = 'http://localhost:8000';
 function imgUrl(path) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : BACKEND + path;
+  return mediaUrl(path);
 }
 
 export default function ProdukPage() {

@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { apiUrl } from '@/api';
 import styles from './page.module.css';
 
-const LOGIN_API = 'http://localhost:8000/api/login';
+const LOGIN_API = apiUrl('/api/login');
 
 function getVisibleOtpError(message) {
   if (!message) return '';
