@@ -11,6 +11,8 @@ node_modules/
 npm-debug.log*
 
 # ===== Rahasia / environment =====
+.env
+.env.local
 
 # ===== Local tool / workspace =====
 .agents/
