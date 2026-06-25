@@ -14,6 +14,10 @@ npm-debug.log*
 .env
 .env.local
 
+# ===== Editor / local config =====
+.vscode/settings.json
+backend/requirements.txt
+
 # ===== OS / file sampah =====
 .DS_Store
 Thumbs.db
