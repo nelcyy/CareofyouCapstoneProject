@@ -7,6 +7,7 @@ import './page.css';
 
 const BACKEND = 'http://localhost:8000';
 const SUMMARY_API = `${BACKEND}/api/customer/home/summary`;
+const PRODUCT_API = `${BACKEND}/api/customer/product`;
 const CART_API = `${BACKEND}/api/customer/cart`;
 const FAV_API = `${BACKEND}/api/customer/favorites`;
 
@@ -131,6 +132,7 @@ const TRUST_ITEMS = [
 export default function HomePage() {
   const router = useRouter();
   const [summary, setSummary] = useState({ total_products: 0, categories: [], newest: [] });
+  const [products, setProducts] = useState([]);
   const [favMap, setFavMap] = useState({});
   const [userId, setUserId] = useState(null);
   const [quickView, setQuickView] = useState(null);
@@ -139,6 +141,12 @@ export default function HomePage() {
 
   function loadSummary() {
     fetch(`${SUMMARY_API}`).then((r) => r.json()).then(setSummary).catch(console.error);
+  }
+
+  // Produk Terbaru pakai katalog asli (endpoint yang sama dengan halaman Produk),
+  // bukan data dummy — backend sudah urutkan -created_at jadi paling baru di depan.
+  function loadProducts() {
+    fetch(`${PRODUCT_API}/list`).then((r) => r.json()).then(setProducts).catch(console.error);
   }
 
   function loadFavorites(uid) {
@@ -154,6 +162,7 @@ export default function HomePage() {
 
   useEffect(() => {
     loadSummary();
+    loadProducts();
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     if (user) {
       setUserId(user.id);
@@ -346,7 +355,7 @@ export default function HomePage() {
       )}
 
       {/* ── PRODUK TERBARU — CAROUSEL ────────────────────── */}
-      {summary.newest.length > 0 && (
+      {products.length > 0 && (
         <section className="home-section">
           <Reveal>
             <div className="home-section-header">
@@ -363,7 +372,7 @@ export default function HomePage() {
           <Reveal delay={80}>
             <div className="home-scroll-track-wrap">
               <div className="home-scroll-track" ref={newestTrackRef}>
-                {summary.newest.map((p) => renderProductCard(p, true))}
+                {products.map((p) => renderProductCard(p, true))}
               </div>
             </div>
           </Reveal>
@@ -395,41 +404,47 @@ export default function HomePage() {
             </div>
           </div>
         </Reveal>
+
         <Reveal delay={80}>
-          <div className="home-contact-top">
-            <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="home-contact-card home-contact-card--ig">
-              <span className="home-contact-icon"><InstagramIcon /></span>
-              <p className="home-contact-title">Instagram</p>
-              <p className="home-contact-sub">{INSTAGRAM_HANDLE} &middot; 2.9K+ followers</p>
-              <span className="home-contact-cta">Follow Kami <ArrowIcon /></span>
-            </a>
-            <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="home-contact-card home-contact-card--wa">
-              <span className="home-contact-icon"><WhatsAppIcon /></span>
-              <p className="home-contact-title">WhatsApp</p>
-              <p className="home-contact-sub">Tanya stok &amp; rekomendasi produk</p>
-              <span className="home-contact-cta">Chat Sekarang <ArrowIcon /></span>
-            </a>
-          </div>
-          <div className="home-contact-card home-contact-card--maps home-contact-card--maps-full">
-            <div className="home-contact-map-embed home-contact-map-embed--big">
-              <iframe
-                src={MAPS_EMBED_URL}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Lokasi Toko careofyou"
-              />
-            </div>
-            <div className="home-contact-card-body home-contact-card-body--maps">
-              <div className="home-contact-left">
-                <span className="home-contact-icon"><MapPinIcon /></span>
-                <div>
-                  <p className="home-contact-title">Lokasi Toko</p>
-                  <p className="home-contact-sub">Manado, Tondano, Tomohon</p>
-                </div>
-              </div>
-              <a href={MAPS_URL} target="_blank" rel="noopener noreferrer" className="home-contact-cta">
-                Lihat di Maps <ArrowIcon />
+          <div className="home-contact-stack">
+            <div className="home-contact-mini-row">
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="home-contact-mini-link">
+                <span className="home-contact-mini-icon home-contact-mini-icon--ig"><InstagramIcon /></span>
+                <span className="home-contact-mini-text">
+                  Instagram
+                  <small>{INSTAGRAM_HANDLE}</small>
+                </span>
               </a>
+              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="home-contact-mini-link">
+                <span className="home-contact-mini-icon home-contact-mini-icon--wa"><WhatsAppIcon /></span>
+                <span className="home-contact-mini-text">
+                  WhatsApp
+                  <small>Chat langsung</small>
+                </span>
+              </a>
+            </div>
+
+            <div className="home-contact-map-tile">
+              <div className="home-contact-map-embed">
+                <iframe
+                  src={MAPS_EMBED_URL}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Lokasi Toko careofyou"
+                />
+              </div>
+              <div className="home-contact-map-footer">
+                <div className="home-contact-left">
+                  <span className="home-contact-icon"><MapPinIcon /></span>
+                  <div>
+                    <p className="home-contact-title">Lokasi Toko</p>
+                    <p className="home-contact-sub">Manado, Tondano, Tomohon</p>
+                  </div>
+                </div>
+                <a href={MAPS_URL} target="_blank" rel="noopener noreferrer" className="home-contact-cta">
+                  Lihat di Maps <ArrowIcon />
+                </a>
+              </div>
             </div>
           </div>
         </Reveal>

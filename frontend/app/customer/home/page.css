@@ -294,11 +294,38 @@
 }
 
 .home-section-title {
+  position: relative;
+  display: inline-block;
   font-family: var(--font-display);
   font-size: 27px;
-  font-weight: 800;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  line-height: 1.35;
   color: var(--ink);
   margin: 0;
+  padding-bottom: 5px;
+  transition: letter-spacing 0.3s ease, color 0.3s ease;
+}
+
+.home-section-title::after {
+  content: '';
+  position: absolute;
+  left: 1px;
+  bottom: 0;
+  width: 0;
+  height: 1px;
+  background: var(--rose);
+  opacity: 0.7;
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-section-title:hover {
+  letter-spacing: 0.1px;
+  color: var(--rose-deep);
+}
+
+.home-section-title:hover::after {
+  width: 100%;
 }
 
 .home-view-all {
@@ -380,24 +407,24 @@
 @media (max-width: 980px) { .home-bento-trust { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 520px) { .home-bento-trust { grid-template-columns: 1fr; } }
 
-/* ── CATEGORY GRID (ala aja2adaa) ───────────────────────── */
+/* ── CATEGORY GRID — standar, rapi, mengisi lebar container ── */
 .home-cat-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
 }
 
 .home-cat-card {
   cursor: pointer;
-  border-radius: 20px;
+  border-radius: 18px;
   overflow: hidden;
   background: #fff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .home-cat-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 14px 36px rgba(214, 134, 124, 0.22);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 28px rgba(214, 134, 124, 0.2);
 }
 
 .home-cat-img-wrap {
@@ -427,48 +454,40 @@
   position: relative;
   z-index: 2;
   font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 19px;
+  font-weight: 700;
   color: rgba(255, 255, 255, 0.95);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
   text-align: center;
-  padding: 0 12px;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  padding: 0 10px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   transition: transform 0.3s ease;
 }
-.home-cat-card:hover .home-cat-label { transform: scale(1.1); }
+.home-cat-card:hover .home-cat-label { transform: scale(1.08); }
 
-.home-cat-footer { padding: 14px 16px 16px; text-align: center; }
-.home-cat-count-desc { font-size: 12.5px; color: #b3a5a2; margin: 0; font-weight: 600; }
+.home-cat-footer { padding: 12px 14px 14px; text-align: center; }
+.home-cat-count-desc { font-size: 12px; color: #b3a5a2; margin: 0; font-weight: 600; }
 
-@media (max-width: 860px) { .home-cat-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px) { .home-cat-label { font-size: 22px; } }
+@media (max-width: 600px) {
+  .home-cat-grid { grid-template-columns: repeat(2, 1fr); }
+}
 
 /* ── PRODUCT CARDS (shared: carousel + grid) ───────────── */
 .home-scroll-track-wrap {
   position: relative;
 }
-.home-scroll-track-wrap::before,
-.home-scroll-track-wrap::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 6px;
-  width: 56px;
-  z-index: 2;
-  pointer-events: none;
-}
-.home-scroll-track-wrap::before { left: 0; background: linear-gradient(90deg, #fffaf9, transparent); }
-.home-scroll-track-wrap::after { right: 0; background: linear-gradient(-90deg, #fffaf9, transparent); }
 
 .home-scroll-track {
   display: flex;
   gap: 18px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  padding-bottom: 6px;
+  padding: 4px 4px 10px;
   scrollbar-width: none;
   cursor: grab;
+  /* fade di tepi kiri/kanan lewat mask, bukan overlay warna — gak ada garis/divider yang kelihatan janggal */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
 }
 .home-scroll-track:active { cursor: grabbing; }
 .home-scroll-track::-webkit-scrollbar { display: none; }
@@ -612,77 +631,47 @@
 }
 .home-promo-btn:hover { transform: translateY(-3px); }
 
-/* ── HUBUNGI KAMI ───────────────────────────────────────── */
-.home-contact-top {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
-  margin-bottom: 18px;
-}
-
-.home-contact-card {
-  position: relative;
+/* ── HUBUNGI KAMI — IG/WA mini di atas, Maps full-width di bawah ── */
+.home-contact-stack {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 26px 24px;
-  border-radius: 22px;
-  text-decoration: none;
-  color: inherit;
-  overflow: hidden;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.07);
-  transition: transform 0.25s, box-shadow 0.25s;
+  gap: 22px;
 }
-.home-contact-card:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(0,0,0,0.14); }
 
-.home-contact-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 16px;
+.home-contact-map-tile {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 10px;
-  color: #fff;
-}
-
-.home-contact-card--ig { background: linear-gradient(160deg, #fff3ee 0%, #fff 60%); border: 1px solid #ffe2d6; }
-.home-contact-card--ig .home-contact-icon { background: linear-gradient(135deg, #f58529, #dd2a7b 50%, #8134af 80%, #515bd4); }
-.home-contact-card--ig .home-contact-cta { color: #dd2a7b; }
-
-.home-contact-card--wa { background: linear-gradient(160deg, #effaf0 0%, #fff 60%); border: 1px solid #d7f0da; }
-.home-contact-card--wa .home-contact-icon { background: #25d366; }
-.home-contact-card--wa .home-contact-cta { color: #1ea952; }
-
-.home-contact-card--maps-full {
-  padding: 0;
-  background: #fff;
-  border: 1px solid #f6d6d6;
-  gap: 0;
-  cursor: default;
-}
-.home-contact-card--maps .home-contact-icon { background: #ea4335; }
-.home-contact-card--maps .home-contact-cta { color: #ea4335; }
-
-.home-contact-map-embed--big {
+  flex-direction: column;
   width: 100%;
-  height: 340px;
+  border-radius: 28px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 16px 44px rgba(201, 114, 105, 0.14);
+  transition: box-shadow 0.3s ease;
+}
+.home-contact-map-tile:hover { box-shadow: 0 22px 54px rgba(201, 114, 105, 0.2); }
+
+.home-contact-map-embed {
+  position: relative;
+  width: 100%;
+  height: 320px;
   background: #f3e3e1;
 }
 .home-contact-map-embed iframe {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   border: 0;
   display: block;
 }
 
-.home-contact-card-body--maps {
+.home-contact-map-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 22px 26px;
+  padding: 18px 24px;
 }
 
 .home-contact-left {
@@ -690,29 +679,108 @@
   align-items: center;
   gap: 14px;
 }
-.home-contact-left .home-contact-icon { margin-bottom: 0; flex-shrink: 0; }
-.home-contact-left .home-contact-title,
-.home-contact-left .home-contact-sub { margin: 0; }
 
-.home-contact-card--maps .home-contact-cta {
-  padding: 11px 20px;
-  border-radius: 999px;
-  background: #fdeeee;
-  white-space: nowrap;
-  margin-top: 0;
+.home-contact-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: #ea4335;
+  flex-shrink: 0;
 }
 
-.home-contact-title { font-size: 17px; font-weight: 800; color: var(--ink); margin: 0; }
-.home-contact-sub { font-size: 12.5px; color: #948684; margin: 0 0 8px; line-height: 1.6; }
-.home-contact-cta { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; margin-top: auto; text-decoration: none; }
+.home-contact-title { font-size: 15.5px; font-weight: 800; color: var(--ink); margin: 0; }
+.home-contact-sub { font-size: 12px; color: #948684; margin: 0; line-height: 1.5; }
+.home-contact-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: #f7f1ee;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rose);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.18s, transform 0.18s;
+}
+.home-contact-cta:hover { background: #fde3de; transform: translateX(2px); }
+
+/* IG / WA — mini, no card background, just icon + label, sejajar horizontal */
+.home-contact-mini-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 40px;
+  padding: 2px 4px;
+}
+
+.home-contact-mini-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform 0.25s ease;
+}
+.home-contact-mini-link:hover { transform: translateX(5px); }
+
+.home-contact-mini-icon {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+}
+.home-contact-mini-link:hover .home-contact-mini-icon {
+  transform: scale(1.12) rotate(-4deg);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.home-contact-mini-icon--ig { background: linear-gradient(135deg, #f58529, #dd2a7b 50%, #8134af 80%, #515bd4); }
+.home-contact-mini-icon--wa { background: #25d366; }
+
+.home-contact-mini-text {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.home-contact-mini-text::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: 0;
+  height: 1px;
+  background: var(--rose);
+  transition: width 0.3s ease;
+}
+.home-contact-mini-link:hover .home-contact-mini-text::after { width: 100%; }
+
+.home-contact-mini-text small {
+  font-size: 11px;
+  font-weight: 500;
+  color: #a89490;
+  margin-top: 2px;
+}
 
 @media (max-width: 720px) {
-  .home-contact-top { grid-template-columns: 1fr; }
-  .home-contact-card-body--maps { flex-direction: column; align-items: flex-start; }
-  .home-contact-map-embed--big { height: 240px; }
+  .home-contact-map-embed { height: 220px; }
+  .home-contact-map-footer { flex-direction: column; align-items: flex-start; }
+  .home-contact-mini-row { gap: 24px; }
 }
-
-@media (max-width: 860px) { .home-contact-grid { grid-template-columns: 1fr; } }
 
 /* ── FLOATING CONTACT FAB ───────────────────────────────── */
 .home-fab-wrap {
