@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useCart } from '../../components/CartContext';
 import './page.css';
 
 const API = 'http://localhost:8000/api/customer/favorites';
-const CART_API = 'http://localhost:8000/api/customer/cart';
 const BACKEND = 'http://localhost:8000';
 
 function formatRibuan(value) {
@@ -19,6 +19,7 @@ function imgUrl(path) {
 }
 
 export default function FavoritesPage() {
+  const { addToCart } = useCart();
   const [items, setItems] = useState([]);
   const [userId, setUserId] = useState(null);
   // id produk yang lagi nampilin animasi konfirmasi (sesaat, lalu hilang)
@@ -60,13 +61,7 @@ export default function FavoritesPage() {
 
   async function tambah(item) {
     pingConfirm(item.id);
-    const res = await fetch(`${CART_API}/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, product_id: item.product_id }),
-    });
-    const data = await res.json();
-    console.log('[tambah keranjang]', res.status, data);
+    await addToCart({ id: item.product_id });
   }
 
   function tambahSemua() {

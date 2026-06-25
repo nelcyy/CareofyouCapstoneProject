@@ -1,19 +1,30 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useCart } from './CartContext';
 import './Navbar.css';
 
 // Navbar global buat semua halaman customer (dipakai dari app/customer/layout.js).
-//
-// CATATAN DATA BACKEND (belum di-wire, nunggu di-pass dari backend):
-//   - cartCount  : jumlah item di keranjang buat angka badge. Dibiarkan prop
-//                  opsional dengan default 0 -> badge otomatis disembunyikan.
-//                  Gak ada angka palsu / aturan di sini.
+// Klik ikon keranjang buka CartSidebar (lihat app/components/CartSidebar.js),
+// jumlah badge & isi keranjang diambil dari CartContext (data asli dari backend).
 // Search dipindah ke halaman Produk (lihat app/customer/product/page.js).
-// Sisanya (link aktif berdasarkan route) murni frontend, gak butuh backend.
-export default function Navbar({ cartCount = 0 }) {
+export default function Navbar() {
   const pathname = usePathname();
+  const { cartCount, cartOpen, setCartOpen } = useCart();
+  const [bump, setBump] = useState(false);
+  const prevCount = useRef(cartCount);
+
+  // badge "pop" tiap kali jumlah keranjang berubah (nambah dari halaman manapun)
+  useEffect(() => {
+    if (cartCount !== prevCount.current) {
+      setBump(true);
+      const t = setTimeout(() => setBump(false), 380);
+      prevCount.current = cartCount;
+      return () => clearTimeout(t);
+    }
+  }, [cartCount]);
 
   const isActive = (href) => pathname === href || pathname?.startsWith(href + '/');
 
@@ -54,9 +65,10 @@ export default function Navbar({ cartCount = 0 }) {
             </svg>
           </Link>
 
-          <Link
-            href="/customer/cart"
-            className={`navbar-icon-btn navbar-cart-btn${isActive('/customer/cart') ? ' navbar-icon-active' : ''}`}
+          <button
+            type="button"
+            onClick={() => setCartOpen(!cartOpen)}
+            className={`navbar-icon-btn navbar-cart-btn${cartOpen ? ' navbar-icon-active' : ''}`}
             title="Keranjang"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -64,9 +76,10 @@ export default function Navbar({ cartCount = 0 }) {
               <line x1="3" y1="6" x2="21" y2="6" />
               <path d="M16 10a4 4 0 0 1-8 0" />
             </svg>
-            {/* badge muncul cuma kalau cartCount dikirim > 0 dari backend */}
-            {cartCount > 0 && <span className="navbar-cart-badge">{cartCount}</span>}
-          </Link>
+            {cartCount > 0 && (
+              <span className={`navbar-cart-badge${bump ? ' navbar-cart-badge--bump' : ''}`}>{cartCount}</span>
+            )}
+          </button>
 
           <Link
             href="/customer/profile"

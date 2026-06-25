@@ -602,6 +602,17 @@
 }
 .home-card-cart-btn:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(201,114,105,0.35); }
 
+.home-card-cart-btn--added {
+  background: #22c55e;
+  animation: homeCartAddedPop 0.4s ease;
+}
+
+@keyframes homeCartAddedPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
 /* ── PROMO BANNER ───────────────────────────────────────── */
 .home-promo-wrap {
   max-width: 1240px;

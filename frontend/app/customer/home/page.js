@@ -3,12 +3,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Footer from '../../components/Footer';
+import { useCart } from '../../components/CartContext';
 import './page.css';
 
 const BACKEND = 'http://localhost:8000';
 const SUMMARY_API = `${BACKEND}/api/customer/home/summary`;
 const PRODUCT_API = `${BACKEND}/api/customer/product`;
-const CART_API = `${BACKEND}/api/customer/cart`;
 const FAV_API = `${BACKEND}/api/customer/favorites`;
 
 // ── KONTAK TOKO ────────────────────────────────────────────
@@ -45,6 +45,12 @@ const CartIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
@@ -131,12 +137,14 @@ const TRUST_ITEMS = [
 
 export default function HomePage() {
   const router = useRouter();
+  const { addToCart } = useCart();
   const [summary, setSummary] = useState({ total_products: 0, categories: [], newest: [] });
   const [products, setProducts] = useState([]);
   const [favMap, setFavMap] = useState({});
   const [userId, setUserId] = useState(null);
   const [quickView, setQuickView] = useState(null);
   const [fabOpen, setFabOpen] = useState(false);
+  const [addedId, setAddedId] = useState(null);
   const newestTrackRef = useRef(null);
 
   function loadSummary() {
@@ -171,17 +179,11 @@ export default function HomePage() {
   }, []);
 
   async function tambah(p) {
-    if (!userId) {
-      alert('Login dulu sebagai customer ya.');
-      return;
+    const ok = await addToCart(p);
+    if (ok) {
+      setAddedId(p.id);
+      setTimeout(() => setAddedId((cur) => (cur === p.id ? null : cur)), 900);
     }
-    const res = await fetch(`${CART_API}/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, product_id: p.id }),
-    });
-    const data = await res.json();
-    console.log('[tambah keranjang]', res.status, data);
   }
 
   async function toggleFav(p) {
@@ -235,11 +237,11 @@ export default function HomePage() {
         <div className="home-card-bottom">
           <span className="home-card-price">Rp {formatRibuan(product.price)}</span>
           <button
-            className="home-card-cart-btn"
+            className={`home-card-cart-btn${addedId === product.id ? ' home-card-cart-btn--added' : ''}`}
             onClick={(e) => { e.stopPropagation(); tambah(product); }}
             title="Tambah ke keranjang"
           >
-            <CartIcon />
+            {addedId === product.id ? <CheckIcon /> : <CartIcon />}
           </button>
         </div>
       </div>

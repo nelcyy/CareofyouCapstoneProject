@@ -198,6 +198,17 @@
   line-height: 1;
   border: 1.5px solid #fdf6f5;
   box-shadow: 0 1px 4px rgba(214, 134, 124, 0.4);
+  transition: transform 0.18s ease;
+}
+
+.navbar-cart-badge--bump {
+  animation: navbarCartBump 0.38s ease;
+}
+
+@keyframes navbarCartBump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.55); }
+  100% { transform: scale(1); }
 }
 
 /* ── Responsive ── */

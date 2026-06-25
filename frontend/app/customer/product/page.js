@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Footer from '../../components/Footer';
+import { useCart } from '../../components/CartContext';
 import './page.css';
 
 const API = 'http://localhost:8000/api/customer/product';
-const CART_API = 'http://localhost:8000/api/customer/cart';
 const FAV_API = 'http://localhost:8000/api/customer/favorites';
 const BACKEND = 'http://localhost:8000';
 
@@ -49,6 +49,12 @@ const CloseIcon = () => (
   </svg>
 );
 
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
 function matchesSearch(product, query) {
   const q = query.toLowerCase();
   return (
@@ -60,11 +66,13 @@ function matchesSearch(product, query) {
 export default function ProductPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { addToCart } = useCart();
   const [products, setProducts] = useState([]);
   const [favMap, setFavMap] = useState({}); // { product_id: favorite_id }
   const [userId, setUserId] = useState(null);
   const [quickView, setQuickView] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [addedId, setAddedId] = useState(null);
 
   function loadProducts() {
     fetch(`${API}/list`).then((r) => r.json()).then(setProducts).catch(console.error);
@@ -91,17 +99,11 @@ export default function ProductPage() {
   }, []);
 
   async function tambah(p) {
-    if (!userId) {
-      alert('Login dulu sebagai customer ya.');
-      return;
+    const ok = await addToCart(p);
+    if (ok) {
+      setAddedId(p.id);
+      setTimeout(() => setAddedId((cur) => (cur === p.id ? null : cur)), 900);
     }
-    const res = await fetch(`${CART_API}/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, product_id: p.id }),
-    });
-    const data = await res.json();
-    console.log('[tambah keranjang]', res.status, data);
   }
 
   async function toggleFav(p) {
@@ -182,12 +184,12 @@ export default function ProductPage() {
             <p className="prod-price">Rp {formatRibuan(product.price)}</p>
           </div>
           <button
-            className="prod-cart-btn"
+            className={`prod-cart-btn${addedId === product.id ? ' prod-cart-btn--added' : ''}`}
             onClick={(e) => { e.stopPropagation(); tambah(product); }}
             title="Tambah ke keranjang"
             disabled={product.stock <= 0}
           >
-            <CartIcon />
+            {addedId === product.id ? <CheckIcon /> : <CartIcon />}
           </button>
         </div>
       </div>

@@ -514,6 +514,17 @@
 .prod-cart-btn:hover:not(:disabled) { background: #b5615a; transform: scale(1.08); }
 .prod-cart-btn:disabled { background: #ddd; cursor: not-allowed; }
 
+.prod-cart-btn--added {
+  background: #22c55e;
+  animation: prodCartAddedPop 0.4s ease;
+}
+
+@keyframes prodCartAddedPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
 /* ── QUICK VIEW MODAL ───────────────────────────────────── */
 .catalog-qv-overlay {
   position: fixed;
