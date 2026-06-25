@@ -36,7 +36,7 @@ const IcLogOut = () => (
 
 // Menu = route yang memang ADA di project ini.
 const NAV_ITEMS = [
-  { href: '/admin', label: 'Dasbor', icon: <IcGrid />, exact: true },
+  { href: '/admin/dashboard', label: 'Dasbor', icon: <IcGrid /> },
   { href: '/admin/produk', label: 'Produk', icon: <IcProducts /> },
   { href: '/admin/pesanan', label: 'Pesanan', icon: <IcOrders />, badge: 'orders' },
   { href: '/admin/retur', label: 'Retur', icon: <IcReturn />, badge: 'returns' },
