@@ -150,6 +150,16 @@ export default function ProfileEditPage() {
     }
   }
 
+  const initials =
+    (form.name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase() || '?';
+
   return (
     <div className="profile-edit-page">
       <div className="profile-edit-header">
@@ -165,6 +175,10 @@ export default function ProfileEditPage() {
             className="profile-edit-button profile-edit-button--primary"
             onClick={openModal}
           >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z" />
+            </svg>
             Edit Profil
           </button>
         )}
@@ -179,6 +193,14 @@ export default function ProfileEditPage() {
 
       {!loading && userId && (
         <>
+          <div className="profile-edit-identity">
+            <div className="profile-edit-avatar">{initials}</div>
+            <div className="profile-edit-identity-info">
+              <p className="profile-edit-identity-name">{form.name || 'Tanpa Nama'}</p>
+              <p className="profile-edit-identity-email">{form.email || '-'}</p>
+            </div>
+          </div>
+
           <div className="profile-edit-card">
             <div className="profile-edit-row">
               <span className="profile-edit-label">Email</span>

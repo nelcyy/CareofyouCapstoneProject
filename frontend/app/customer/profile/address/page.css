@@ -1,7 +1,10 @@
 .profile-address-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
 }
 
 .profile-address-header {
@@ -15,47 +18,68 @@
 .profile-address-title {
   margin: 0;
   font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
   line-height: 1.1;
+  color: #2d2d2d;
 }
 
 .profile-address-subtitle {
   margin: 6px 0 0;
-  color: #8a7f7d;
+  color: #a59b99;
+  font-size: 13px;
   line-height: 1.5;
+  max-width: 460px;
 }
 
+/* ── Feedback ── */
 .profile-address-feedback {
   margin: 0;
+  font-size: 13.5px;
   line-height: 1.5;
+  padding: 11px 15px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #f0e0de;
+  color: #7a7a7a;
 }
 
 .profile-address-feedback--error {
   color: #dc2626;
+  background: rgba(239, 68, 68, 0.07);
+  border-color: rgba(239, 68, 68, 0.2);
 }
 
 .profile-address-feedback--success {
   color: #15803d;
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.22);
 }
 
+/* ── Empty ── */
 .profile-address-empty {
-  border: 1px dashed #e9d6d3;
-  border-radius: 16px;
+  border: 1.5px dashed #ecd6d2;
+  border-radius: 18px;
   background: #fff;
-  padding: 24px;
+  padding: 36px 24px;
+  text-align: center;
 }
 
 .profile-address-empty-title {
   margin: 0;
   font-weight: 700;
+  font-size: 16px;
   color: #2d2d2d;
 }
 
 .profile-address-empty-subtitle {
   margin: 8px 0 0;
-  color: #8a7f7d;
+  color: #a59b99;
+  font-size: 13px;
   line-height: 1.5;
 }
 
+/* ── Cards ── */
 .profile-address-list {
   display: grid;
   gap: 16px;
@@ -63,12 +87,19 @@
 
 .profile-address-card {
   border: 1px solid #f0e0de;
-  border-radius: 16px;
+  border-radius: 18px;
   background: #fff;
-  padding: 18px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  box-shadow: 0 2px 14px rgba(214, 134, 124, 0.06);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.profile-address-card:hover {
+  box-shadow: 0 6px 22px rgba(214, 134, 124, 0.12);
+  transform: translateY(-1px);
 }
 
 .profile-address-card-top {
@@ -95,13 +126,14 @@
 .profile-address-card-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 10px;
+  min-height: 23px;
+  padding: 0 11px;
   border-radius: 999px;
-  background: #fdf0ef;
-  color: #b85f58;
-  font-size: 12px;
+  background: linear-gradient(135deg, #fde4e0, #fdf0ef);
+  color: #c4706a;
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
 .profile-address-card-actions {
@@ -113,7 +145,7 @@
 .profile-address-card-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .profile-address-card-name {
@@ -125,23 +157,32 @@
 
 .profile-address-card-text {
   margin: 0;
-  color: #5f5755;
+  color: #6f6664;
+  font-size: 13.5px;
   line-height: 1.5;
 }
 
 .profile-address-card-notes {
   margin: 4px 0 0;
-  color: #8a7f7d;
+  color: #a59b99;
+  font-size: 12.5px;
   line-height: 1.5;
 }
 
+/* ── Buttons ── */
 .profile-address-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   border: none;
-  border-radius: 10px;
-  padding: 10px 16px;
+  border-radius: 50px;
+  padding: 9px 16px;
   font: inherit;
+  font-weight: 600;
+  font-size: 13px;
   cursor: pointer;
-  transition: background 0.18s, transform 0.16s;
+  transition: background 0.18s, transform 0.16s, box-shadow 0.18s;
 }
 
 .profile-address-button:disabled {
@@ -149,19 +190,26 @@
   opacity: 0.7;
 }
 
+.profile-address-header .profile-address-button--primary {
+  padding: 11px 20px;
+  font-size: 14px;
+}
+
 .profile-address-button--primary {
-  background: #d6867c;
+  background: linear-gradient(135deg, #e8907f, #c97269);
   color: #fff;
+  box-shadow: 0 4px 14px rgba(201, 114, 105, 0.3);
 }
 
 .profile-address-button--primary:hover:not(:disabled) {
-  background: #c4706a;
   transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(201, 114, 105, 0.4);
 }
 
 .profile-address-button--ghost {
   background: #fdf0ef;
   color: #b85f58;
+  border: 1.5px solid #f0d5d2;
 }
 
 .profile-address-button--ghost:hover:not(:disabled) {
@@ -169,19 +217,23 @@
 }
 
 .profile-address-button--danger {
-  background: #fee2e2;
+  background: rgba(239, 68, 68, 0.08);
   color: #dc2626;
+  border: 1.5px solid rgba(239, 68, 68, 0.18);
 }
 
 .profile-address-button--danger:hover:not(:disabled) {
-  background: #fecaca;
+  background: rgba(239, 68, 68, 0.16);
 }
 
+/* ── Modal ── */
 .profile-address-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 120;
-  background: rgba(45, 45, 45, 0.35);
+  z-index: 1000;
+  background: rgba(45, 45, 45, 0.45);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -189,12 +241,13 @@
 }
 
 .profile-address-modal {
-  width: min(100%, 640px);
+  width: min(100%, 620px);
+  max-height: 90vh;
+  overflow-y: auto;
   background: #fff;
-  border-radius: 18px;
+  border-radius: 22px;
   border: 1px solid #f0e0de;
-  box-shadow: 0 16px 42px rgba(45, 45, 45, 0.18);
-  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(45, 45, 45, 0.25);
 }
 
 .profile-address-modal-header {
@@ -202,18 +255,21 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 20px 20px 14px;
+  padding: 22px 22px 16px;
   border-bottom: 1px solid #f5e9e7;
 }
 
 .profile-address-modal-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 19px;
+  font-weight: 800;
+  color: #2d2d2d;
 }
 
 .profile-address-modal-subtitle {
-  margin: 6px 0 0;
-  color: #8a7f7d;
+  margin: 5px 0 0;
+  color: #a59b99;
+  font-size: 12.5px;
   line-height: 1.5;
 }
 
@@ -224,16 +280,23 @@
   width: 34px;
   height: 34px;
   border-radius: 999px;
-  font-size: 24px;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.16s, color 0.16s;
+}
+
+.profile-address-modal-close:hover:not(:disabled) {
+  background: #d6867c;
+  color: #fff;
 }
 
 .profile-address-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 20px;
+  gap: 15px;
+  padding: 22px;
 }
 
 .profile-address-field {
@@ -241,24 +304,30 @@
   flex-direction: column;
   gap: 8px;
   font-weight: 600;
-  color: #4c4341;
+  font-size: 13px;
+  color: #7a7a7a;
 }
 
 .profile-address-field input,
 .profile-address-field textarea {
   width: 100%;
-  border: 1px solid #e6d5d2;
-  border-radius: 10px;
-  padding: 11px 12px;
+  border: 1.5px solid #f0e0de;
+  border-radius: 11px;
+  padding: 11px 13px;
   font: inherit;
+  font-weight: 500;
+  color: #2d2d2d;
+  background: #fdf9f8;
   outline: none;
   resize: vertical;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
 }
 
 .profile-address-field input:focus,
 .profile-address-field textarea:focus {
   border-color: #d6867c;
   box-shadow: 0 0 0 3px rgba(214, 134, 124, 0.12);
+  background: #fff;
 }
 
 .profile-address-grid {
@@ -271,20 +340,24 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #4c4341;
+  color: #5f5755;
   font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
 }
 
 .profile-address-checkbox input {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
+  accent-color: #d6867c;
+  cursor: pointer;
 }
 
 .profile-address-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding-top: 8px;
+  padding-top: 4px;
 }
 
 @media (max-width: 640px) {
@@ -296,12 +369,11 @@
     grid-template-columns: 1fr;
   }
 
-  .profile-address-card-actions,
   .profile-address-modal-actions {
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
-  .profile-address-button {
+  .profile-address-modal-actions .profile-address-button {
     width: 100%;
   }
 }
