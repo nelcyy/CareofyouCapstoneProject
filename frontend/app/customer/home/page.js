@@ -54,6 +54,32 @@ const CheckIcon = () => (
   </svg>
 );
 
+/* ── ikon dekoratif kecil, tema beauty (cuma hiasan, pointer-events: none) ── */
+const SparkleIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z" />
+  </svg>
+);
+
+const FlowerIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" {...props}>
+    <circle cx="12" cy="12" r="2.4" />
+    <path d="M12 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2zM12 19.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2zM14.4 12a2.6 2.6 0 1 1 5.2 0 2.6 2.6 0 0 1-5.2 0zM4.4 12a2.6 2.6 0 1 1 5.2 0 2.6 2.6 0 0 1-5.2 0z" />
+  </svg>
+);
+
+const DropletIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M12 2.5c3.5 4.2 6.5 8 6.5 11.3a6.5 6.5 0 1 1-13 0c0-3.3 3-7.1 6.5-11.3z" />
+  </svg>
+);
+
+const HeartLineIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+  </svg>
+);
+
 const ArrowIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 12h14M12 5l7 7-7 7" />
@@ -385,6 +411,12 @@ export default function HomePage() {
       <Reveal>
         <section className="home-promo-wrap">
           <div className="home-promo">
+            <SparkleIcon className="home-promo-deco home-promo-deco--sparkle-1" />
+            <SparkleIcon className="home-promo-deco home-promo-deco--sparkle-2" />
+            <FlowerIcon className="home-promo-deco home-promo-deco--flower" />
+            <DropletIcon className="home-promo-deco home-promo-deco--droplet" />
+            <HeartLineIcon className="home-promo-deco home-promo-deco--heart" />
+
             <div className="home-promo-text">
               <span className="home-promo-label">Toko Kecantikan Terpercaya</span>
               <h3 className="home-promo-title">Original picks untuk kebutuhan beauty harianmu</h3>

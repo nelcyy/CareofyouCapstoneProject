@@ -215,6 +215,44 @@
   to { transform: translateY(-10px); }
 }
 
+/* ikon dekoratif tema beauty — mengisi area kosong di hero */
+.home-hero-deco {
+  position: absolute;
+  color: rgba(201, 114, 105, 0.32);
+  pointer-events: none;
+  z-index: 1;
+}
+.home-hero-deco--sparkle-1 {
+  width: 24px; height: 24px;
+  top: 6%; left: 53%;
+  animation: homePromoFloat 5s ease-in-out infinite alternate;
+}
+.home-hero-deco--sparkle-2 {
+  width: 15px; height: 15px;
+  top: 62%; left: 47%;
+  color: rgba(201, 114, 105, 0.4);
+  animation: homePromoFloat 4s ease-in-out infinite alternate-reverse;
+}
+.home-hero-deco--flower {
+  width: 34px; height: 34px;
+  top: 82%; left: 58%;
+  animation: homePromoSpin 16s linear infinite;
+}
+.home-hero-deco--droplet {
+  width: 26px; height: 26px;
+  top: 14%; right: 6%;
+  animation: homePromoFloat 6s ease-in-out infinite alternate;
+}
+.home-hero-deco--heart {
+  width: 20px; height: 20px;
+  bottom: 6%; left: 48%;
+  animation: homePromoFloat 4.6s ease-in-out infinite alternate-reverse;
+}
+
+@media (max-width: 860px) {
+  .home-hero-deco { display: none; }
+}
+
 @media (max-width: 860px) {
   .home-hero {
     grid-template-columns: 1fr;
@@ -668,6 +706,57 @@
   transition: transform 0.2s;
 }
 .home-promo-btn:hover { transform: translateY(-3px); }
+
+/* ikon dekoratif tema beauty — biar banner gak polos */
+.home-promo-deco {
+  position: absolute;
+  color: rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+  z-index: 0;
+}
+.home-promo-text,
+.home-promo-btn { position: relative; z-index: 1; }
+
+.home-promo-deco--sparkle-1 {
+  width: 26px; height: 26px;
+  top: 18px; right: 26%;
+  animation: homePromoFloat 5s ease-in-out infinite alternate;
+}
+.home-promo-deco--sparkle-2 {
+  width: 16px; height: 16px;
+  bottom: 22px; right: 14%;
+  color: rgba(255, 255, 255, 0.4);
+  animation: homePromoFloat 4s ease-in-out infinite alternate-reverse;
+}
+.home-promo-deco--flower {
+  width: 56px; height: 56px;
+  top: -14px; right: 6%;
+  animation: homePromoSpin 14s linear infinite;
+}
+.home-promo-deco--droplet {
+  width: 30px; height: 30px;
+  bottom: -8px; right: 32%;
+  animation: homePromoFloat 6s ease-in-out infinite alternate;
+}
+.home-promo-deco--heart {
+  width: 20px; height: 20px;
+  top: 28%; right: 2%;
+  animation: homePromoFloat 4.6s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes homePromoFloat {
+  from { transform: translateY(0); }
+  to { transform: translateY(-10px); }
+}
+@keyframes homePromoSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .home-promo-deco--flower,
+  .home-promo-deco--droplet { display: none; }
+}
 
 /* ── HUBUNGI KAMI — IG/WA mini di atas, Maps full-width di bawah ── */
 .home-contact-stack {
