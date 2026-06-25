@@ -10,10 +10,15 @@ from rest_framework.response import Response
 from ....admin.pesanan.ereceipt.views import ensure_order_receipt, _missing_dependency_response
 from ....models import EReceipt, Order
 from ..common import get_customer_profile_user
+from ..retur.views import get_order_return_state
 
 
 def _order_queryset():
-    return Order.objects.select_related('user', 'shipped_by', 'completed_by', 'e_receipt').prefetch_related('items')
+    return (
+        Order.objects
+        .select_related('user', 'shipped_by', 'completed_by', 'e_receipt', 'return_data')
+        .prefetch_related('items')
+    )
 
 
 def _active_receipt(order):
@@ -31,6 +36,7 @@ def _order_allows_receipt(order):
 
 
 def _list_order_payload(order):
+    return_state = get_order_return_state(order)
     return {
         'order_code': order.order_code,
         'grand_total': order.grand_total,
@@ -38,11 +44,14 @@ def _list_order_payload(order):
         'decision': order.decision,
         'created_at': order.created_at.isoformat() if order.created_at else '',
         'total_item_quantity': sum((item.quantity or 0) for item in order.items.all()),
+        'has_return': return_state['has_return'],
+        'return_status': return_state['return_status'],
     }
 
 
 def _detail_order_payload(order):
     receipt = _active_receipt(order)
+    return_state = get_order_return_state(order)
     return {
         'order_code': order.order_code,
         'customer_name': (order.user.name if order.user else '') or order.recipient_name or '',
@@ -78,6 +87,7 @@ def _detail_order_payload(order):
         'ereceipt_available': receipt is not None,
         'ereceipt_id': receipt.receipt_id if receipt else '',
         'ereceipt_generated_at': receipt.generated_at.isoformat() if receipt and receipt.generated_at else '',
+        'return_info': return_state,
         'items': [{
             'id': item.id,
             'product_id': item.product_id,

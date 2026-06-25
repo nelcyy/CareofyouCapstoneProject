@@ -293,7 +293,7 @@ export default function CheckoutPage() {
       setItems([]);
       closeOrderPopup();
       alert(`Order berhasil dibuat. Kode order: ${data.order_code}`);
-      router.push('/customer/cart');
+      router.replace('/customer/profile/order');
     } catch (error) {
       console.error(error);
       setOrderError('Gagal membuat order.');

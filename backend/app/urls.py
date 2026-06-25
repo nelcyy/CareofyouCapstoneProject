@@ -11,6 +11,7 @@ from .customer.favorites import views as customer_favorites_views
 from .customer.profile.address import views as customer_profile_address_views
 from .customer.profile.edit import views as customer_profile_edit_views
 from .customer.profile.pesanan import views as customer_profile_order_views
+from .customer.profile.retur import views as customer_profile_return_views
 
 urlpatterns = [
     # register
@@ -34,6 +35,7 @@ urlpatterns = [
 
     # admin > pesanan
     path('api/admin/pesanan/', include('app.admin.pesanan.urls')),
+    path('api/admin/retur/', include('app.admin.retur.urls')),
 
     # customer > home
     path('api/customer/home/summary', customer_home_views.summary),
@@ -64,6 +66,10 @@ urlpatterns = [
     path('api/customer/profile/order/detail', customer_profile_order_views.detail_order),
     path('api/customer/profile/order/ereceipt/view', customer_profile_order_views.view_receipt),
     path('api/customer/profile/order/ereceipt/download', customer_profile_order_views.download_receipt),
+    path('api/customer/profile/return/list', customer_profile_return_views.list_returns),
+    path('api/customer/profile/return/detail', customer_profile_return_views.detail_return),
+    path('api/customer/profile/return/create', customer_profile_return_views.create_return),
+    path('api/customer/profile/return/ship-back', customer_profile_return_views.ship_back_return),
 
     # customer > cart > checkout
     path('api/customer/cart/checkout/user', customer_checkout_views.checkout_user),

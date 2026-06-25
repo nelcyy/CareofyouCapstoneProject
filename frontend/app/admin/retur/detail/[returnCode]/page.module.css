@@ -1,0 +1,357 @@
+.otpModal {
+  --auth-primary: #d6867c;
+  --auth-primary-deep: #b35f5f;
+  --auth-border: #ede0de;
+  --auth-text: #1a1a1a;
+  --auth-text-soft: #8f7e7a;
+  --auth-error: #c85f58;
+  --auth-error-bg: #fff4f3;
+
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.otpModalBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(78, 40, 39, 0.28);
+  backdrop-filter: blur(8px);
+}
+
+.otpDialog {
+  position: relative;
+  width: min(480px, 100%);
+  border-radius: 30px;
+  padding: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 249, 248, 0.94));
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 26px 80px rgba(106, 51, 50, 0.26);
+  overflow: hidden;
+}
+
+.otpCloseBtn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(214, 134, 124, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #9c6c66;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.otpCloseBtn:hover {
+  color: var(--auth-primary-deep);
+  border-color: rgba(214, 134, 124, 0.28);
+  background: #fff;
+}
+
+.otpHeader {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.otpIconWrap {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #d6867c 0%, #bb6560 100%);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 18px 32px rgba(214, 134, 124, 0.28);
+  flex-shrink: 0;
+}
+
+.otpHeaderCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.otpKicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--auth-primary);
+}
+
+.otpTitle {
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--auth-text);
+}
+
+.otpSubtitle {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--auth-text-soft);
+}
+
+.otpForm {
+  position: relative;
+  z-index: 1;
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.otpInputRow {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.otpInput {
+  width: 100%;
+  aspect-ratio: 0.86;
+  border-radius: 14px;
+  border: 1.5px solid var(--auth-border);
+  background: rgba(255, 255, 255, 0.84);
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--auth-text);
+  font-family: inherit;
+  outline: none;
+}
+
+.otpInput:focus {
+  border-color: var(--auth-primary);
+  box-shadow: 0 0 0 4px rgba(214, 134, 124, 0.12);
+  background: #fff;
+}
+
+.otpInput:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.otpFeedback {
+  padding: 12px 15px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.otpFeedbackError {
+  background: var(--auth-error-bg);
+  border: 1px solid #f4c8c4;
+  color: var(--auth-error);
+}
+
+.otpActions {
+  display: flex;
+  gap: 12px;
+}
+
+.otpSecondaryBtn,
+.otpPrimaryBtn {
+  min-height: 50px;
+  border-radius: 999px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+.otpSecondaryBtn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--auth-primary-deep);
+  border: 1px solid #f0d2cd;
+}
+
+.otpPrimaryBtn {
+  flex: 1.15;
+  background: linear-gradient(135deg, #d6867c 0%, #c0605a 100%);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(214, 134, 124, 0.3);
+}
+
+.otpSecondaryBtn:disabled,
+.otpPrimaryBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.reasonTextarea {
+  width: 100%;
+  border-radius: 14px;
+  border: 1.5px solid var(--auth-border);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--auth-text);
+  resize: vertical;
+  outline: none;
+}
+
+.reasonTextarea:focus {
+  border-color: var(--auth-primary);
+  box-shadow: 0 0 0 4px rgba(214, 134, 124, 0.12);
+  background: #fff;
+}
+
+.otpSpinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: otpSpin 0.65s linear infinite;
+}
+
+@keyframes otpSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.camOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(20, 12, 12, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.camModal {
+  width: min(420px, 100%);
+  background: #fff;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.4);
+}
+
+.camHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.camTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.camClose {
+  border: none;
+  background: #f1e6e4;
+  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  color: #9c6c66;
+  font-size: 14px;
+}
+
+.camBody {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camViewfinder {
+  position: relative;
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+}
+
+.camVideo {
+  width: 100%;
+  display: block;
+  border-radius: 14px;
+}
+
+.camCanvas {
+  display: none;
+}
+
+.camPreparing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 13px;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.camError,
+.camFound {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.camToken {
+  display: block;
+  word-break: break-all;
+  background: #f6efee;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.camFoundBtns {
+  display: flex;
+  gap: 8px;
+}
+
+.camHint {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #8f7e7a;
+  text-align: center;
+}
+
+.camManual {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.camManualInput {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1.5px solid #ede0de;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}

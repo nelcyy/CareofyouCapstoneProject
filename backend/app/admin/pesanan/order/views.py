@@ -2,6 +2,7 @@
 import os
 import secrets
 import uuid
+from collections import defaultdict
 from datetime import timedelta
 
 from django.core.files.storage import default_storage
@@ -13,8 +14,14 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from ....common import OTP_TTL_SECONDS, MAX_OTP_ATTEMPTS, generate_otp, otp_session_state, send_otp_email
-from ....models import ActivityLog, AdminOrderActionSession, Order, OtpSession, ProductUnit, User
+from ....models import ActivityLog, AdminOrderActionSession, Order, OtpSession, Product, ProductUnit, User
 from ..monitoring.views import get_order_monitoring_payload
+
+
+class OrderApprovalStockError(Exception):
+    """Approval gagal karena stok produk tidak bisa dipenuhi."""
+
+    pass
 
 
 def _order_queryset():
@@ -334,7 +341,65 @@ def _issue_admin_action_otp(action_session):
     return otp_row, otp_session_state(otp_row), ''
 
 
+def _deduct_order_stock(order):
+    required_quantities = defaultdict(int)
+    missing_products = []
+
+    for item in order.items.all():
+        quantity = max(0, int(item.quantity or 0))
+        if quantity <= 0:
+            continue
+        if not item.product_id:
+            missing_products.append(item.product_name or f'Item #{item.id}')
+            continue
+        required_quantities[item.product_id] += quantity
+
+    if missing_products:
+        raise OrderApprovalStockError(
+            'Ada produk pada pesanan ini yang sudah tidak tersedia: '
+            + ', '.join(missing_products[:3])
+            + (', dll.' if len(missing_products) > 3 else '')
+        )
+
+    if not required_quantities:
+        return
+
+    locked_products = {
+        product.id: product
+        for product in Product.objects.select_for_update().filter(id__in=required_quantities.keys())
+    }
+    missing_product_ids = [product_id for product_id in required_quantities if product_id not in locked_products]
+    if missing_product_ids:
+        raise OrderApprovalStockError(
+            'Ada produk pada pesanan ini yang sudah tidak tersedia, jadi pesanan belum bisa di-approve.'
+        )
+
+    insufficient_products = []
+    for product_id, required_quantity in required_quantities.items():
+        product = locked_products[product_id]
+        current_stock = int(product.stock or 0)
+        if current_stock < required_quantity:
+            insufficient_products.append(
+                f'{product.name} (stok {current_stock}, butuh {required_quantity})'
+            )
+
+    if insufficient_products:
+        raise OrderApprovalStockError(
+            'Stok produk tidak cukup untuk approve pesanan: '
+            + ', '.join(insufficient_products[:3])
+            + (', dll.' if len(insufficient_products) > 3 else '')
+        )
+
+    for product_id, required_quantity in required_quantities.items():
+        product = locked_products[product_id]
+        product.stock = int(product.stock or 0) - required_quantity
+        product.save(update_fields=['stock'])
+
+
 def _apply_order_decision(order, admin_user, action, decision_reason, otp_verified, risk_score, risk_level):
+    if action == 'approve':
+        _deduct_order_stock(order)
+
     order.status = 'pengemasan' if action == 'approve' else 'rejected'
     order.processed_by = admin_user
     order.processed_at = timezone.now()
@@ -442,17 +507,24 @@ def _request_admin_order_action(request, action):
     )
 
     if not otp_required:
-        with transaction.atomic():
-            _apply_order_decision(
-                order,
-                admin_user,
-                action,
-                decision_reason,
-                otp_verified=False,
-                risk_score=risk_policy['risk_score'],
-                risk_level=risk_policy['risk_level'],
-            )
-            _complete_action_session(action_session, otp_verified=False)
+        try:
+            with transaction.atomic():
+                _apply_order_decision(
+                    order,
+                    admin_user,
+                    action,
+                    decision_reason,
+                    otp_verified=False,
+                    risk_score=risk_policy['risk_score'],
+                    risk_level=risk_policy['risk_level'],
+                )
+                _complete_action_session(action_session, otp_verified=False)
+        except OrderApprovalStockError as exc:
+            order = _get_order(order.order_code) or order
+            return Response({
+                'error': str(exc),
+                'order': _detail_order_payload(order),
+            }, status=http_status.HTTP_400_BAD_REQUEST)
         order = _get_order(order.order_code) or order
         return Response({
             'message': (
@@ -546,17 +618,24 @@ def _confirm_admin_order_action(request, action):
     otp_row.is_used = True
     otp_row.save(update_fields=['is_used'])
 
-    with transaction.atomic():
-        _apply_order_decision(
-            order,
-            admin_user,
-            action,
-            action_session.decision_reason,
-            otp_verified=True,
-            risk_score=action_session.decision_risk_score,
-            risk_level=action_session.decision_risk_level,
-        )
-        _complete_action_session(action_session, otp_verified=True)
+    try:
+        with transaction.atomic():
+            _apply_order_decision(
+                order,
+                admin_user,
+                action,
+                action_session.decision_reason,
+                otp_verified=True,
+                risk_score=action_session.decision_risk_score,
+                risk_level=action_session.decision_risk_level,
+            )
+            _complete_action_session(action_session, otp_verified=True)
+    except OrderApprovalStockError as exc:
+        order = _get_order(order.order_code) or order
+        return Response({
+            'error': str(exc),
+            'order': _detail_order_payload(order),
+        }, status=http_status.HTTP_400_BAD_REQUEST)
     order = _get_order(order.order_code) or order
 
     return Response({

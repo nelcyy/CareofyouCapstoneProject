@@ -60,10 +60,20 @@
       "Bash(MSYS_NO_PATHCONV=1 curl -s -o /dev/null -w \"/customer/favorites = %{http_code}\\\\n\" --retry 12 --retry-delay 1 --retry-connrefused http://localhost:3000/customer/favorites)",
       "Bash(cd \"/c/Users/User/Documents/CareofyouCapstoneProject/backend\")",
       "Bash(ls *.py)",
-      "Bash(printf '')"
+      "Bash(printf '')",
+      "Bash(cd /c/Users/lodar/CareOfYou/backend/app/admin && find pesanan retur -type f | sort)",
+      "Read(//c/c/Users/lodar/CareOfYou/backend/app/admin/**)",
+      "Bash(python -c \"exec\\('from . import return'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(cd /c/Users/lodar/CareOfYou/backend/app/admin/retur && rm -rf info common.py __pycache__/common.cpython-311.pyc && echo \"=== struktur retur sekarang ===\" && find . -type f -not -path \"*/__pycache__/*\" | sort)",
+      "Bash(python manage.py shell -c ' *)",
+      "Bash(python manage.py makemigrations app)",
+      "Bash(python manage.py migrate app)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('scripts:', JSON.stringify\\(p.scripts\\)\\); console.log\\('next:', \\(p.dependencies&&p.dependencies.next\\)||\\(p.devDependencies&&p.devDependencies.next\\)\\);\")"
     ],
     "additionalDirectories": [
-      "c:\\Users\\lodar\\CareOfYou\\frontend\\.git"
+      "c:\\Users\\lodar\\CareOfYou\\frontend\\.git",
+      "c:\\c\\Users\\lodar\\CareOfYou\\backend\\app\\admin\\retur"
     ]
   }
 }
