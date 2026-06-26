@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { apiUrl, mediaUrl } from '@/api';
+import './page.css';
 
 const API = apiUrl('/api/admin/pesanan');
 const QR_READY_STATUSES = ['pengemasan', 'pengiriman', 'selesai'];
@@ -31,6 +32,75 @@ function fileUrl(path) {
 
 function isQrReadyStatus(status) {
   return QR_READY_STATUSES.includes(status);
+}
+
+function initials(name) {
+  return (
+    (name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase() || '?'
+  );
+}
+
+// Label + warna pill — MURNI presentasi; nilai status/risk tetap dari backend.
+const STATUS_META = {
+  waiting_admin_approval: { label: 'Menunggu Persetujuan', color: '#e09a3a', bg: 'rgba(224,154,58,0.12)' },
+  pengemasan: { label: 'Pengemasan', color: '#4a9fd4', bg: 'rgba(74,159,212,0.12)' },
+  pengiriman: { label: 'Pengiriman', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  selesai: { label: 'Selesai', color: '#16a34a', bg: 'rgba(34,197,94,0.12)' },
+  rejected: { label: 'Ditolak', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+};
+
+const RISK_META = {
+  low: { label: 'Rendah', color: '#16a34a', bg: 'rgba(34,197,94,0.1)' },
+  medium: { label: 'Sedang', color: '#e09a3a', bg: 'rgba(224,154,58,0.12)' },
+  high: { label: 'Tinggi', color: '#ef6c2f', bg: 'rgba(239,108,47,0.12)' },
+  critical: { label: 'Kritis', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+};
+
+function statusMeta(status) {
+  return STATUS_META[status] || { label: status || '-', color: '#c4706a', bg: 'rgba(214,134,124,0.12)' };
+}
+function riskMeta(level) {
+  return RISK_META[level] || { label: level || '-', color: '#9ca3af', bg: 'rgba(156,163,175,0.14)' };
+}
+
+/* ── presentational helpers ── */
+function Card({ title, action, children, className = '' }) {
+  return (
+    <section className={`adm-card adm-od-card ${className}`}>
+      {(title || action) && (
+        <div className="adm-od-card-head">
+          {title && <h3 className="adm-card-title">{title}</h3>}
+          {action && <div className="adm-od-card-action">{action}</div>}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+function Row({ label, children }) {
+  return (
+    <div className="adm-od-row">
+      <span className="adm-od-row-label">{label}</span>
+      <span className="adm-od-row-val">{children}</span>
+    </div>
+  );
+}
+
+function getAdminUser() {
+  if (typeof window === 'undefined') return null;
+  try {
+    return JSON.parse(window.localStorage.getItem('user') || 'null');
+  } catch {
+    return null;
+  }
 }
 
 function buildOrderQrSlots(orderDetail) {
@@ -80,23 +150,6 @@ function mergeQrUnits(baseSlots, backendUnits) {
       backendId: match.id || '',
     };
   });
-}
-
-function getAdminUser() {
-  if (typeof window === 'undefined') return null;
-  try {
-    return JSON.parse(window.localStorage.getItem('user') || 'null');
-  } catch {
-    return null;
-  }
-}
-
-function DataTable({ children }) {
-  return (
-    <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse', width: '100%', marginTop: 8 }}>
-      {children}
-    </table>
-  );
 }
 
 export default function DetailPesananPage() {
@@ -548,639 +601,383 @@ export default function DetailPesananPage() {
   const canShip = showShipAction && pendingQrCount === 0;
   const showCompleteAction = detail?.status === 'pengiriman';
 
+  const st = detail ? statusMeta(detail.status) : null;
+  const risk = detail ? riskMeta(detail.risk_level) : null;
+  const hasAction = canProcess || showShipAction || showCompleteAction;
+
   return (
-    <div style={{ padding: 16 }}>
-      <h2>Detail Pesanan</h2>
+    <div className="adm-od-page">
+      <div className="adm-od-inner">
+        <Link href="/admin/pesanan" className="adm-od-back">← Kembali ke daftar pesanan</Link>
 
-      {!detail && !error && <p>Memuat detail pesanan...</p>}
-      {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}
-      {actionMessage && <p style={{ color: 'green', marginTop: 12 }}>{actionMessage}</p>}
-      {receiptMessage && <p style={{ color: 'green', marginTop: 12 }}>{receiptMessage}</p>}
-      {qrMessage && <p style={{ color: 'green', marginTop: 12 }}>{qrMessage}</p>}
+        {!detail && !error && <p className="adm-od-loading">Memuat detail pesanan...</p>}
+        {error && <div className="adm-od-msg adm-od-msg--error">{error}</div>}
+        {actionMessage && <div className="adm-od-msg adm-od-msg--ok">{actionMessage}</div>}
+        {receiptMessage && <div className="adm-od-msg adm-od-msg--ok">{receiptMessage}</div>}
+        {qrMessage && <div className="adm-od-msg adm-od-msg--ok">{qrMessage}</div>}
 
-      {detail && (
-        <>
-          <h3 style={{ marginTop: 20 }}>Info Pesanan</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Kode Order</td>
-                <td>{detail.order_code || '-'}</td>
-              </tr>
-              <tr>
-                <td>Customer</td>
-                <td>{detail.customer_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Email</td>
-                <td>{detail.customer_email || '-'}</td>
-              </tr>
-              <tr>
-                <td>Status</td>
-                <td>{detail.status || '-'}</td>
-              </tr>
-              <tr>
-                <td>Risk Level</td>
-                <td>{detail.risk_level || '-'}</td>
-              </tr>
-              <tr>
-                <td>Approve Butuh OTP</td>
-                <td>{detail.approve_requires_otp ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Reject Butuh OTP</td>
-                <td>{detail.reject_requires_otp ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Tanggal Order</td>
-                <td>{formatTanggal(detail.created_at)}</td>
-              </tr>
-            </tbody>
-          </DataTable>
+        {detail && (
+          <>
+            {/* HEADER */}
+            <div className="adm-card adm-od-head">
+              <div className="adm-od-head-left">
+                <div className="adm-od-head-titlerow">
+                  <h2 className="adm-od-title">Detail Pesanan</h2>
+                  <span className="adm-order-id">{detail.order_code || '-'}</span>
+                </div>
+                <p className="adm-od-head-sub">Tanggal order · {formatTanggal(detail.created_at)}</p>
+              </div>
+              <div className="adm-od-head-right">
+                <div className="adm-od-customer">
+                  <span className="adm-avatar">{initials(detail.customer_name)}</span>
+                  <div className="adm-od-customer-meta">
+                    <span className="adm-customer-name">{detail.customer_name || '-'}</span>
+                    {detail.customer_email && <span className="adm-customer-email">{detail.customer_email}</span>}
+                  </div>
+                </div>
+                <div className="adm-od-pills">
+                  <span className="adm-status-pill" style={{ color: st.color, background: st.bg }}>{st.label}</span>
+                  <span className="adm-risk-pill" style={{ color: risk.color, background: risk.bg }}>Risiko {risk.label}</span>
+                </div>
+              </div>
+            </div>
 
-          <h3 style={{ marginTop: 24 }}>Product</h3>
-          <DataTable>
-            <thead>
-              <tr>
-                <th>Nama</th>
-                <th>Harga</th>
-                <th>Qty</th>
-                <th>Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.items.map((item, index) => (
-                <tr key={item.id || index}>
-                  <td>{item.product_name}</td>
-                  <td>Rp {formatRibuan(item.product_price)}</td>
-                  <td>{item.quantity}</td>
-                  <td>Rp {formatRibuan(item.subtotal)}</td>
-                </tr>
-              ))}
-              {detail.items.length === 0 && (
-                <tr>
-                  <td colSpan={4}>(tidak ada item)</td>
-                </tr>
-              )}
-            </tbody>
-          </DataTable>
-
-          <h3 style={{ marginTop: 24 }}>Alamat</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Label</td>
-                <td>{detail.address_label || '-'}</td>
-              </tr>
-              <tr>
-                <td>Penerima</td>
-                <td>{detail.recipient_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Telepon</td>
-                <td>{detail.recipient_phone || '-'}</td>
-              </tr>
-              <tr>
-                <td>Alamat</td>
-                <td>{detail.address_line || '-'}</td>
-              </tr>
-              <tr>
-                <td>Kota</td>
-                <td>{detail.city || '-'}</td>
-              </tr>
-              <tr>
-                <td>Provinsi</td>
-                <td>{detail.province || '-'}</td>
-              </tr>
-              <tr>
-                <td>Kode Pos</td>
-                <td>{detail.postal_code || '-'}</td>
-              </tr>
-              <tr>
-                <td>Catatan</td>
-                <td>{detail.address_notes || '-'}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <h3 style={{ marginTop: 24 }}>Pengiriman</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Kurir</td>
-                <td>{detail.courier_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Ongkir</td>
-                <td>Rp {formatRibuan(detail.shipping_fee)}</td>
-              </tr>
-              <tr>
-                <td>Nomor Resi</td>
-                <td>{detail.tracking_number || '-'}</td>
-              </tr>
-              <tr>
-                <td>Dikirim Pada</td>
-                <td>{formatTanggal(detail.shipped_at)}</td>
-              </tr>
-              <tr>
-                <td>Dikirim Oleh</td>
-                <td>{detail.shipped_by_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Catatan Pengiriman</td>
-                <td>{detail.shipping_notes || '-'}</td>
-              </tr>
-              <tr>
-                <td>Selesai Pada</td>
-                <td>{formatTanggal(detail.completed_at)}</td>
-              </tr>
-              <tr>
-                <td>Selesai Oleh</td>
-                <td>{detail.completed_by_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Bukti Terkirim</td>
-                <td>
-                  {detail.delivery_proof ? (
-                    <a href={fileUrl(detail.delivery_proof)} target="_blank" rel="noreferrer">
-                      Lihat Bukti
-                    </a>
-                  ) : '-'}
-                </td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <h3 style={{ marginTop: 24 }}>Pembayaran</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Metode</td>
-                <td>{detail.payment_method || '-'}</td>
-              </tr>
-              <tr>
-                <td>Tujuan Transfer</td>
-                <td>{detail.payment_target || '-'}</td>
-              </tr>
-              <tr>
-                <td>Bukti Transfer</td>
-                <td>
-                  {detail.payment_proof ? (
-                    <a href={fileUrl(detail.payment_proof)} target="_blank" rel="noreferrer">
-                      Lihat Bukti
-                    </a>
-                  ) : '-'}
-                </td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <h3 style={{ marginTop: 24 }}>E-Receipt</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Boleh Dibuat</td>
-                <td>{detail.ereceipt_eligible ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Sudah Tersedia</td>
-                <td>{detail.ereceipt_available ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Receipt ID</td>
-                <td>{detail.ereceipt_id || '-'}</td>
-              </tr>
-              <tr>
-                <td>Generated At</td>
-                <td>{formatTanggal(detail.ereceipt_generated_at)}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-          <p style={{ marginTop: 12 }}>
-            {!detail.ereceipt_available && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleGenerateReceipt}
-                  disabled={!detail.ereceipt_eligible || receiptLoading}
-                >
-                  {receiptLoading ? 'Memproses...' : 'Generate E-Receipt'}
-                </button>{' '}
-              </>
-            )}
-            <button
-              type="button"
-              onClick={() => handleOpenReceipt('view')}
-              disabled={!detail.ereceipt_eligible}
-            >
-              Lihat PDF
-            </button>{' '}
-            <button
-              type="button"
-              onClick={() => handleOpenReceipt('download')}
-              disabled={!detail.ereceipt_eligible}
-            >
-              Download PDF
-            </button>
-          </p>
-          {!detail.ereceipt_eligible && (
-            <p style={{ marginTop: 8 }}>
-              E-receipt baru tersedia setelah order di-approve admin.
-            </p>
-          )}
-
-          <h3 style={{ marginTop: 24 }}>QR Code Produk</h3>
-          {!qrReady && (
-            <p>QR produk baru tampil setelah order masuk tahap pengemasan.</p>
-          )}
-          {qrReady && (
-            <>
-              <p style={{ marginBottom: 8 }}>
-                Total slot QR: {qrUnits.length} | Belum digenerate: {pendingQrCount}
-              </p>
-              <p style={{ marginBottom: 12 }}>
-                {detail.status === 'pengemasan' && pendingQrCount > 0 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleGenerateAllQrs}
-                      disabled={qrLoading}
-                    >
-                      {qrLoading ? 'Memproses...' : 'Generate Semua QR'}
-                    </button>{' '}
-                  </>
-                )}
-              </p>
-              <DataTable>
-                <thead>
-                  <tr>
-                    <th>Unit</th>
-                    <th>Produk</th>
-                    <th>Status</th>
-                    <th>Token</th>
-                    <th>Generated</th>
-                    <th>Preview</th>
-                    <th>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {qrUnits.map((unit) => (
-                    <tr key={unit.unitId}>
-                      <td>{unit.unitId}</td>
-                      <td>
-                        {unit.productName}
-                        <br />
-                        Unit #{unit.unitIndex}
-                      </td>
-                      <td>
-                        {unit.qrStatus || 'pending'}
-                        <br />
-                        Returned: {unit.isReturned ? 'Ya' : 'Tidak'}
-                        <br />
-                        Verify Count: {unit.verificationCount ?? 0}
-                      </td>
-                      <td style={{ maxWidth: 220, wordBreak: 'break-word' }}>
-                        {unit.qrToken || '-'}
-                      </td>
-                      <td>
-                        {formatTanggal(unit.generatedAt)}
-                        <br />
-                        {unit.generatedBy || '-'}
-                      </td>
-                      <td>
-                        {unit.qrImageUrl ? (
-                          <img
-                            src={unit.qrImageUrl}
-                            alt={`QR ${unit.productName} unit ${unit.unitIndex}`}
-                            style={{ width: 88, height: 88, objectFit: 'contain' }}
-                          />
-                        ) : (
-                          '-'
+            <div className="adm-od-layout">
+              {/* ── MAIN ── */}
+              <div className="adm-od-main">
+                {/* Produk */}
+                <Card title="Produk Dipesan">
+                  <div className="adm-od-table-scroll">
+                    <table className="adm-od-items">
+                      <thead>
+                        <tr><th>Nama</th><th>Harga</th><th>Qty</th><th>Subtotal</th></tr>
+                      </thead>
+                      <tbody>
+                        {detail.items.map((item, index) => (
+                          <tr key={item.id || index}>
+                            <td className="adm-od-item-name">{item.product_name}</td>
+                            <td>Rp {formatRibuan(item.product_price)}</td>
+                            <td>{item.quantity}</td>
+                            <td><strong>Rp {formatRibuan(item.subtotal)}</strong></td>
+                          </tr>
+                        ))}
+                        {detail.items.length === 0 && (
+                          <tr><td colSpan={4} className="adm-od-empty">(tidak ada item)</td></tr>
                         )}
-                      </td>
-                      <td>
-                        {!unit.generatedAt && detail.status === 'pengemasan' ? (
-                          <button
-                            type="button"
-                            onClick={() => handleGenerateUnitQr(unit)}
-                            disabled={qrLoading}
-                          >
-                            Generate
-                          </button>
-                        ) : (
-                          <span>-</span>
-                        )}
-                        {unit.qrImageUrl && (
-                          <>
-                            <br />
-                            <a href={unit.qrImageUrl} target="_blank" rel="noreferrer">
-                              Buka
-                            </a>
-                            <br />
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadQr(unit)}
-                              style={{ marginTop: 6 }}
-                            >
-                              Download
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {qrUnits.length === 0 && (
-                    <tr>
-                      <td colSpan={7}>{qrLoading ? 'Memuat data QR...' : '(belum ada slot QR)'}</td>
-                    </tr>
-                  )}
-                </tbody>
-              </DataTable>
-            </>
-          )}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
 
-          <h3 style={{ marginTop: 24 }}>Monitoring</h3>
-          <p style={{ marginTop: 8 }}><b>Device</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Device Label</td>
-                <td>{detail.monitoring?.device?.device_label_snapshot || '-'}</td>
-              </tr>
-              <tr>
-                <td>Status Saat Order</td>
-                <td>{detail.monitoring?.device?.trusted_device_status_label || '-'}</td>
-              </tr>
-              <tr>
-                <td>Score Device</td>
-                <td>{detail.monitoring?.device?.device_risk_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
+                {/* Alamat */}
+                <Card title="Alamat Pengiriman">
+                  <div className="adm-od-rows">
+                    <Row label="Label">{detail.address_label || '-'}</Row>
+                    <Row label="Penerima">{detail.recipient_name || '-'}</Row>
+                    <Row label="Telepon">{detail.recipient_phone || '-'}</Row>
+                    <Row label="Alamat">{detail.address_line || '-'}</Row>
+                    <Row label="Kota">{detail.city || '-'}</Row>
+                    <Row label="Provinsi">{detail.province || '-'}</Row>
+                    <Row label="Kode Pos">{detail.postal_code || '-'}</Row>
+                    <Row label="Catatan">{detail.address_notes || '-'}</Row>
+                  </div>
+                </Card>
 
-          <p style={{ marginTop: 12 }}><b>Password</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Jumlah Salah Password</td>
-                <td>{detail.monitoring?.password?.failed_password_count ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Score Password</td>
-                <td>{detail.monitoring?.password?.failed_password_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
+                {/* Pengiriman */}
+                <Card title="Pengiriman">
+                  <div className="adm-od-rows">
+                    <Row label="Kurir">{detail.courier_name || '-'}</Row>
+                    <Row label="Ongkir">Rp {formatRibuan(detail.shipping_fee)}</Row>
+                    <Row label="Nomor Resi">{detail.tracking_number || '-'}</Row>
+                    <Row label="Dikirim Pada">{formatTanggal(detail.shipped_at)}</Row>
+                    <Row label="Dikirim Oleh">{detail.shipped_by_name || '-'}</Row>
+                    <Row label="Catatan Pengiriman">{detail.shipping_notes || '-'}</Row>
+                    <Row label="Selesai Pada">{formatTanggal(detail.completed_at)}</Row>
+                    <Row label="Selesai Oleh">{detail.completed_by_name || '-'}</Row>
+                    <Row label="Bukti Terkirim">
+                      {detail.delivery_proof
+                        ? <a className="adm-od-link" href={fileUrl(detail.delivery_proof)} target="_blank" rel="noreferrer">Lihat Bukti</a>
+                        : '-'}
+                    </Row>
+                  </div>
+                </Card>
 
-          <p style={{ marginTop: 12 }}><b>OTP</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Jumlah Gagal OTP</td>
-                <td>{detail.monitoring?.otp?.failed_otp_count ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Score OTP</td>
-                <td>{detail.monitoring?.otp?.failed_otp_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
+                {/* Pembayaran */}
+                <Card title="Pembayaran">
+                  <div className="adm-od-rows">
+                    <Row label="Metode">{detail.payment_method || '-'}</Row>
+                    <Row label="Tujuan Transfer">{detail.payment_target || '-'}</Row>
+                    <Row label="Bukti Transfer">
+                      {detail.payment_proof
+                        ? <a className="adm-od-link" href={fileUrl(detail.payment_proof)} target="_blank" rel="noreferrer">Lihat Bukti</a>
+                        : '-'}
+                    </Row>
+                  </div>
+                </Card>
 
-          <p style={{ marginTop: 12 }}><b>Fraud - Alamat</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Umur Alamat Saat Order</td>
-                <td>{detail.monitoring?.fraud?.address?.address_age_minutes ?? 0} menit</td>
-              </tr>
-              <tr>
-                <td>Score Alamat Baru</td>
-                <td>{detail.monitoring?.fraud?.address?.new_address_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <p style={{ marginTop: 12 }}><b>Fraud - Nominal</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Rasio Nominal vs Kebiasaan</td>
-                <td>
-                  {detail.monitoring?.fraud?.amount?.order_amount_ratio_percent
-                    ? `${detail.monitoring?.fraud?.amount?.order_amount_ratio_percent}%`
-                    : '-'}
-                </td>
-              </tr>
-              <tr>
-                <td>Score Nominal</td>
-                <td>{detail.monitoring?.fraud?.amount?.amount_anomaly_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <p style={{ marginTop: 12 }}><b>Fraud - Qty</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Total Qty Item</td>
-                <td>{detail.monitoring?.fraud?.qty?.total_item_quantity ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Qty Terbanyak per Produk</td>
-                <td>{detail.monitoring?.fraud?.qty?.max_single_product_quantity ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Score Borong</td>
-                <td>{detail.monitoring?.fraud?.qty?.bulk_order_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <p style={{ marginTop: 12 }}><b>Fraud - Akun Baru</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Umur Akun Saat Order</td>
-                <td>{detail.monitoring?.fraud?.new_account?.account_age_days ?? 0} hari</td>
-              </tr>
-              <tr>
-                <td>Score Akun Baru + Order Besar</td>
-                <td>{detail.monitoring?.fraud?.new_account?.new_account_big_order_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <p style={{ marginTop: 12 }}><b>Fraud - Order Cepat</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Order Sebelumnya 30 Menit</td>
-                <td>{detail.monitoring?.fraud?.rapid_order?.recent_orders_30m_count ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Score Order Cepat</td>
-                <td>{detail.monitoring?.fraud?.rapid_order?.rapid_order_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <p style={{ marginTop: 12 }}><b>Ringkasan</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Hijack Risk Score</td>
-                <td>{detail.monitoring?.summary?.hijack_risk_score ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Fraud Risk Score</td>
-                <td>{detail.monitoring?.summary?.fraud_risk_score ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Total Risk Score</td>
-                <td>{detail.monitoring?.summary?.total_risk_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <p style={{ marginTop: 12 }}><b>Keputusan Admin</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Decision</td>
-                <td>{detail.decision || '-'}</td>
-              </tr>
-              <tr>
-                <td>Diproses Oleh</td>
-                <td>{detail.processed_by_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Diproses Pada</td>
-                <td>{formatTanggal(detail.processed_at)}</td>
-              </tr>
-              <tr>
-                <td>OTP Verified For Action</td>
-                <td>{detail.otp_verified_for_action ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Decision Risk Score</td>
-                <td>{detail.decision_risk_score ?? '-'}</td>
-              </tr>
-              <tr>
-                <td>Decision Risk Level</td>
-                <td>{detail.decision_risk_level || '-'}</td>
-              </tr>
-              <tr>
-                <td>Decision Reason</td>
-                <td>{detail.decision_reason || '-'}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <div style={{ marginTop: 24, marginBottom: 24 }}>
-            <p>
-              <b>Subtotal: Rp {formatRibuan(detail.subtotal)}</b>
-            </p>
-            <p>
-              <b>Ongkir: Rp {formatRibuan(detail.shipping_fee)}</b>
-            </p>
-            <p>
-              <b>Grand Total: Rp {formatRibuan(detail.grand_total)}</b>
-            </p>
-            <p style={{ marginTop: 16 }}>
-              {canProcess && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => handleAdminAction('Approve')}
-                    disabled={actionLoading}
-                  >
-                    {actionLoading ? 'Memproses...' : 'Approve'}
-                  </button>{' '}
-                  <button
-                    type="button"
-                    onClick={() => handleAdminAction('Reject')}
-                    disabled={actionLoading}
-                  >
-                    Reject
-                  </button>
-                </>
-              )}
-              {showShipAction && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleShipOrder}
-                    disabled={actionLoading || !canShip}
-                  >
-                    {actionLoading ? 'Memproses...' : 'Kirim'}
-                  </button>
-                </>
-              )}
-              {showCompleteAction && (
-                <>
-                  {' '}
-                  <input
-                    ref={completionProofInputRef}
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(event) => setCompletionProofFile(event.target.files?.[0] || null)}
-                    disabled={actionLoading}
-                    style={{ display: 'none' }}
-                  />
-                  {!showCompleteStep && (
-                    <button
-                      type="button"
-                      onClick={handleStartCompleteOrder}
-                      disabled={actionLoading}
-                    >
-                      Selesai
-                    </button>
-                  )}
-                  {showCompleteStep && (
-                    <>
+                {/* E-Receipt */}
+                <Card title="E-Receipt">
+                  <div className="adm-od-rows">
+                    <Row label="Boleh Dibuat">{detail.ereceipt_eligible ? 'Ya' : 'Tidak'}</Row>
+                    <Row label="Sudah Tersedia">{detail.ereceipt_available ? 'Ya' : 'Tidak'}</Row>
+                    <Row label="Receipt ID">{detail.ereceipt_id || '-'}</Row>
+                    <Row label="Generated At">{formatTanggal(detail.ereceipt_generated_at)}</Row>
+                  </div>
+                  <div className="adm-od-btn-row">
+                    {!detail.ereceipt_available && (
                       <button
                         type="button"
-                        onClick={() => completionProofInputRef.current?.click()}
-                        disabled={actionLoading}
+                        className="adm-btn adm-btn--primary"
+                        onClick={handleGenerateReceipt}
+                        disabled={!detail.ereceipt_eligible || receiptLoading}
                       >
-                        {completionProofFile ? 'Ganti Bukti' : 'Pilih Bukti'}
-                      </button>{' '}
-                      <button
-                        type="button"
-                        onClick={handleCompleteOrder}
-                        disabled={actionLoading || !completionProofFile}
-                      >
-                        {actionLoading ? 'Memproses...' : 'Konfirmasi Selesai'}
-                      </button>{' '}
-                      <button
-                        type="button"
-                        onClick={resetCompleteStep}
-                        disabled={actionLoading}
-                      >
-                        Batal
+                        {receiptLoading ? 'Memproses...' : 'Generate E-Receipt'}
                       </button>
+                    )}
+                    <button type="button" className="adm-btn adm-btn--ghost" onClick={() => handleOpenReceipt('view')} disabled={!detail.ereceipt_eligible}>
+                      Lihat PDF
+                    </button>
+                    <button type="button" className="adm-btn adm-btn--ghost" onClick={() => handleOpenReceipt('download')} disabled={!detail.ereceipt_eligible}>
+                      Download PDF
+                    </button>
+                  </div>
+                  {!detail.ereceipt_eligible && (
+                    <p className="adm-od-note">E-receipt baru tersedia setelah order di-approve admin.</p>
+                  )}
+                </Card>
+
+                {/* QR */}
+                <Card
+                  title="QR Code Produk"
+                  action={qrReady && detail.status === 'pengemasan' && pendingQrCount > 0 ? (
+                    <button type="button" className="adm-btn adm-btn--primary adm-btn--sm" onClick={handleGenerateAllQrs} disabled={qrLoading}>
+                      {qrLoading ? 'Memproses...' : 'Generate Semua QR'}
+                    </button>
+                  ) : null}
+                >
+                  {!qrReady ? (
+                    <p className="adm-od-note">QR produk baru tampil setelah order masuk tahap pengemasan.</p>
+                  ) : (
+                    <>
+                      <p className="adm-od-qr-meta">
+                        Total slot QR: <strong>{qrUnits.length}</strong> · Belum digenerate: <strong>{pendingQrCount}</strong>
+                      </p>
+                      <div className="adm-od-table-scroll">
+                        <table className="adm-od-items adm-od-qr-table">
+                          <thead>
+                            <tr>
+                              <th>Unit</th><th>Produk</th><th>Status</th><th>Token</th><th>Generated</th><th>Preview</th><th>Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {qrUnits.map((unit) => (
+                              <tr key={unit.unitId}>
+                                <td className="adm-od-mono">{unit.unitId}</td>
+                                <td>{unit.productName}<span className="adm-od-sub">Unit #{unit.unitIndex}</span></td>
+                                <td>
+                                  <span className="adm-od-sub-strong">{unit.qrStatus || 'pending'}</span>
+                                  <span className="adm-od-sub">Returned: {unit.isReturned ? 'Ya' : 'Tidak'}</span>
+                                  <span className="adm-od-sub">Verify: {unit.verificationCount ?? 0}</span>
+                                </td>
+                                <td className="adm-od-token">{unit.qrToken || '-'}</td>
+                                <td>{formatTanggal(unit.generatedAt)}<span className="adm-od-sub">{unit.generatedBy || '-'}</span></td>
+                                <td>
+                                  {unit.qrImageUrl
+                                    ? <img src={unit.qrImageUrl} alt={`QR ${unit.productName} unit ${unit.unitIndex}`} className="adm-od-qr-img" />
+                                    : '-'}
+                                </td>
+                                <td>
+                                  <div className="adm-od-qr-actions">
+                                    {!unit.generatedAt && detail.status === 'pengemasan' && (
+                                      <button type="button" className="adm-btn adm-btn--ghost adm-btn--sm" onClick={() => handleGenerateUnitQr(unit)} disabled={qrLoading}>
+                                        Generate
+                                      </button>
+                                    )}
+                                    {unit.qrImageUrl && (
+                                      <>
+                                        <a className="adm-od-link" href={unit.qrImageUrl} target="_blank" rel="noreferrer">Buka</a>
+                                        <button type="button" className="adm-btn adm-btn--ghost adm-btn--sm" onClick={() => handleDownloadQr(unit)}>Download</button>
+                                      </>
+                                    )}
+                                    {unit.generatedAt && !unit.qrImageUrl && <span>-</span>}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                            {qrUnits.length === 0 && (
+                              <tr><td colSpan={7} className="adm-od-empty">{qrLoading ? 'Memuat data QR...' : '(belum ada slot QR)'}</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </>
                   )}
-                </>
-              )}
-            </p>
-            {showShipAction && !canShip && (
-              <p style={{ marginTop: 8 }}>
-                Semua QR unit harus sudah digenerate sebelum pesanan dikirim.
-              </p>
-            )}
-            {showCompleteAction && showCompleteStep && (
-              <p style={{ marginTop: 8 }}>
-                {completionProofFile
-                  ? `File terpilih: ${completionProofFile.name}`
-                  : 'Pilih bukti terkirim terlebih dahulu sebelum konfirmasi selesai.'}
-              </p>
-            )}
-          </div>
-        </>
-      )}
+                </Card>
 
-      <Link href="/admin/pesanan">Kembali ke daftar pesanan</Link>
+                {/* Monitoring */}
+                <Card title="Monitoring Risiko">
+                  <div className="adm-od-mon">
+                    <div className="adm-od-mon-block">
+                      <p className="adm-od-subhead">Device</p>
+                      <Row label="Device Label">{detail.monitoring?.device?.device_label_snapshot || '-'}</Row>
+                      <Row label="Status Saat Order">{detail.monitoring?.device?.trusted_device_status_label || '-'}</Row>
+                      <Row label="Score Device">{detail.monitoring?.device?.device_risk_score ?? 0}</Row>
+                    </div>
+                    <div className="adm-od-mon-block">
+                      <p className="adm-od-subhead">Password</p>
+                      <Row label="Jumlah Salah Password">{detail.monitoring?.password?.failed_password_count ?? 0}</Row>
+                      <Row label="Score Password">{detail.monitoring?.password?.failed_password_score ?? 0}</Row>
+                    </div>
+                    <div className="adm-od-mon-block">
+                      <p className="adm-od-subhead">OTP</p>
+                      <Row label="Jumlah Gagal OTP">{detail.monitoring?.otp?.failed_otp_count ?? 0}</Row>
+                      <Row label="Score OTP">{detail.monitoring?.otp?.failed_otp_score ?? 0}</Row>
+                    </div>
+                    <div className="adm-od-mon-block">
+                      <p className="adm-od-subhead">Fraud — Alamat</p>
+                      <Row label="Umur Alamat Saat Order">{detail.monitoring?.fraud?.address?.address_age_minutes ?? 0} menit</Row>
+                      <Row label="Score Alamat Baru">{detail.monitoring?.fraud?.address?.new_address_score ?? 0}</Row>
+                    </div>
+                    <div className="adm-od-mon-block">
+                      <p className="adm-od-subhead">Fraud — Nominal</p>
+                      <Row label="Rasio Nominal vs Kebiasaan">
+                        {detail.monitoring?.fraud?.amount?.order_amount_ratio_percent
+                          ? `${detail.monitoring?.fraud?.amount?.order_amount_ratio_percent}%`
+                          : '-'}
+                      </Row>
+                      <Row label="Score Nominal">{detail.monitoring?.fraud?.amount?.amount_anomaly_score ?? 0}</Row>
+                    </div>
+                    <div className="adm-od-mon-block">
+                      <p className="adm-od-subhead">Fraud — Qty</p>
+                      <Row label="Total Qty Item">{detail.monitoring?.fraud?.qty?.total_item_quantity ?? 0}</Row>
+                      <Row label="Qty Terbanyak per Produk">{detail.monitoring?.fraud?.qty?.max_single_product_quantity ?? 0}</Row>
+                      <Row label="Score Borong">{detail.monitoring?.fraud?.qty?.bulk_order_score ?? 0}</Row>
+                    </div>
+                    <div className="adm-od-mon-block">
+                      <p className="adm-od-subhead">Fraud — Akun Baru</p>
+                      <Row label="Umur Akun Saat Order">{detail.monitoring?.fraud?.new_account?.account_age_days ?? 0} hari</Row>
+                      <Row label="Score Akun Baru + Order Besar">{detail.monitoring?.fraud?.new_account?.new_account_big_order_score ?? 0}</Row>
+                    </div>
+                    <div className="adm-od-mon-block">
+                      <p className="adm-od-subhead">Fraud — Order Cepat</p>
+                      <Row label="Order Sebelumnya 30 Menit">{detail.monitoring?.fraud?.rapid_order?.recent_orders_30m_count ?? 0}</Row>
+                      <Row label="Score Order Cepat">{detail.monitoring?.fraud?.rapid_order?.rapid_order_score ?? 0}</Row>
+                    </div>
+                  </div>
+
+                  <div className="adm-od-score-grid">
+                    <div className="adm-od-score">
+                      <span className="adm-od-score-val">{detail.monitoring?.summary?.hijack_risk_score ?? 0}</span>
+                      <span className="adm-od-score-label">Hijack Risk</span>
+                    </div>
+                    <div className="adm-od-score">
+                      <span className="adm-od-score-val">{detail.monitoring?.summary?.fraud_risk_score ?? 0}</span>
+                      <span className="adm-od-score-label">Fraud Risk</span>
+                    </div>
+                    <div className="adm-od-score adm-od-score--total">
+                      <span className="adm-od-score-val">{detail.monitoring?.summary?.total_risk_score ?? 0}</span>
+                      <span className="adm-od-score-label">Total Risk</span>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Keputusan Admin */}
+                <Card title="Keputusan Admin">
+                  <div className="adm-od-rows">
+                    <Row label="Decision">{detail.decision || '-'}</Row>
+                    <Row label="Diproses Oleh">{detail.processed_by_name || '-'}</Row>
+                    <Row label="Diproses Pada">{formatTanggal(detail.processed_at)}</Row>
+                    <Row label="OTP Verified For Action">{detail.otp_verified_for_action ? 'Ya' : 'Tidak'}</Row>
+                    <Row label="Decision Risk Score">{detail.decision_risk_score ?? '-'}</Row>
+                    <Row label="Decision Risk Level">{detail.decision_risk_level || '-'}</Row>
+                    <Row label="Decision Reason">{detail.decision_reason || '-'}</Row>
+                  </div>
+                </Card>
+              </div>
+
+              {/* ── SIDE: ringkasan + aksi ── */}
+              <div className="adm-od-side">
+                <div className="adm-card adm-od-summary">
+                  <h3 className="adm-card-title">Ringkasan</h3>
+                  <div className="adm-od-sum-row"><span>Subtotal</span><span>Rp {formatRibuan(detail.subtotal)}</span></div>
+                  <div className="adm-od-sum-row"><span>Ongkir</span><span>Rp {formatRibuan(detail.shipping_fee)}</span></div>
+                  <div className="adm-od-sum-divider" />
+                  <div className="adm-od-sum-total"><span>Grand Total</span><span>Rp {formatRibuan(detail.grand_total)}</span></div>
+
+                  <div className="adm-od-sum-meta">
+                    <Row label="Approve butuh OTP">{detail.approve_requires_otp ? 'Ya' : 'Tidak'}</Row>
+                    <Row label="Reject butuh OTP">{detail.reject_requires_otp ? 'Ya' : 'Tidak'}</Row>
+                  </div>
+
+                  {hasAction ? (
+                    <div className="adm-od-actions">
+                      {canProcess && (
+                        <>
+                          <button type="button" className="adm-btn adm-btn--primary adm-btn--block" onClick={() => handleAdminAction('Approve')} disabled={actionLoading}>
+                            {actionLoading ? 'Memproses...' : 'Approve Pesanan'}
+                          </button>
+                          <button type="button" className="adm-btn adm-btn--danger adm-btn--block" onClick={() => handleAdminAction('Reject')} disabled={actionLoading}>
+                            Reject Pesanan
+                          </button>
+                        </>
+                      )}
+
+                      {showShipAction && (
+                        <>
+                          <button type="button" className="adm-btn adm-btn--primary adm-btn--block" onClick={handleShipOrder} disabled={actionLoading || !canShip}>
+                            {actionLoading ? 'Memproses...' : 'Kirim Pesanan'}
+                          </button>
+                          {!canShip && (
+                            <p className="adm-od-note">Semua QR unit harus sudah digenerate sebelum pesanan dikirim.</p>
+                          )}
+                        </>
+                      )}
+
+                      {showCompleteAction && (
+                        <>
+                          <input
+                            ref={completionProofInputRef}
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={(event) => setCompletionProofFile(event.target.files?.[0] || null)}
+                            disabled={actionLoading}
+                            style={{ display: 'none' }}
+                          />
+                          {!showCompleteStep && (
+                            <button type="button" className="adm-btn adm-btn--primary adm-btn--block" onClick={handleStartCompleteOrder} disabled={actionLoading}>
+                              Selesaikan Pesanan
+                            </button>
+                          )}
+                          {showCompleteStep && (
+                            <>
+                              <button type="button" className="adm-btn adm-btn--ghost adm-btn--block" onClick={() => completionProofInputRef.current?.click()} disabled={actionLoading}>
+                                {completionProofFile ? 'Ganti Bukti' : 'Pilih Bukti'}
+                              </button>
+                              <button type="button" className="adm-btn adm-btn--primary adm-btn--block" onClick={handleCompleteOrder} disabled={actionLoading || !completionProofFile}>
+                                {actionLoading ? 'Memproses...' : 'Konfirmasi Selesai'}
+                              </button>
+                              <button type="button" className="adm-btn adm-btn--ghost adm-btn--block" onClick={resetCompleteStep} disabled={actionLoading}>
+                                Batal
+                              </button>
+                              <p className="adm-od-note">
+                                {completionProofFile
+                                  ? `File terpilih: ${completionProofFile.name}`
+                                  : 'Pilih bukti terkirim terlebih dahulu sebelum konfirmasi selesai.'}
+                              </p>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="adm-od-note adm-od-note--center">Tidak ada aksi untuk status saat ini.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
