@@ -8,11 +8,13 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
+from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ....common import device_label
+from ....common import device_label, is_proof_image_upload
 from ....models import (
     ActivityLog,
     Address,
@@ -140,7 +142,7 @@ def _return_queryset():
 
 
 def _save_return_upload(user_id, folder, uploaded_file):
-    ext = os.path.splitext(uploaded_file.name or '')[1] or '.jpg'
+    ext = (os.path.splitext(uploaded_file.name or '')[1] or '.jpg').lower()
     filename = f'returns/{folder}/user-{user_id}-{timezone.now().strftime("%Y%m%d%H%M%S")}{ext}'
     return default_storage.save(filename, uploaded_file)
 
@@ -148,7 +150,27 @@ def _save_return_upload(user_id, folder, uploaded_file):
 def _is_pdf_upload(uploaded_file):
     file_name = str(getattr(uploaded_file, 'name', '') or '').lower()
     content_type = str(getattr(uploaded_file, 'content_type', '') or '').lower()
-    return file_name.endswith('.pdf') or content_type == 'application/pdf'
+    if not file_name.endswith('.pdf'):
+        return False
+    if content_type and content_type != 'application/pdf':
+        return False
+
+    try:
+        original_position = uploaded_file.tell()
+    except (AttributeError, OSError):
+        original_position = 0
+
+    try:
+        uploaded_file.seek(0)
+        reader = PdfReader(uploaded_file, strict=False)
+        return len(reader.pages) > 0
+    except (PdfReadError, OSError, ValueError, TypeError):
+        return False
+    finally:
+        try:
+            uploaded_file.seek(original_position)
+        except (AttributeError, OSError):
+            pass
 
 
 def _safe_related(obj, relation_name):
@@ -819,6 +841,11 @@ def create_return(request):
     product_photo = request.FILES.get('product_photo')
     if product_photo is None:
         return Response({'error': 'Foto produk wajib diupload.'}, status=http_status.HTTP_400_BAD_REQUEST)
+    if not is_proof_image_upload(product_photo):
+        return Response(
+            {'error': 'Foto produk harus berupa foto JPG, PNG, atau WebP.'},
+            status=http_status.HTTP_400_BAD_REQUEST,
+        )
 
     ereceipt_proof = request.FILES.get('ereceipt_proof')
     if ereceipt_proof is None:

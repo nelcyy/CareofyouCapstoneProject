@@ -13,7 +13,14 @@ from rest_framework import status as http_status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ....common import OTP_TTL_SECONDS, MAX_OTP_ATTEMPTS, generate_otp, otp_session_state, send_otp_email
+from ....common import (
+    OTP_TTL_SECONDS,
+    MAX_OTP_ATTEMPTS,
+    generate_otp,
+    is_proof_image_upload,
+    otp_session_state,
+    send_otp_email,
+)
 from ....models import ActivityLog, AdminOrderActionSession, Order, OtpSession, Product, ProductUnit, User
 from ..monitoring.views import get_order_monitoring_payload
 
@@ -92,7 +99,7 @@ def _schedule_approved_order_receipt(order_id):
 
 
 def _save_delivery_proof(order_code, uploaded_file):
-    ext = os.path.splitext(uploaded_file.name or '')[1] or '.jpg'
+    ext = (os.path.splitext(uploaded_file.name or '')[1] or '.jpg').lower()
     filename = f'delivery_proofs/{order_code}-{uuid.uuid4().hex}{ext}'
     return default_storage.save(filename, uploaded_file)
 
@@ -811,6 +818,11 @@ def complete_order(request):
         return Response({'error': 'admin_user_id wajib diisi.'}, status=http_status.HTTP_400_BAD_REQUEST)
     if delivery_proof is None:
         return Response({'error': 'Bukti selesai / terkirim wajib diupload.'}, status=http_status.HTTP_400_BAD_REQUEST)
+    if not is_proof_image_upload(delivery_proof):
+        return Response(
+            {'error': 'Bukti selesai / terkirim harus berupa foto JPG, PNG, atau WebP.'},
+            status=http_status.HTTP_400_BAD_REQUEST,
+        )
 
     admin_user = _get_admin_user(admin_user_id)
     if not admin_user:

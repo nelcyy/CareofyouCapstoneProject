@@ -24,6 +24,18 @@ function fileUrl(path) {
   return mediaUrl(path);
 }
 
+function proofPreview(path, label) {
+  if (!path) return null;
+  return {
+    src: fileUrl(path),
+    label,
+  };
+}
+
+function isPreviewableProof(path) {
+  return /\.(jpe?g|png|webp)(?:[?#].*)?$/i.test(String(path || ''));
+}
+
 function waLink(number, text) {
   const digits = String(number || '').replace(/\D/g, '');
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
@@ -46,6 +58,85 @@ function DataTable({ children }) {
   );
 }
 
+function ImagePreviewModal({ preview, onClose }) {
+  if (!preview) return null;
+  return (
+    <div
+      role="presentation"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        background: 'rgba(45,45,45,0.58)',
+        backdropFilter: 'blur(6px)',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={preview.label}
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          width: 'min(860px, 100%)',
+          maxHeight: '86vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          borderRadius: 18,
+          background: '#fff',
+          boxShadow: '0 24px 72px rgba(45,45,45,0.26)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            padding: '14px 18px',
+            borderBottom: '1px solid #f0e0de',
+          }}
+        >
+          <strong>{preview.label}</strong>
+          <button type="button" onClick={onClose} aria-label="Tutup preview">
+            ×
+          </button>
+        </div>
+        <div
+          style={{
+            minHeight: 240,
+            padding: 18,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'auto',
+            background: '#fdf6f5',
+          }}
+        >
+          <img
+            src={preview.src}
+            alt={preview.label}
+            style={{ display: 'block', maxWidth: '100%', maxHeight: '62vh', objectFit: 'contain', borderRadius: 12 }}
+          />
+        </div>
+        <a
+          href={preview.src}
+          target="_blank"
+          rel="noreferrer"
+          style={{ padding: '12px 18px 16px', color: '#c4706a', fontWeight: 700, textAlign: 'right' }}
+        >
+          Buka di tab baru
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfileReturnDetailPage() {
   const params = useParams();
   const returnCode = decodeURIComponent(params?.returnCode || '');
@@ -56,6 +147,7 @@ export default function ProfileReturnDetailPage() {
   const [shipTracking, setShipTracking] = useState('');
   const [shipLoading, setShipLoading] = useState(false);
   const [shipMessage, setShipMessage] = useState('');
+  const [imagePreview, setImagePreview] = useState(null);
   const refundInfo = detail?.refund_info || {};
   const exchangeInfo = detail?.exchange_info || {};
   const destination = detail?.return_destination || {};
@@ -90,6 +182,47 @@ export default function ProfileReturnDetailPage() {
   useEffect(() => {
     loadDetail();
   }, [returnCode]);
+
+  useEffect(() => {
+    if (!imagePreview) return undefined;
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setImagePreview(null);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [imagePreview]);
+
+  function renderProofAction(path, label, previewLabel = 'Lihat Bukti') {
+    if (!path) return '-';
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        {isPreviewableProof(path) && (
+          <button
+            type="button"
+            onClick={() => setImagePreview(proofPreview(path, label))}
+            style={{
+              padding: 0,
+              border: 0,
+              background: 'transparent',
+              color: '#c4706a',
+              cursor: 'pointer',
+              font: 'inherit',
+              fontWeight: 700,
+            }}
+          >
+            {previewLabel}
+          </button>
+        )}
+        <a href={fileUrl(path)} target="_blank" rel="noreferrer">
+          Buka file
+        </a>
+      </span>
+    );
+  }
 
   async function handleShipBack(event) {
     event?.preventDefault();
@@ -268,11 +401,7 @@ export default function ProfileReturnDetailPage() {
                   {detail.resolution_type === 'refund' ? (
                     <tr>
                       <td>Bukti Transfer Refund</td>
-                      <td>
-                        {completion.refund_proof ? (
-                          <a href={fileUrl(completion.refund_proof)} target="_blank" rel="noreferrer">Lihat Bukti</a>
-                        ) : '-'}
-                      </td>
+                      <td>{renderProofAction(completion.refund_proof, 'Bukti Transfer Refund')}</td>
                     </tr>
                   ) : (
                     <tr>
@@ -386,13 +515,7 @@ export default function ProfileReturnDetailPage() {
             <tbody>
               <tr>
                 <td>Foto Produk</td>
-                <td>
-                  {detail.product_photo ? (
-                    <a href={fileUrl(detail.product_photo)} target="_blank" rel="noreferrer">
-                      Lihat Foto
-                    </a>
-                  ) : '-'}
-                </td>
+                <td>{renderProofAction(detail.product_photo, 'Foto Produk Retur', 'Lihat Foto')}</td>
               </tr>
               <tr>
                 <td>E-Receipt</td>
@@ -416,6 +539,7 @@ export default function ProfileReturnDetailPage() {
       )}
 
       <Link href="/customer/profile/return">Kembali ke daftar retur</Link>
+      <ImagePreviewModal preview={imagePreview} onClose={() => setImagePreview(null)} />
     </div>
   );
 }

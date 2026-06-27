@@ -9,6 +9,9 @@ const ORDER_API = apiUrl('/api/customer/profile/order');
 const RETURN_API = apiUrl('/api/customer/profile/return');
 const ADDRESS_API = apiUrl('/api/customer/profile/address');
 const RETURN_TOTAL_STEPS = 6;
+const PROOF_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
+const PROOF_IMAGE_TYPES = new Set(PROOF_IMAGE_ACCEPT.split(','));
+const RECEIPT_PDF_ACCEPT = 'application/pdf,.pdf';
 const EXCHANGE_COURIERS = [
   { id: 'jne-reg', name: 'JNE REG' },
   { id: 'jnt-reg', name: 'J&T REG' },
@@ -30,6 +33,32 @@ function formatTanggal(value) {
 
 function fileUrl(path) {
   return mediaUrl(path);
+}
+
+function proofPreview(path, label) {
+  if (!path) return null;
+  return {
+    src: fileUrl(path),
+    label,
+  };
+}
+
+function isPreviewableProof(path) {
+  return /\.(jpe?g|png|webp)(?:[?#].*)?$/i.test(String(path || ''));
+}
+
+function isAllowedProofImage(file) {
+  if (!file) return false;
+  const hasAllowedType = !file.type || PROOF_IMAGE_TYPES.has(file.type);
+  const hasAllowedName = /\.(jpe?g|png|webp)$/i.test(file.name || '');
+  return hasAllowedType && hasAllowedName;
+}
+
+function isAllowedPdf(file) {
+  if (!file) return false;
+  const hasAllowedType = !file.type || file.type === 'application/pdf';
+  const hasAllowedName = /\.pdf$/i.test(file.name || '');
+  return hasAllowedType && hasAllowedName;
 }
 
 function getStoredUser() {
@@ -102,6 +131,85 @@ function DataTable({ children }) {
   );
 }
 
+function ImagePreviewModal({ preview, onClose }) {
+  if (!preview) return null;
+  return (
+    <div
+      role="presentation"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        background: 'rgba(45,45,45,0.58)',
+        backdropFilter: 'blur(6px)',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={preview.label}
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          width: 'min(860px, 100%)',
+          maxHeight: '86vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          borderRadius: 18,
+          background: '#fff',
+          boxShadow: '0 24px 72px rgba(45,45,45,0.26)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            padding: '14px 18px',
+            borderBottom: '1px solid #f0e0de',
+          }}
+        >
+          <strong>{preview.label}</strong>
+          <button type="button" onClick={onClose} aria-label="Tutup preview">
+            ×
+          </button>
+        </div>
+        <div
+          style={{
+            minHeight: 240,
+            padding: 18,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'auto',
+            background: '#fdf6f5',
+          }}
+        >
+          <img
+            src={preview.src}
+            alt={preview.label}
+            style={{ display: 'block', maxWidth: '100%', maxHeight: '62vh', objectFit: 'contain', borderRadius: 12 }}
+          />
+        </div>
+        <a
+          href={preview.src}
+          target="_blank"
+          rel="noreferrer"
+          style={{ padding: '12px 18px 16px', color: '#c4706a', fontWeight: 700, textAlign: 'right' }}
+        >
+          Buka di tab baru
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfileOrderDetailPage() {
   const params = useParams();
   const orderCode = decodeURIComponent(params?.orderCode || '');
@@ -121,6 +229,7 @@ export default function ProfileOrderDetailPage() {
   const [addresses, setAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [submittingReturn, setSubmittingReturn] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
 
   async function loadAddresses({ silent = true } = {}) {
     const user = getStoredUser();
@@ -210,6 +319,73 @@ export default function ProfileOrderDetailPage() {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
+  function openImagePreview(preview) {
+    if (!preview?.src) return;
+    setImagePreview(preview);
+  }
+
+  function closeImagePreview() {
+    setImagePreview(null);
+  }
+
+  function renderProofAction(path, label) {
+    if (!path) return '-';
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        {isPreviewableProof(path) && (
+          <button
+            type="button"
+            onClick={() => openImagePreview(proofPreview(path, label))}
+            style={{
+              padding: 0,
+              border: 0,
+              background: 'transparent',
+              color: '#c4706a',
+              cursor: 'pointer',
+              font: 'inherit',
+              fontWeight: 700,
+            }}
+          >
+            Lihat Bukti
+          </button>
+        )}
+        <a href={fileUrl(path)} target="_blank" rel="noreferrer">
+          Buka file
+        </a>
+      </span>
+    );
+  }
+
+  function handleProductPhotoChange(event) {
+    const file = event.target.files?.[0] || null;
+    if (!file) {
+      setProductPhoto(null);
+      return;
+    }
+    if (!isAllowedProofImage(file)) {
+      setProductPhoto(null);
+      setError('Foto produk harus berupa JPG, PNG, atau WebP.');
+      return;
+    }
+    setError('');
+    setProductPhoto(file);
+  }
+
+  function handleReceiptProofChange(event) {
+    const file = event.target.files?.[0] || null;
+    if (!file) {
+      setReceiptProof(null);
+      return;
+    }
+    if (!isAllowedPdf(file)) {
+      setReceiptProof(null);
+      setError('E-receipt wajib berupa file PDF.');
+      return;
+    }
+    setError('');
+    setReceiptProof(file);
+  }
+
   function handleStartReturn() {
     resetReturnWizard(detail);
     setShowReturnWizard(true);
@@ -251,8 +427,16 @@ export default function ProfileOrderDetailPage() {
       setError('Foto produk wajib diupload.');
       return;
     }
+    if (!isAllowedProofImage(productPhoto)) {
+      setError('Foto produk harus berupa JPG, PNG, atau WebP.');
+      return;
+    }
     if (!receiptProof) {
       setError('E-receipt wajib diupload.');
+      return;
+    }
+    if (!isAllowedPdf(receiptProof)) {
+      setError('E-receipt wajib berupa file PDF.');
       return;
     }
 
@@ -324,6 +508,19 @@ export default function ProfileOrderDetailPage() {
       })
       .finally(() => setLoading(false));
   }, [orderCode]);
+
+  useEffect(() => {
+    if (!imagePreview) return undefined;
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        closeImagePreview();
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [imagePreview]);
 
   const returnInfo = detail?.return_info || {};
   const selectedReturnItems = getSelectedReturnItems(detail, returnSelections);
@@ -472,15 +669,7 @@ export default function ProfileOrderDetailPage() {
               </tr>
               <tr>
                 <td>Bukti Terkirim</td>
-                <td>
-                  {detail.delivery_proof ? (
-                    <a href={fileUrl(detail.delivery_proof)} target="_blank" rel="noreferrer">
-                      Lihat Bukti
-                    </a>
-                  ) : (
-                    '-'
-                  )}
-                </td>
+                <td>{renderProofAction(detail.delivery_proof, 'Bukti Terkirim')}</td>
               </tr>
             </tbody>
           </DataTable>
@@ -498,15 +687,7 @@ export default function ProfileOrderDetailPage() {
               </tr>
               <tr>
                 <td>Bukti Transfer</td>
-                <td>
-                  {detail.payment_proof ? (
-                    <a href={fileUrl(detail.payment_proof)} target="_blank" rel="noreferrer">
-                      Lihat Bukti
-                    </a>
-                  ) : (
-                    '-'
-                  )}
-                </td>
+                <td>{renderProofAction(detail.payment_proof, 'Bukti Transfer')}</td>
               </tr>
             </tbody>
           </DataTable>
@@ -665,11 +846,11 @@ export default function ProfileOrderDetailPage() {
                       <p style={{ marginTop: 0 }}>Upload foto produk sebagai bukti kondisi barang.</p>
                       <input
                         type="file"
-                        accept="image/*"
-                        onChange={(event) => setProductPhoto(event.target.files?.[0] || null)}
+                        accept={PROOF_IMAGE_ACCEPT}
+                        onChange={handleProductPhotoChange}
                       />
                       <p style={{ marginBottom: 0, color: '#7b5a56' }}>
-                        {productPhoto ? `File terpilih: ${productPhoto.name}` : 'Belum ada file dipilih.'}
+                        {productPhoto ? `File terpilih: ${productPhoto.name}` : 'Pilih foto JPG, PNG, atau WebP.'}
                       </p>
                     </>
                   )}
@@ -679,11 +860,11 @@ export default function ProfileOrderDetailPage() {
                       <p style={{ marginTop: 0 }}>Upload file e-receipt PDF untuk melanjutkan pengajuan retur.</p>
                       <input
                         type="file"
-                        accept="application/pdf,.pdf"
-                        onChange={(event) => setReceiptProof(event.target.files?.[0] || null)}
+                        accept={RECEIPT_PDF_ACCEPT}
+                        onChange={handleReceiptProofChange}
                       />
                       <p style={{ marginTop: 12, marginBottom: 0, color: '#7b5a56' }}>
-                        {receiptProof ? `File terpilih: ${receiptProof.name}` : 'Belum ada file dipilih.'}
+                        {receiptProof ? `File terpilih: ${receiptProof.name}` : 'Pilih file PDF.'}
                       </p>
                     </>
                   )}
@@ -954,6 +1135,7 @@ export default function ProfileOrderDetailPage() {
       )}
 
       <Link href="/customer/profile/order">Kembali ke daftar pesanan</Link>
+      <ImagePreviewModal preview={imagePreview} onClose={closeImagePreview} />
     </div>
   );
 }

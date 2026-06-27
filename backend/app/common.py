@@ -1,10 +1,12 @@
 """Helper/view bareng yang dipakai beberapa fitur (login, register, dll)."""
+import os
 import random
 import secrets
 from datetime import timedelta
 
 from django.core.mail import send_mail
 from django.utils import timezone
+from PIL import Image, UnidentifiedImageError
 
 from .models import TrustedDevice
 
@@ -12,6 +14,8 @@ OTP_TTL_SECONDS = 90
 MAX_OTP_ATTEMPTS = 2
 TRUST_TTL_DAYS = 30
 MAX_TRUSTED_DEVICES = 2
+ALLOWED_PROOF_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+ALLOWED_PROOF_IMAGE_CONTENT_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 
 
 def format_duration_id(total_seconds):
@@ -102,6 +106,35 @@ def send_otp_email(name, email, code):
         from_email=None,  # pakai DEFAULT_FROM_EMAIL
         recipient_list=[email],
     )
+
+
+def is_proof_image_upload(uploaded_file):
+    file_name = str(getattr(uploaded_file, 'name', '') or '').lower()
+    content_type = str(getattr(uploaded_file, 'content_type', '') or '').lower()
+    ext = os.path.splitext(file_name)[1]
+
+    if ext not in ALLOWED_PROOF_IMAGE_EXTENSIONS:
+        return False
+    if content_type and content_type not in ALLOWED_PROOF_IMAGE_CONTENT_TYPES:
+        return False
+
+    try:
+        original_position = uploaded_file.tell()
+    except (AttributeError, OSError):
+        original_position = 0
+
+    try:
+        uploaded_file.seek(0)
+        with Image.open(uploaded_file) as image:
+            image.verify()
+        return True
+    except (UnidentifiedImageError, OSError, ValueError):
+        return False
+    finally:
+        try:
+            uploaded_file.seek(original_position)
+        except (AttributeError, OSError):
+            pass
 
 
 def client_ip(request):
