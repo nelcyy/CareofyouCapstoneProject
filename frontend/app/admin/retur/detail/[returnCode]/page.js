@@ -43,6 +43,191 @@ function DataTable({ children }) {
   );
 }
 
+function toNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getRiskLevelLabel(level) {
+  switch (level) {
+    case 'critical':
+    case 'high':
+      return 'Tinggi';
+    case 'medium':
+      return 'Sedang';
+    default:
+      return 'Rendah';
+  }
+}
+
+function describeReturnDeviceRisk(device) {
+  const status = device.device_status || '';
+  switch (status) {
+    case 'same_order_device':
+      return 'Perangkat retur sama dengan perangkat saat order.';
+    case 'different_known_device':
+      return 'Perangkat retur berbeda, tapi masih termasuk perangkat yang pernah dipakai.';
+    case 'different_new_trusted_device':
+      return 'Perangkat retur berbeda dan trusted device ini masih baru.';
+    case 'different_unregistered_device':
+      return 'Perangkat retur berbeda dan belum dikenali sebagai perangkat tepercaya.';
+    default:
+      return 'Status perangkat retur belum tersedia.';
+  }
+}
+
+function summarizeReturnDeviceRisk(device) {
+  const status = device.device_status || '';
+  switch (status) {
+    case 'same_order_device':
+      return 'Perangkat retur sama dengan perangkat saat order.';
+    case 'different_known_device':
+      return 'Perangkat berbeda, tapi masih pernah dipakai.';
+    case 'different_new_trusted_device':
+      return 'Perangkat berbeda dan trusted device ini masih baru.';
+    case 'different_unregistered_device':
+      return 'Perangkat berbeda dan belum masuk trusted device.';
+    default:
+      return 'Status perangkat belum tersedia.';
+  }
+}
+
+function describeReturnPasswordRisk(password) {
+  const count = toNumber(password.password_count);
+  if (count <= 0) return 'Tidak ada percobaan password yang gagal sebelum retur dibuat.';
+  if (count === 1) return 'Ada 1 kali salah password sebelum retur dibuat.';
+  if (count === 2) return 'Ada 2 kali salah password sebelum retur dibuat.';
+  return 'Ada 3 kali atau lebih salah password sebelum retur dibuat.';
+}
+
+function summarizeReturnPasswordRisk(password) {
+  const count = toNumber(password.password_count);
+  if (count <= 0) return 'Tidak ada salah password.';
+  if (count === 1) return 'Ada 1x salah password.';
+  if (count === 2) return 'Ada 2x salah password.';
+  return 'Ada 3x atau lebih salah password.';
+}
+
+function describeReturnOtpRisk(otp) {
+  const count = toNumber(otp.otp_count);
+  if (count <= 0) return 'Tidak ada percobaan OTP yang gagal sebelum retur dibuat.';
+  if (count === 1) return 'Ada 1 kali gagal OTP sebelum retur dibuat.';
+  if (count === 2) return 'Ada 2 kali gagal OTP sebelum retur dibuat.';
+  return 'Ada 3 kali atau lebih gagal OTP sebelum retur dibuat.';
+}
+
+function summarizeReturnOtpRisk(otp) {
+  const count = toNumber(otp.otp_count);
+  if (count <= 0) return 'Tidak ada gagal OTP.';
+  if (count === 1) return 'Ada 1x gagal OTP.';
+  if (count === 2) return 'Ada 2x gagal OTP.';
+  return 'Ada 3x atau lebih gagal OTP.';
+}
+
+function describeExchangeAddressRisk(exchangeAddress) {
+  const status = exchangeAddress.exchange_address_status || '';
+  switch (status) {
+    case 'same_exchange_address':
+      return 'Alamat tukar sama dengan alamat pengiriman awal.';
+    case 'different_exchange_address':
+      return 'Alamat tukar berbeda dari alamat pengiriman awal.';
+    default:
+      return 'Faktor alamat exchange tidak dipakai untuk retur ini.';
+  }
+}
+
+function summarizeExchangeAddressRisk(exchangeAddress) {
+  const status = exchangeAddress.exchange_address_status || '';
+  switch (status) {
+    case 'same_exchange_address':
+      return 'Alamat tukar sama dengan alamat awal.';
+    case 'different_exchange_address':
+      return 'Alamat tukar berbeda dari alamat awal.';
+    default:
+      return 'Tidak memakai alamat exchange.';
+  }
+}
+
+function describeReturnTimingRisk(returnTiming) {
+  const status = returnTiming.return_timing_status || '';
+  switch (status) {
+    case 'fast_return_timing':
+      return 'Retur diajukan sangat cepat setelah order selesai.';
+    case 'same_day_return_timing':
+      return 'Retur diajukan di hari yang sama setelah order selesai.';
+    default:
+      return 'Retur diajukan tidak terlalu cepat.';
+  }
+}
+
+function summarizeReturnTimingRisk(returnTiming) {
+  const status = returnTiming.return_timing_status || '';
+  switch (status) {
+    case 'fast_return_timing':
+      return 'Retur diajukan sangat cepat.';
+    case 'same_day_return_timing':
+      return 'Retur diajukan di hari yang sama.';
+    default:
+      return 'Retur diajukan dengan jeda yang wajar.';
+  }
+}
+
+function buildReturnMonitoringInsights(monitoring, resolutionType) {
+  const device = monitoring.device || {};
+  const password = monitoring.password || {};
+  const otp = monitoring.otp || {};
+  const exchangeAddress = monitoring.exchange_address || {};
+  const returnTiming = monitoring.return_timing || {};
+  const items = [
+    {
+      id: 'device',
+      title: 'Device',
+      statusLabel: device.device_status_label || '',
+      description: describeReturnDeviceRisk(device),
+      summary: summarizeReturnDeviceRisk(device),
+      score: toNumber(device.device_score),
+    },
+    {
+      id: 'password',
+      title: 'Password',
+      statusLabel: password.password_status_label || '',
+      description: describeReturnPasswordRisk(password),
+      summary: summarizeReturnPasswordRisk(password),
+      score: toNumber(password.password_score),
+    },
+    {
+      id: 'otp',
+      title: 'OTP',
+      statusLabel: otp.otp_status_label || '',
+      description: describeReturnOtpRisk(otp),
+      summary: summarizeReturnOtpRisk(otp),
+      score: toNumber(otp.otp_score),
+    },
+  ];
+
+  if (resolutionType === 'exchange') {
+    items.push({
+      id: 'exchange-address',
+      title: 'Alamat Exchange',
+      statusLabel: exchangeAddress.exchange_address_status_label || '',
+      description: describeExchangeAddressRisk(exchangeAddress),
+      summary: summarizeExchangeAddressRisk(exchangeAddress),
+      score: toNumber(exchangeAddress.exchange_address_score),
+    });
+  }
+
+  items.push({
+    id: 'return-timing',
+    title: 'Timing Retur',
+    statusLabel: returnTiming.return_timing_status_label || '',
+    description: describeReturnTimingRisk(returnTiming),
+    summary: summarizeReturnTimingRisk(returnTiming),
+    score: toNumber(returnTiming.return_timing_score),
+  });
+
+  return items;
+}
+
 function getOtpCountdown(nextOtp) {
   return Math.max(0, Number(nextOtp?.resend_after_seconds ?? nextOtp?.expires_in_seconds ?? 0) || 0);
 }
@@ -898,6 +1083,15 @@ export default function AdminReturnDetailPage() {
   const refundInfo = detail?.refund_info || {};
   const exchangeInfo = detail?.exchange_info || {};
   const receiptVerification = detail?.ereceipt_verification || {};
+  const monitoring = detail?.monitoring || {};
+  const monitoringDevice = monitoring.device || {};
+  const monitoringSummary = monitoring.summary || {};
+  const monitoringInsights = buildReturnMonitoringInsights(monitoring, detail?.resolution_type);
+  const monitoringHighlights = monitoringInsights
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score);
+  const monitoringRiskLevel = monitoringSummary.risk_level || detail?.risk_level || 'low';
+  const monitoringTotalScore = toNumber(monitoringSummary.total_risk_score ?? detail?.total_risk_score);
   const ereceiptChecked = Boolean(receiptVerification.status);
   const scannedCountFor = (item) => (scannedByItem[item.return_item_id]?.size || 0);
   const totalScanned = (qrUnits || []).reduce((sum, item) => sum + scannedCountFor(item), 0);
@@ -1162,163 +1356,83 @@ export default function AdminReturnDetailPage() {
             </tbody>
           </DataTable>
 
-          <h3 style={{ marginTop: 24 }}>Monitoring</h3>
-          <p><b>Device</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Device Retur</td>
-                <td>{detail.monitoring?.device?.device_label_snapshot || '-'}</td>
-              </tr>
-              <tr>
-                <td>Status Device</td>
-                <td>{detail.monitoring?.device?.trusted_device_status_label || '-'}</td>
-              </tr>
-              <tr>
-                <td>Device Saat Order</td>
-                <td>{detail.monitoring?.device?.order_device_label_snapshot || '-'}</td>
-              </tr>
-              <tr>
-                <td>Sama dengan Device Order</td>
-                <td>{detail.monitoring?.device?.same_device_as_order ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Score Device</td>
-                <td>{detail.monitoring?.device?.device_risk_score ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Score Device Mismatch</td>
-                <td>{detail.monitoring?.device?.device_mismatch_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
+          {detail.monitoring && (
+            <>
+              <h3 style={{ marginTop: 24 }}>Monitoring</h3>
+              <DataTable>
+                <tbody>
+                  <tr>
+                    <td>Total Risk Score</td>
+                    <td>
+                      {monitoringTotalScore} ({getRiskLevelLabel(monitoringRiskLevel)})
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Device Saat Retur</td>
+                    <td>{monitoringDevice.device_label_snapshot || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td>Status Device</td>
+                    <td>{monitoringDevice.device_status_label || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td>Faktor Aktif</td>
+                    <td>
+                      {monitoringHighlights.length > 0
+                        ? `${monitoringHighlights.length} faktor sedang menambah score retur ini.`
+                        : 'Belum ada faktor yang menambah score retur ini.'}
+                    </td>
+                  </tr>
+                </tbody>
+              </DataTable>
 
-          <p style={{ marginTop: 12 }}><b>Password & OTP</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Salah Password</td>
-                <td>
-                  {detail.monitoring?.password?.failed_password_count ?? 0} kali, score{' '}
-                  {detail.monitoring?.password?.failed_password_score ?? 0}
-                </td>
-              </tr>
-              <tr>
-                <td>Gagal OTP</td>
-                <td>
-                  {detail.monitoring?.otp?.failed_otp_count ?? 0} kali, score{' '}
-                  {detail.monitoring?.otp?.failed_otp_score ?? 0}
-                </td>
-              </tr>
-            </tbody>
-          </DataTable>
+              {monitoringHighlights.length > 0 && (
+                <>
+                  <p style={{ marginTop: 12 }}><b>Faktor yang Menambah Score</b></p>
+                  <DataTable>
+                    <thead>
+                      <tr>
+                        <th>Faktor</th>
+                        <th>Keterangan</th>
+                        <th>Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monitoringHighlights.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.title}</td>
+                          <td>{item.summary}</td>
+                          <td>{item.score}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </DataTable>
+                </>
+              )}
 
-          <p style={{ marginTop: 12 }}><b>Address Exchange</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Relevan untuk Exchange</td>
-                <td>{detail.resolution_type === 'exchange' ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Sama dengan Alamat Order</td>
-                <td>
-                  {detail.resolution_type === 'exchange'
-                    ? (detail.monitoring?.address?.exchange_address_same_as_order ? 'Ya' : 'Tidak')
-                    : '-'}
-                </td>
-              </tr>
-              <tr>
-                <td>Umur Alamat Exchange</td>
-                <td>
-                  {detail.resolution_type === 'exchange'
-                    ? `${detail.monitoring?.address?.exchange_address_age_minutes ?? 0} menit`
-                    : '-'}
-                </td>
-              </tr>
-              <tr>
-                <td>Score Alamat Baru</td>
-                <td>
-                  {detail.resolution_type === 'exchange'
-                    ? (detail.monitoring?.address?.exchange_new_address_score ?? 0)
-                    : '-'}
-                </td>
-              </tr>
-              <tr>
-                <td>Score Address Mismatch</td>
-                <td>
-                  {detail.resolution_type === 'exchange'
-                    ? (detail.monitoring?.address?.exchange_address_mismatch_score ?? 0)
-                    : '-'}
-                </td>
-              </tr>
-              <tr>
-                <td>Address Risk Score</td>
-                <td>
-                  {detail.resolution_type === 'exchange'
-                    ? (detail.monitoring?.address?.exchange_address_risk_score ?? 0)
-                    : '-'}
-                </td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <p style={{ marginTop: 12 }}><b>Behavior</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Umur Akun</td>
-                <td>{detail.monitoring?.behavior?.account_age_days ?? 0} hari</td>
-              </tr>
-              <tr>
-                <td>Retur 30 Hari</td>
-                <td>
-                  {detail.monitoring?.behavior?.recent_returns_30d_count ?? 0}, score{' '}
-                  {detail.monitoring?.behavior?.frequent_return_score ?? 0}
-                </td>
-              </tr>
-              <tr>
-                <td>Retur 90 Hari</td>
-                <td>{detail.monitoring?.behavior?.recent_returns_90d_count ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Jarak ke Selesai Order</td>
-                <td>
-                  {detail.monitoring?.behavior?.return_after_completion_minutes ?? 0} menit, score{' '}
-                  {detail.monitoring?.behavior?.rapid_return_score ?? 0}
-                </td>
-              </tr>
-              <tr>
-                <td>Score Akun Baru Retur</td>
-                <td>{detail.monitoring?.behavior?.new_account_return_score ?? 0}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <p style={{ marginTop: 12 }}><b>Ringkasan</b></p>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Hijack Risk Score</td>
-                <td>{detail.monitoring?.summary?.hijack_risk_score ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Return Abuse Score</td>
-                <td>{detail.monitoring?.summary?.return_abuse_score ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Address Risk Score</td>
-                <td>{detail.monitoring?.summary?.address_risk_score ?? 0}</td>
-              </tr>
-              <tr>
-                <td>Total Risk Score</td>
-                <td>
-                  {detail.monitoring?.summary?.total_risk_score ?? 0}{' '}
-                  ({detail.monitoring?.summary?.risk_level || 'low'})
-                </td>
-              </tr>
-            </tbody>
-          </DataTable>
+              <p style={{ marginTop: 12 }}><b>Detail Monitoring</b></p>
+              <DataTable>
+                <thead>
+                  <tr>
+                    <th>Faktor</th>
+                    <th>Status</th>
+                    <th>Keterangan</th>
+                    <th>Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monitoringInsights.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.title}</td>
+                      <td>{item.statusLabel || '-'}</td>
+                      <td>{item.description}</td>
+                      <td>{item.score}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </DataTable>
+            </>
+          )}
 
           {['shipped_back', 'received', 'completed'].includes(detail.status) && (
             <>

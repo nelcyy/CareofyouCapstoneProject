@@ -28,8 +28,8 @@ from ..common import get_customer_profile_user
 
 RETURN_WINDOW = timedelta(days=2)
 DEVICE_NEW_WINDOW = timedelta(days=1)
-ADDRESS_FRESH_WINDOW_MINUTES = 30
-ADDRESS_RECENT_WINDOW_MINUTES = 24 * 60
+RETURN_FAST_WINDOW_MINUTES = 2 * 60
+RETURN_SAME_DAY_WINDOW_MINUTES = 24 * 60
 TOTAL_RISK_SUPPORTING_WEIGHT = 0.45
 
 EXCHANGE_COURIER_OPTIONS = {
@@ -37,27 +37,59 @@ EXCHANGE_COURIER_OPTIONS = {
     'jnt-reg': {'name': 'J&T REG'},
     'sicepat-reg': {'name': 'SiCepat REG'},
 }
-DEVICE_RISK_SCORES = {
-    'usual': 0,
-    'known_rare': 12,
-    'new_trusted': 22,
-    'not_registered': 35,
+DEVICE_STATUS_SCORES = {
+    'same_order_device': 0,
+    'different_known_device': 12,
+    'different_new_trusted_device': 22,
+    'different_unregistered_device': 35,
 }
-FAILED_PASSWORD_SCORES = {
-    0: 0,
-    1: 8,
-    2: 18,
+PASSWORD_STATUS_SCORES = {
+    'clean_password': 0,
+    'one_failed_password': 8,
+    'two_failed_password': 18,
+    'many_failed_password': 30,
 }
-FAILED_OTP_SCORES = {
-    0: 0,
-    1: 6,
-    2: 14,
+OTP_STATUS_SCORES = {
+    'clean_otp': 0,
+    'one_failed_otp': 6,
+    'two_failed_otp': 14,
+    'many_failed_otp': 24,
 }
-TRUSTED_DEVICE_STATUS_LABELS = {
-    'usual': 'Yang Biasa Dipakai',
-    'known_rare': 'Dikenal Tapi Jarang Dipakai',
-    'new_trusted': 'Trusted Device Baru',
-    'not_registered': 'Tidak Ada di Trusted Device',
+EXCHANGE_ADDRESS_STATUS_SCORES = {
+    'same_exchange_address': 0,
+    'different_exchange_address': 12,
+}
+RETURN_TIMING_STATUS_SCORES = {
+    'normal_return_timing': 0,
+    'same_day_return_timing': 6,
+    'fast_return_timing': 18,
+}
+DEVICE_STATUS_LABELS = {
+    'same_order_device': 'Sama dengan Device Order',
+    'different_known_device': 'Device Berbeda tapi Dikenal',
+    'different_new_trusted_device': 'Device Berbeda dan Trusted Baru',
+    'different_unregistered_device': 'Device Berbeda dan Belum Dikenal',
+}
+PASSWORD_STATUS_LABELS = {
+    'clean_password': 'Aman',
+    'one_failed_password': '1x Salah Password',
+    'two_failed_password': '2x Salah Password',
+    'many_failed_password': '3x+ Salah Password',
+}
+OTP_STATUS_LABELS = {
+    'clean_otp': 'Aman',
+    'one_failed_otp': '1x Gagal OTP',
+    'two_failed_otp': '2x Gagal OTP',
+    'many_failed_otp': '3x+ Gagal OTP',
+}
+EXCHANGE_ADDRESS_STATUS_LABELS = {
+    'same_exchange_address': 'Alamat Sama',
+    'different_exchange_address': 'Alamat Berbeda',
+}
+RETURN_TIMING_STATUS_LABELS = {
+    'normal_return_timing': 'Normal',
+    'same_day_return_timing': 'Hari yang Sama',
+    'fast_return_timing': 'Sangat Cepat',
 }
 RETURN_STATUS_LABELS = {
     'waiting_admin_review': 'Menunggu Review Admin',
@@ -216,8 +248,8 @@ def _trusted_device_status_for_return(user, trusted_device):
     return 'known_rare'
 
 
-def _device_risk_score_for_status(trusted_device_status):
-    return DEVICE_RISK_SCORES.get(trusted_device_status, 0)
+def _status_score(status, score_map):
+    return int(score_map.get(status, 0))
 
 
 def _failed_password_count_for_login(user, login_id):
@@ -237,10 +269,19 @@ def _failed_password_count_for_login(user, login_id):
     )
 
 
-def _failed_password_score_for_count(failed_password_count):
-    if failed_password_count >= 3:
-        return 30
-    return FAILED_PASSWORD_SCORES.get(failed_password_count, 0)
+def _password_status_for_count(password_count):
+    password_count = max(0, int(password_count or 0))
+    if password_count == 0:
+        return 'clean_password'
+    if password_count == 1:
+        return 'one_failed_password'
+    if password_count == 2:
+        return 'two_failed_password'
+    return 'many_failed_password'
+
+
+def _password_score_for_status(status):
+    return _status_score(status, PASSWORD_STATUS_SCORES)
 
 
 def _failed_otp_count_for_login(user, login_id):
@@ -260,32 +301,43 @@ def _failed_otp_count_for_login(user, login_id):
     )
 
 
-def _failed_otp_score_for_count(failed_otp_count):
-    if failed_otp_count >= 3:
-        return 24
-    return FAILED_OTP_SCORES.get(failed_otp_count, 0)
+def _otp_status_for_count(otp_count):
+    otp_count = max(0, int(otp_count or 0))
+    if otp_count == 0:
+        return 'clean_otp'
+    if otp_count == 1:
+        return 'one_failed_otp'
+    if otp_count == 2:
+        return 'two_failed_otp'
+    return 'many_failed_otp'
+
+
+def _otp_score_for_status(status):
+    return _status_score(status, OTP_STATUS_SCORES)
 
 
 def _same_device_as_order(order, trusted_device, current_device_label):
     order_monitoring = _safe_related(order, 'monitoring')
     order_device_label = order_monitoring.device_label_snapshot if order_monitoring else ''
     if order_monitoring and order_monitoring.trusted_device_id and trusted_device is not None:
-        same_device = order_monitoring.trusted_device_id == trusted_device.id
-    else:
-        same_device = bool(order_device_label) and order_device_label == current_device_label
-    return same_device, order_device_label
+        return order_monitoring.trusted_device_id == trusted_device.id
+    return bool(order_device_label) and order_device_label == current_device_label
 
 
-def _device_mismatch_score(same_device_as_order, trusted_device_status):
-    if same_device_as_order:
-        return 0
-    if trusted_device_status in ('new_trusted', 'not_registered'):
-        return 20
-    return 10
+def _device_status_for_return(order, user, trusted_device, current_device_label):
+    if _same_device_as_order(order, trusted_device, current_device_label):
+        return 'same_order_device'
+
+    trusted_device_status = _trusted_device_status_for_return(user, trusted_device)
+    if trusted_device_status in ('usual', 'known_rare'):
+        return 'different_known_device'
+    if trusted_device_status == 'new_trusted':
+        return 'different_new_trusted_device'
+    return 'different_unregistered_device'
 
 
-def _hijack_risk_score(device_risk_score, failed_password_score, failed_otp_score, device_mismatch_score):
-    return min(100, device_risk_score + failed_password_score + failed_otp_score + device_mismatch_score)
+def _device_score_for_status(status):
+    return _status_score(status, DEVICE_STATUS_SCORES)
 
 
 def _same_exchange_address_as_order(order, exchange_address):
@@ -303,49 +355,16 @@ def _same_exchange_address_as_order(order, exchange_address):
     return all(_normalized_text(left) == _normalized_text(right) for left, right in comparison_pairs)
 
 
-def _exchange_address_age_minutes(exchange_address, current_time):
-    if exchange_address is None or exchange_address.created_at is None:
-        return 0
-    delta = current_time - exchange_address.created_at
-    return max(0, int(delta.total_seconds() // 60))
+def _exchange_address_status_for_return(return_entry, order, exchange_address):
+    if return_entry.resolution_type != 'exchange' or exchange_address is None:
+        return ''
+    if _same_exchange_address_as_order(order, exchange_address):
+        return 'same_exchange_address'
+    return 'different_exchange_address'
 
 
-def _exchange_new_address_score(exchange_address_age_minutes):
-    if exchange_address_age_minutes <= ADDRESS_FRESH_WINDOW_MINUTES:
-        return 12
-    if exchange_address_age_minutes <= ADDRESS_RECENT_WINDOW_MINUTES:
-        return 6
-    return 0
-
-
-def _exchange_address_mismatch_score(exchange_address_same_as_order):
-    return 0 if exchange_address_same_as_order else 8
-
-
-def _exchange_address_risk_score(exchange_new_address_score, exchange_address_mismatch_score):
-    return min(100, exchange_new_address_score + exchange_address_mismatch_score)
-
-
-def _account_age_days(user, current_time):
-    if not user or not user.created_at:
-        return 0
-    delta = current_time - user.created_at
-    return max(0, int(delta.total_seconds() // 86400))
-
-
-def _recent_returns_count(user, current_time, days):
-    window_start = current_time - timedelta(days=days)
-    return Return.objects.filter(user=user, created_at__gte=window_start).count()
-
-
-def _frequent_return_score(recent_returns_30d_count, recent_returns_90d_count):
-    if recent_returns_30d_count >= 3 or recent_returns_90d_count >= 5:
-        return 22
-    if recent_returns_30d_count >= 2 or recent_returns_90d_count >= 3:
-        return 14
-    if recent_returns_30d_count >= 1 or recent_returns_90d_count >= 2:
-        return 8
-    return 0
+def _exchange_address_score_for_status(status):
+    return _status_score(status, EXCHANGE_ADDRESS_STATUS_SCORES)
 
 
 def _return_after_completion_minutes(order, current_time):
@@ -355,42 +374,46 @@ def _return_after_completion_minutes(order, current_time):
     return max(0, int(delta.total_seconds() // 60))
 
 
-def _rapid_return_score(return_after_completion_minutes):
-    if return_after_completion_minutes <= 30:
-        return 18
-    if return_after_completion_minutes <= 180:
-        return 12
-    if return_after_completion_minutes <= 24 * 60:
-        return 6
-    return 0
+def _return_timing_status_for_minutes(return_after_completion_minutes):
+    if return_after_completion_minutes <= RETURN_FAST_WINDOW_MINUTES:
+        return 'fast_return_timing'
+    if return_after_completion_minutes <= RETURN_SAME_DAY_WINDOW_MINUTES:
+        return 'same_day_return_timing'
+    return 'normal_return_timing'
 
 
-def _new_account_return_score(account_age_days, recent_returns_90d_count):
-    if account_age_days <= 7 and recent_returns_90d_count >= 2:
-        return 16
-    if account_age_days <= 30 and recent_returns_90d_count >= 2:
-        return 8
-    return 0
+def _return_timing_score_for_status(status):
+    return _status_score(status, RETURN_TIMING_STATUS_SCORES)
 
 
-def _return_abuse_score(frequent_return_score, rapid_return_score, new_account_return_score):
-    return min(100, frequent_return_score + rapid_return_score + new_account_return_score)
-
-
-def _total_risk_score(*risk_scores):
-    normalized_scores = sorted(
-        (max(0, int(score or 0)) for score in risk_scores),
-        reverse=True,
+def _return_monitoring_summary_from_scores(
+    device_score,
+    password_score,
+    otp_score,
+    exchange_address_score,
+    return_timing_score,
+):
+    identity_risk_score = min(
+        100,
+        max(0, int(device_score or 0))
+        + max(0, int(password_score or 0))
+        + max(0, int(otp_score or 0)),
     )
-    if not normalized_scores:
-        return 0
-
-    dominant_risk = normalized_scores[0]
-    supporting_risk = sum(
-        int(round(score * TOTAL_RISK_SUPPORTING_WEIGHT))
-        for score in normalized_scores[1:]
+    return_pattern_score = min(
+        100,
+        max(0, int(exchange_address_score or 0))
+        + max(0, int(return_timing_score or 0)),
     )
-    return min(100, dominant_risk + supporting_risk)
+    dominant_risk = max(identity_risk_score, return_pattern_score)
+    supporting_risk = min(identity_risk_score, return_pattern_score)
+    total_risk_score = min(
+        100,
+        dominant_risk + int(round(supporting_risk * TOTAL_RISK_SUPPORTING_WEIGHT)),
+    )
+    return {
+        'total_risk_score': total_risk_score,
+        'risk_level': _decision_risk_level(total_risk_score),
+    }
 
 
 def _serialize_return_monitoring(monitoring):
@@ -399,49 +422,48 @@ def _serialize_return_monitoring(monitoring):
             'login_id': monitoring.login_id,
             'trusted_device_id': monitoring.trusted_device_id,
             'device_label_snapshot': monitoring.device_label_snapshot,
-            'trusted_device_status': monitoring.trusted_device_status,
-            'trusted_device_status_label': TRUSTED_DEVICE_STATUS_LABELS.get(
-                monitoring.trusted_device_status,
-                monitoring.trusted_device_status,
+            'device_status': monitoring.device_status,
+            'device_status_label': DEVICE_STATUS_LABELS.get(
+                monitoring.device_status,
+                monitoring.device_status,
             ),
-            'device_risk_score': monitoring.device_risk_score,
-            'order_device_label_snapshot': monitoring.order_device_label_snapshot,
-            'same_device_as_order': monitoring.same_device_as_order,
-            'device_mismatch_score': monitoring.device_mismatch_score,
-            'trusted_device_created_at_snapshot': (
-                monitoring.trusted_device_created_at_snapshot.isoformat()
-                if monitoring.trusted_device_created_at_snapshot else ''
-            ),
+            'device_score': monitoring.device_score,
         },
         'password': {
-            'failed_password_count': monitoring.failed_password_count,
-            'failed_password_score': monitoring.failed_password_score,
+            'password_count': monitoring.password_count,
+            'password_status': monitoring.password_status,
+            'password_status_label': PASSWORD_STATUS_LABELS.get(
+                monitoring.password_status,
+                monitoring.password_status,
+            ),
+            'password_score': monitoring.password_score,
         },
         'otp': {
-            'failed_otp_count': monitoring.failed_otp_count,
-            'failed_otp_score': monitoring.failed_otp_score,
+            'otp_count': monitoring.otp_count,
+            'otp_status': monitoring.otp_status,
+            'otp_status_label': OTP_STATUS_LABELS.get(
+                monitoring.otp_status,
+                monitoring.otp_status,
+            ),
+            'otp_score': monitoring.otp_score,
         },
-        'address': {
-            'exchange_address_same_as_order': monitoring.exchange_address_same_as_order,
-            'exchange_address_age_minutes': monitoring.exchange_address_age_minutes,
-            'exchange_new_address_score': monitoring.exchange_new_address_score,
-            'exchange_address_mismatch_score': monitoring.exchange_address_mismatch_score,
-            'exchange_address_risk_score': monitoring.exchange_address_risk_score,
+        'exchange_address': {
+            'exchange_address_status': monitoring.exchange_address_status,
+            'exchange_address_status_label': EXCHANGE_ADDRESS_STATUS_LABELS.get(
+                monitoring.exchange_address_status,
+                monitoring.exchange_address_status,
+            ),
+            'exchange_address_score': monitoring.exchange_address_score,
         },
-        'behavior': {
-            'account_age_days': monitoring.account_age_days,
-            'recent_returns_30d_count': monitoring.recent_returns_30d_count,
-            'recent_returns_90d_count': monitoring.recent_returns_90d_count,
-            'frequent_return_score': monitoring.frequent_return_score,
-            'return_after_completion_minutes': monitoring.return_after_completion_minutes,
-            'rapid_return_score': monitoring.rapid_return_score,
-            'new_account_return_score': monitoring.new_account_return_score,
-            'return_abuse_score': monitoring.return_abuse_score,
+        'return_timing': {
+            'return_timing_status': monitoring.return_timing_status,
+            'return_timing_status_label': RETURN_TIMING_STATUS_LABELS.get(
+                monitoring.return_timing_status,
+                monitoring.return_timing_status,
+            ),
+            'return_timing_score': monitoring.return_timing_score,
         },
         'summary': {
-            'hijack_risk_score': monitoring.hijack_risk_score,
-            'return_abuse_score': monitoring.return_abuse_score,
-            'address_risk_score': monitoring.exchange_address_risk_score,
             'total_risk_score': monitoring.total_risk_score,
             'risk_level': _decision_risk_level(monitoring.total_risk_score),
         },
@@ -676,57 +698,35 @@ def _create_return_monitoring(
     exchange_address=None,
 ):
     trusted_device = _trusted_device_for_return(user, trust_token)
-    trusted_device_status = _trusted_device_status_for_return(user, trusted_device)
     current_device_label = trusted_device.device_label if trusted_device else device_label(request)
-    device_risk_score = _device_risk_score_for_status(trusted_device_status)
-    failed_password_count = _failed_password_count_for_login(user, login_id)
-    failed_password_score = _failed_password_score_for_count(failed_password_count)
-    failed_otp_count = _failed_otp_count_for_login(user, login_id)
-    failed_otp_score = _failed_otp_score_for_count(failed_otp_count)
-    same_device_as_order, order_device_label_snapshot = _same_device_as_order(
+    device_status = _device_status_for_return(
         order,
+        user,
         trusted_device,
         current_device_label,
     )
-    device_mismatch_score = _device_mismatch_score(same_device_as_order, trusted_device_status)
-    hijack_risk_score = _hijack_risk_score(
-        device_risk_score,
-        failed_password_score,
-        failed_otp_score,
-        device_mismatch_score,
+    device_score = _device_score_for_status(device_status)
+    password_count = _failed_password_count_for_login(user, login_id)
+    password_status = _password_status_for_count(password_count)
+    password_score = _password_score_for_status(password_status)
+    otp_count = _failed_otp_count_for_login(user, login_id)
+    otp_status = _otp_status_for_count(otp_count)
+    otp_score = _otp_score_for_status(otp_status)
+    exchange_address_status = _exchange_address_status_for_return(
+        return_entry,
+        order,
+        exchange_address,
     )
-
-    exchange_address_same_as_order = False
-    exchange_address_age_minutes = 0
-    exchange_new_address_score = 0
-    exchange_address_mismatch_score = 0
-    exchange_address_risk_score = 0
-    if return_entry.resolution_type == 'exchange' and exchange_address is not None:
-        exchange_address_same_as_order = _same_exchange_address_as_order(order, exchange_address)
-        exchange_address_age_minutes = _exchange_address_age_minutes(exchange_address, current_time)
-        exchange_new_address_score = _exchange_new_address_score(exchange_address_age_minutes)
-        exchange_address_mismatch_score = _exchange_address_mismatch_score(exchange_address_same_as_order)
-        exchange_address_risk_score = _exchange_address_risk_score(
-            exchange_new_address_score,
-            exchange_address_mismatch_score,
-        )
-
-    account_age_days = _account_age_days(user, current_time)
-    recent_returns_30d_count = _recent_returns_count(user, current_time, 30)
-    recent_returns_90d_count = _recent_returns_count(user, current_time, 90)
-    frequent_return_score = _frequent_return_score(recent_returns_30d_count, recent_returns_90d_count)
+    exchange_address_score = _exchange_address_score_for_status(exchange_address_status)
     return_after_completion_minutes = _return_after_completion_minutes(order, current_time)
-    rapid_return_score = _rapid_return_score(return_after_completion_minutes)
-    new_account_return_score = _new_account_return_score(account_age_days, recent_returns_90d_count)
-    return_abuse_score = _return_abuse_score(
-        frequent_return_score,
-        rapid_return_score,
-        new_account_return_score,
-    )
-    total_risk_score = _total_risk_score(
-        hijack_risk_score,
-        return_abuse_score,
-        exchange_address_risk_score,
+    return_timing_status = _return_timing_status_for_minutes(return_after_completion_minutes)
+    return_timing_score = _return_timing_score_for_status(return_timing_status)
+    summary = _return_monitoring_summary_from_scores(
+        device_score,
+        password_score,
+        otp_score,
+        exchange_address_score,
+        return_timing_score,
     )
 
     ReturnMonitoring.objects.create(
@@ -734,31 +734,19 @@ def _create_return_monitoring(
         login_id=login_id,
         trusted_device=trusted_device,
         device_label_snapshot=current_device_label,
-        trusted_device_status=trusted_device_status,
-        device_risk_score=device_risk_score,
-        failed_password_count=failed_password_count,
-        failed_password_score=failed_password_score,
-        failed_otp_count=failed_otp_count,
-        failed_otp_score=failed_otp_score,
-        order_device_label_snapshot=order_device_label_snapshot,
-        same_device_as_order=same_device_as_order,
-        device_mismatch_score=device_mismatch_score,
-        hijack_risk_score=hijack_risk_score,
-        exchange_address_same_as_order=exchange_address_same_as_order,
-        exchange_address_age_minutes=exchange_address_age_minutes,
-        exchange_new_address_score=exchange_new_address_score,
-        exchange_address_mismatch_score=exchange_address_mismatch_score,
-        exchange_address_risk_score=exchange_address_risk_score,
-        account_age_days=account_age_days,
-        recent_returns_30d_count=recent_returns_30d_count,
-        recent_returns_90d_count=recent_returns_90d_count,
-        frequent_return_score=frequent_return_score,
-        return_after_completion_minutes=return_after_completion_minutes,
-        rapid_return_score=rapid_return_score,
-        new_account_return_score=new_account_return_score,
-        return_abuse_score=return_abuse_score,
-        total_risk_score=total_risk_score,
-        trusted_device_created_at_snapshot=trusted_device.created_at if trusted_device else None,
+        device_status=device_status,
+        device_score=device_score,
+        password_count=password_count,
+        password_status=password_status,
+        password_score=password_score,
+        otp_count=otp_count,
+        otp_status=otp_status,
+        otp_score=otp_score,
+        exchange_address_status=exchange_address_status,
+        exchange_address_score=exchange_address_score,
+        return_timing_status=return_timing_status,
+        return_timing_score=return_timing_score,
+        total_risk_score=summary['total_risk_score'],
     )
 
 

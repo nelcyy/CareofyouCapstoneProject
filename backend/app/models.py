@@ -548,13 +548,6 @@ class ReturnItem(models.Model):
 
 class ReturnMonitoring(models.Model):
     """Snapshot monitoring saat customer mengajukan retur."""
-    TRUSTED_DEVICE_STATUS_CHOICES = [
-        ('usual', 'Yang Biasa Dipakai'),
-        ('known_rare', 'Dikenal Tapi Jarang Dipakai'),
-        ('new_trusted', 'Trusted Device Baru'),
-        ('not_registered', 'Tidak Ada di Trusted Device'),
-    ]
-
     id = models.BigAutoField(primary_key=True, db_column='ID')
     return_entry = models.OneToOneField(
         Return,
@@ -572,45 +565,24 @@ class ReturnMonitoring(models.Model):
         related_name='return_monitorings',
     )
     device_label_snapshot = models.CharField(max_length=200, blank=True, default='', db_column='DEVICE_LABEL_SNAPSHOT')
-    trusted_device_status = models.CharField(
-        max_length=30,
-        choices=TRUSTED_DEVICE_STATUS_CHOICES,
-        default='not_registered',
-        db_column='TRUSTED_DEVICE_STATUS',
-    )
-    device_risk_score = models.IntegerField(default=0, db_column='DEVICE_RISK_SCORE')
-    failed_password_count = models.IntegerField(default=0, db_column='FAILED_PASSWORD_COUNT')
-    failed_password_score = models.IntegerField(default=0, db_column='FAILED_PASSWORD_SCORE')
-    failed_otp_count = models.IntegerField(default=0, db_column='FAILED_OTP_COUNT')
-    failed_otp_score = models.IntegerField(default=0, db_column='FAILED_OTP_SCORE')
-    order_device_label_snapshot = models.CharField(
-        max_length=200,
+    device_status = models.CharField(max_length=50, blank=True, default='different_unregistered_device', db_column='DEVICE_STATUS')
+    device_score = models.IntegerField(default=0, db_column='DEVICE_SCORE')
+    password_count = models.IntegerField(default=0, db_column='PASSWORD_COUNT')
+    password_status = models.CharField(max_length=50, blank=True, default='clean_password', db_column='PASSWORD_STATUS')
+    password_score = models.IntegerField(default=0, db_column='PASSWORD_SCORE')
+    otp_count = models.IntegerField(default=0, db_column='OTP_COUNT')
+    otp_status = models.CharField(max_length=50, blank=True, default='clean_otp', db_column='OTP_STATUS')
+    otp_score = models.IntegerField(default=0, db_column='OTP_SCORE')
+    exchange_address_status = models.CharField(max_length=50, blank=True, default='', db_column='EXCHANGE_ADDRESS_STATUS')
+    exchange_address_score = models.IntegerField(default=0, db_column='EXCHANGE_ADDRESS_SCORE')
+    return_timing_status = models.CharField(
+        max_length=50,
         blank=True,
-        default='',
-        db_column='ORDER_DEVICE_LABEL_SNAPSHOT',
+        default='normal_return_timing',
+        db_column='RETURN_TIMING_STATUS',
     )
-    same_device_as_order = models.BooleanField(default=False, db_column='SAME_DEVICE_AS_ORDER')
-    device_mismatch_score = models.IntegerField(default=0, db_column='DEVICE_MISMATCH_SCORE')
-    hijack_risk_score = models.IntegerField(default=0, db_column='HIJACK_RISK_SCORE')
-    exchange_address_same_as_order = models.BooleanField(default=False, db_column='EXCHANGE_ADDRESS_SAME_AS_ORDER')
-    exchange_address_age_minutes = models.IntegerField(default=0, db_column='EXCHANGE_ADDRESS_AGE_MINUTES')
-    exchange_new_address_score = models.IntegerField(default=0, db_column='EXCHANGE_NEW_ADDRESS_SCORE')
-    exchange_address_mismatch_score = models.IntegerField(default=0, db_column='EXCHANGE_ADDRESS_MISMATCH_SCORE')
-    exchange_address_risk_score = models.IntegerField(default=0, db_column='EXCHANGE_ADDRESS_RISK_SCORE')
-    account_age_days = models.IntegerField(default=0, db_column='ACCOUNT_AGE_DAYS')
-    recent_returns_30d_count = models.IntegerField(default=0, db_column='RECENT_RETURNS_30D_COUNT')
-    recent_returns_90d_count = models.IntegerField(default=0, db_column='RECENT_RETURNS_90D_COUNT')
-    frequent_return_score = models.IntegerField(default=0, db_column='FREQUENT_RETURN_SCORE')
-    return_after_completion_minutes = models.IntegerField(default=0, db_column='RETURN_AFTER_COMPLETION_MINUTES')
-    rapid_return_score = models.IntegerField(default=0, db_column='RAPID_RETURN_SCORE')
-    new_account_return_score = models.IntegerField(default=0, db_column='NEW_ACCOUNT_RETURN_SCORE')
-    return_abuse_score = models.IntegerField(default=0, db_column='RETURN_ABUSE_SCORE')
+    return_timing_score = models.IntegerField(default=0, db_column='RETURN_TIMING_SCORE')
     total_risk_score = models.IntegerField(default=0, db_column='TOTAL_RISK_SCORE')
-    trusted_device_created_at_snapshot = models.DateTimeField(
-        null=True,
-        blank=True,
-        db_column='TRUSTED_DEVICE_CREATED_AT_SNAPSHOT',
-    )
     created_at = models.DateTimeField(auto_now_add=True, db_column='CREATED_AT')
 
     class Meta:
