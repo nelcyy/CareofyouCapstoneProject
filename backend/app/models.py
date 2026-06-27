@@ -247,13 +247,6 @@ class Order(models.Model):
 
 class OrderMonitoring(models.Model):
     """Snapshot monitoring per order, mulai dari sisi device yang dipakai."""
-    TRUSTED_DEVICE_STATUS_CHOICES = [
-        ('usual', 'Yang Biasa Dipakai'),
-        ('known_rare', 'Dikenal Tapi Jarang Dipakai'),
-        ('new_trusted', 'Trusted Device Baru'),
-        ('not_registered', 'Tidak Ada di Trusted Device'),
-    ]
-
     id = models.BigAutoField(primary_key=True, db_column='ID')
     order = models.OneToOneField(Order, on_delete=models.CASCADE, db_column='ORDER_ID', related_name='monitoring')
     login_id = models.CharField(max_length=64, blank=True, default='', db_column='LOGIN_ID')
@@ -266,36 +259,30 @@ class OrderMonitoring(models.Model):
         related_name='order_monitorings',
     )
     device_label_snapshot = models.CharField(max_length=200, blank=True, default='', db_column='DEVICE_LABEL_SNAPSHOT')
-    trusted_device_status = models.CharField(
-        max_length=30,
-        choices=TRUSTED_DEVICE_STATUS_CHOICES,
-        default='not_registered',
-        db_column='TRUSTED_DEVICE_STATUS',
-    )
-    device_risk_score = models.IntegerField(default=0, db_column='DEVICE_RISK_SCORE')
-    failed_password_count = models.IntegerField(default=0, db_column='FAILED_PASSWORD_COUNT')
-    failed_password_score = models.IntegerField(default=0, db_column='FAILED_PASSWORD_SCORE')
-    failed_otp_count = models.IntegerField(default=0, db_column='FAILED_OTP_COUNT')
-    failed_otp_score = models.IntegerField(default=0, db_column='FAILED_OTP_SCORE')
-    hijack_risk_score = models.IntegerField(default=0, db_column='HIJACK_RISK_SCORE')
-    address_age_minutes = models.IntegerField(default=0, db_column='ADDRESS_AGE_MINUTES')
-    new_address_score = models.IntegerField(default=0, db_column='NEW_ADDRESS_SCORE')
-    order_amount_ratio_percent = models.IntegerField(default=0, db_column='ORDER_AMOUNT_RATIO_PERCENT')
-    amount_anomaly_score = models.IntegerField(default=0, db_column='AMOUNT_ANOMALY_SCORE')
-    total_item_quantity = models.IntegerField(default=0, db_column='TOTAL_ITEM_QUANTITY')
-    max_single_product_quantity = models.IntegerField(default=0, db_column='MAX_SINGLE_PRODUCT_QUANTITY')
-    bulk_order_score = models.IntegerField(default=0, db_column='BULK_ORDER_SCORE')
-    account_age_days = models.IntegerField(default=0, db_column='ACCOUNT_AGE_DAYS')
-    new_account_big_order_score = models.IntegerField(default=0, db_column='NEW_ACCOUNT_BIG_ORDER_SCORE')
-    recent_orders_30m_count = models.IntegerField(default=0, db_column='RECENT_ORDERS_30M_COUNT')
-    rapid_order_score = models.IntegerField(default=0, db_column='RAPID_ORDER_SCORE')
-    fraud_risk_score = models.IntegerField(default=0, db_column='FRAUD_RISK_SCORE')
-    total_risk_score = models.IntegerField(default=0, db_column='TOTAL_RISK_SCORE')
-    trusted_device_created_at_snapshot = models.DateTimeField(
-        null=True,
+    device_status = models.CharField(max_length=50, blank=True, default='not_registered_device', db_column='DEVICE_STATUS')
+    device_score = models.IntegerField(default=0, db_column='DEVICE_SCORE')
+    password_count = models.IntegerField(default=0, db_column='PASSWORD_COUNT')
+    password_status = models.CharField(max_length=50, blank=True, default='clean_password', db_column='PASSWORD_STATUS')
+    password_score = models.IntegerField(default=0, db_column='PASSWORD_SCORE')
+    otp_count = models.IntegerField(default=0, db_column='OTP_COUNT')
+    otp_status = models.CharField(max_length=50, blank=True, default='clean_otp', db_column='OTP_STATUS')
+    otp_score = models.IntegerField(default=0, db_column='OTP_SCORE')
+    address_status = models.CharField(max_length=50, blank=True, default='stable_address', db_column='ADDRESS_STATUS')
+    address_score = models.IntegerField(default=0, db_column='ADDRESS_SCORE')
+    account_order_status = models.CharField(
+        max_length=50,
         blank=True,
-        db_column='TRUSTED_DEVICE_CREATED_AT_SNAPSHOT',
+        default='normal_new_account_order',
+        db_column='ACCOUNT_ORDER_STATUS',
     )
+    account_order_score = models.IntegerField(default=0, db_column='ACCOUNT_ORDER_SCORE')
+    order_status = models.CharField(
+        max_length=50,
+        blank=True,
+        default='normal_order_frequency',
+        db_column='ORDER_STATUS',
+    )
+    order_score = models.IntegerField(default=0, db_column='ORDER_SCORE')
     created_at = models.DateTimeField(auto_now_add=True, db_column='CREATED_AT')
 
     class Meta:

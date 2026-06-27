@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.db.models import Avg, Count
+from django.db.models import Count
 from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -26,28 +26,171 @@ PAYMENT_OPTIONS = {
 }
 
 DEVICE_NEW_WINDOW = timedelta(days=1)
-# Hijack indicators stay the most important, but a single device anomaly
-# should not jump straight to an extreme score on its own.
-DEVICE_RISK_SCORES = {
-    'usual': 0,
-    'known_rare': 12,
-    'new_trusted': 22,
-    'not_registered': 35,
-}
-FAILED_PASSWORD_SCORES = {
-    0: 0,
-    1: 8,
-    2: 18,
-}
-FAILED_OTP_SCORES = {
-    0: 0,
-    1: 6,
-    2: 14,
-}
 ADDRESS_FRESH_WINDOW_MINUTES = 30
 ADDRESS_RECENT_WINDOW_MINUTES = 24 * 60
 RAPID_ORDER_WINDOW = timedelta(minutes=30)
 TOTAL_RISK_SUPPORTING_WEIGHT = 0.45
+
+DEVICE_STATUS_SCORES = {
+    'usual_device': 0,
+    'known_rare_device': 12,
+    'new_trusted_device': 22,
+    'not_registered_device': 35,
+}
+PASSWORD_STATUS_SCORES = {
+    'clean_password': 0,
+    'one_failed_password': 8,
+    'two_failed_password': 18,
+    'many_failed_password': 30,
+}
+OTP_STATUS_SCORES = {
+    'clean_otp': 0,
+    'one_failed_otp': 6,
+    'two_failed_otp': 14,
+    'many_failed_otp': 24,
+}
+ADDRESS_STATUS_SCORES = {
+    'stable_address': 0,
+    'recent_address': 6,
+    'fresh_address': 12,
+}
+ACCOUNT_ORDER_STATUS_SCORES = {
+    'normal_new_account_order': 0,
+    'watch_new_account_order': 8,
+    'high_new_account_order': 14,
+    'very_high_new_account_order': 20,
+}
+ORDER_STATUS_SCORES = {
+    'normal_order_frequency': 0,
+    'one_recent_order': 6,
+    'two_recent_order': 12,
+    'many_recent_order': 18,
+}
+
+
+def _status_score(status, score_map):
+    return int(score_map.get(status, 0))
+
+
+def _device_status_from_snapshot(trusted_device, same_device_count, is_top_device, is_new_device):
+    if trusted_device is None:
+        return 'not_registered_device'
+    if same_device_count == 0 and is_new_device:
+        return 'new_trusted_device'
+    if is_top_device and same_device_count >= 2:
+        return 'usual_device'
+    return 'known_rare_device'
+
+
+def _device_score_for_status(status):
+    return _status_score(status, DEVICE_STATUS_SCORES)
+
+
+def _password_status_for_count(password_count):
+    password_count = max(0, int(password_count or 0))
+    if password_count == 0:
+        return 'clean_password'
+    if password_count == 1:
+        return 'one_failed_password'
+    if password_count == 2:
+        return 'two_failed_password'
+    return 'many_failed_password'
+
+
+def _password_score_for_status(status):
+    return _status_score(status, PASSWORD_STATUS_SCORES)
+
+
+def _otp_status_for_count(otp_count):
+    otp_count = max(0, int(otp_count or 0))
+    if otp_count == 0:
+        return 'clean_otp'
+    if otp_count == 1:
+        return 'one_failed_otp'
+    if otp_count == 2:
+        return 'two_failed_otp'
+    return 'many_failed_otp'
+
+
+def _otp_score_for_status(status):
+    return _status_score(status, OTP_STATUS_SCORES)
+
+
+def _address_status_for_age(address_age_minutes):
+    address_age_minutes = max(0, int(address_age_minutes or 0))
+    if address_age_minutes <= ADDRESS_FRESH_WINDOW_MINUTES:
+        return 'fresh_address'
+    if address_age_minutes <= ADDRESS_RECENT_WINDOW_MINUTES:
+        return 'recent_address'
+    return 'stable_address'
+
+
+def _address_score_for_status(status):
+    return _status_score(status, ADDRESS_STATUS_SCORES)
+
+
+def _account_order_status_for_snapshot(account_age_days, grand_total):
+    account_age_days = max(0, int(account_age_days or 0))
+    grand_total = max(0, int(grand_total or 0))
+    if account_age_days <= 1 and grand_total >= 500000:
+        return 'very_high_new_account_order'
+    if account_age_days <= 7 and grand_total >= 1000000:
+        return 'high_new_account_order'
+    if account_age_days <= 30 and grand_total >= 1500000:
+        return 'watch_new_account_order'
+    return 'normal_new_account_order'
+
+
+def _account_order_score_for_status(status):
+    return _status_score(status, ACCOUNT_ORDER_STATUS_SCORES)
+
+
+def _order_status_for_count(recent_orders_30m_count):
+    recent_orders_30m_count = max(0, int(recent_orders_30m_count or 0))
+    if recent_orders_30m_count <= 0:
+        return 'normal_order_frequency'
+    if recent_orders_30m_count == 1:
+        return 'one_recent_order'
+    if recent_orders_30m_count == 2:
+        return 'two_recent_order'
+    return 'many_recent_order'
+
+
+def _order_score_for_status(status):
+    return _status_score(status, ORDER_STATUS_SCORES)
+
+
+def _order_monitoring_summary_from_scores(
+    device_score,
+    password_score,
+    otp_score,
+    address_score,
+    account_order_score,
+    order_score,
+):
+    hijack_risk_score = min(
+        100,
+        max(0, int(device_score or 0))
+        + max(0, int(password_score or 0))
+        + max(0, int(otp_score or 0)),
+    )
+    fraud_risk_score = min(
+        100,
+        max(0, int(address_score or 0))
+        + max(0, int(account_order_score or 0))
+        + max(0, int(order_score or 0)),
+    )
+    dominant_risk = max(hijack_risk_score, fraud_risk_score)
+    supporting_risk = min(hijack_risk_score, fraud_risk_score)
+    total_risk_score = min(
+        100,
+        dominant_risk + int(round(supporting_risk * TOTAL_RISK_SUPPORTING_WEIGHT)),
+    )
+    return {
+        'hijack_risk_score': hijack_risk_score,
+        'fraud_risk_score': fraud_risk_score,
+        'total_risk_score': total_risk_score,
+    }
 
 
 def _serialize_address(item):
@@ -106,14 +249,13 @@ def _trusted_device_for_order(user, trust_token):
     )
 
 
-def _trusted_device_status_for_order(user, trusted_device):
+def _device_status_for_order(user, trusted_device):
     if trusted_device is None:
-        return 'not_registered'
+        return 'not_registered_device'
 
     previous_monitorings = OrderMonitoring.objects.filter(order__user=user)
     same_device_count = previous_monitorings.filter(trusted_device=trusted_device).count()
-    if same_device_count == 0 and timezone.now() - trusted_device.created_at <= DEVICE_NEW_WINDOW:
-        return 'new_trusted'
+    is_new_device = timezone.now() - trusted_device.created_at <= DEVICE_NEW_WINDOW
 
     device_counts = list(
         previous_monitorings
@@ -123,13 +265,12 @@ def _trusted_device_status_for_order(user, trusted_device):
         .order_by('-total', 'trusted_device_id')
     )
     top_device = device_counts[0] if device_counts else None
-    if top_device and top_device['trusted_device_id'] == trusted_device.id and same_device_count >= 2:
-        return 'usual'
-    return 'known_rare'
-
-
-def _device_risk_score_for_status(trusted_device_status):
-    return DEVICE_RISK_SCORES.get(trusted_device_status, 0)
+    return _device_status_from_snapshot(
+        trusted_device,
+        same_device_count=same_device_count,
+        is_top_device=bool(top_device and top_device['trusted_device_id'] == trusted_device.id),
+        is_new_device=is_new_device,
+    )
 
 
 def _failed_password_count_for_login(user, login_id):
@@ -149,12 +290,6 @@ def _failed_password_count_for_login(user, login_id):
     )
 
 
-def _failed_password_score_for_count(failed_password_count):
-    if failed_password_count >= 3:
-        return 30
-    return FAILED_PASSWORD_SCORES.get(failed_password_count, 0)
-
-
 def _failed_otp_count_for_login(user, login_id):
     login_id = str(login_id or '').strip()
     if not login_id:
@@ -172,18 +307,6 @@ def _failed_otp_count_for_login(user, login_id):
     )
 
 
-def _failed_otp_score_for_count(failed_otp_count):
-    if failed_otp_count >= 3:
-        return 24
-    return FAILED_OTP_SCORES.get(failed_otp_count, 0)
-
-
-# ======================= HIJACK SCORE =======================
-def _hijack_risk_score_for_order(device_risk_score, failed_password_score, failed_otp_score):
-    return min(100, device_risk_score + failed_password_score + failed_otp_score)
-
-
-# ======================= FRAUD: ALAMAT BARU =======================
 def _address_age_minutes_for_order(address, current_time):
     if not address or not address.created_at:
         return 0
@@ -191,55 +314,6 @@ def _address_age_minutes_for_order(address, current_time):
     return max(0, int(delta.total_seconds() // 60))
 
 
-def _new_address_score_for_age(address_age_minutes):
-    if address_age_minutes <= ADDRESS_FRESH_WINDOW_MINUTES:
-        return 12
-    if address_age_minutes <= ADDRESS_RECENT_WINDOW_MINUTES:
-        return 6
-    return 0
-
-
-# ======================= FRAUD: NOMINAL TIDAK WAJAR =======================
-def _order_amount_ratio_percent_for_order(user, grand_total):
-    previous_orders = Order.objects.filter(user=user)
-    if previous_orders.count() < 3:
-        return 0
-    average_total = previous_orders.aggregate(avg_total=Avg('grand_total'))['avg_total'] or 0
-    if not average_total:
-        return 0
-    return int(round((grand_total * 100) / average_total))
-
-
-def _amount_anomaly_score_for_ratio(order_amount_ratio_percent):
-    if order_amount_ratio_percent <= 150:
-        return 0
-    if order_amount_ratio_percent <= 250:
-        return 8
-    if order_amount_ratio_percent <= 400:
-        return 18
-    return 30
-
-
-# ======================= FRAUD: BORONG / QTY =======================
-def _order_quantity_snapshot(cart_items):
-    quantities = [int(it.quantity or 0) for it in cart_items]
-    return {
-        'total_item_quantity': sum(quantities),
-        'max_single_product_quantity': max(quantities, default=0),
-    }
-
-
-def _bulk_order_score_for_quantities(total_item_quantity, max_single_product_quantity):
-    if max_single_product_quantity >= 10 or total_item_quantity >= 18:
-        return 16
-    if max_single_product_quantity >= 7 or total_item_quantity >= 12:
-        return 10
-    if max_single_product_quantity >= 5 or total_item_quantity >= 8:
-        return 5
-    return 0
-
-
-# ======================= FRAUD: AKUN BARU + ORDER BESAR =======================
 def _account_age_days_for_order(user, current_time):
     if not user or not user.created_at:
         return 0
@@ -247,62 +321,11 @@ def _account_age_days_for_order(user, current_time):
     return max(0, int(delta.total_seconds() // 86400))
 
 
-def _new_account_big_order_score_for_order(account_age_days, grand_total):
-    if account_age_days <= 1 and grand_total >= 500000:
-        return 20
-    if account_age_days <= 7 and grand_total >= 1000000:
-        return 14
-    if account_age_days <= 30 and grand_total >= 1500000:
-        return 8
-    return 0
-
-
-# ======================= FRAUD: BANYAK ORDER CEPAT =======================
 def _recent_orders_30m_count_for_order(user, current_time):
     return (
         Order.objects
         .filter(user=user, created_at__gte=current_time - RAPID_ORDER_WINDOW)
         .count()
-    )
-
-
-def _rapid_order_score_for_count(recent_orders_30m_count):
-    if recent_orders_30m_count <= 0:
-        return 0
-    if recent_orders_30m_count == 1:
-        return 6
-    if recent_orders_30m_count == 2:
-        return 12
-    return 18
-
-
-# ======================= FRAUD SCORE =======================
-def _fraud_risk_score_for_order(
-    new_address_score,
-    amount_anomaly_score,
-    bulk_order_score,
-    new_account_big_order_score,
-    rapid_order_score,
-):
-    return min(
-        100,
-        new_address_score
-        + amount_anomaly_score
-        + bulk_order_score
-        + new_account_big_order_score
-        + rapid_order_score,
-    )
-
-
-# ======================= TOTAL SCORE =======================
-def _total_risk_score_for_order(hijack_risk_score, fraud_risk_score):
-    dominant_risk = max(hijack_risk_score, fraud_risk_score)
-    supporting_risk = min(hijack_risk_score, fraud_risk_score)
-    # The strongest category sets the baseline; the second category only
-    # amplifies it partially so we avoid inflated totals from simple addition.
-    return min(
-        100,
-        dominant_risk + int(round(supporting_risk * TOTAL_RISK_SUPPORTING_WEIGHT)),
     )
 
 
@@ -406,37 +429,31 @@ def create_order(request):
     current_time = timezone.now()
     proof_path = _save_payment_proof(user.id, payment_proof)
     trusted_device = _trusted_device_for_order(user, trust_token)
-    trusted_device_status = _trusted_device_status_for_order(user, trusted_device)
-    device_risk_score = _device_risk_score_for_status(trusted_device_status)
-    failed_password_count = _failed_password_count_for_login(user, login_id)
-    failed_password_score = _failed_password_score_for_count(failed_password_count)
-    failed_otp_count = _failed_otp_count_for_login(user, login_id)
-    failed_otp_score = _failed_otp_score_for_count(failed_otp_count)
-    hijack_risk_score = _hijack_risk_score_for_order(
-        device_risk_score,
-        failed_password_score,
-        failed_otp_score,
-    )
+    device_status = _device_status_for_order(user, trusted_device)
+    device_score = _device_score_for_status(device_status)
+    password_count = _failed_password_count_for_login(user, login_id)
+    password_status = _password_status_for_count(password_count)
+    password_score = _password_score_for_status(password_status)
+    otp_count = _failed_otp_count_for_login(user, login_id)
+    otp_status = _otp_status_for_count(otp_count)
+    otp_score = _otp_score_for_status(otp_status)
     address_age_minutes = _address_age_minutes_for_order(address, current_time)
-    new_address_score = _new_address_score_for_age(address_age_minutes)
-    order_amount_ratio_percent = _order_amount_ratio_percent_for_order(user, grand_total)
-    amount_anomaly_score = _amount_anomaly_score_for_ratio(order_amount_ratio_percent)
-    quantity_snapshot = _order_quantity_snapshot(cart_items)
-    total_item_quantity = quantity_snapshot['total_item_quantity']
-    max_single_product_quantity = quantity_snapshot['max_single_product_quantity']
-    bulk_order_score = _bulk_order_score_for_quantities(total_item_quantity, max_single_product_quantity)
+    address_status = _address_status_for_age(address_age_minutes)
+    address_score = _address_score_for_status(address_status)
     account_age_days = _account_age_days_for_order(user, current_time)
-    new_account_big_order_score = _new_account_big_order_score_for_order(account_age_days, grand_total)
+    account_order_status = _account_order_status_for_snapshot(account_age_days, grand_total)
+    account_order_score = _account_order_score_for_status(account_order_status)
     recent_orders_30m_count = _recent_orders_30m_count_for_order(user, current_time)
-    rapid_order_score = _rapid_order_score_for_count(recent_orders_30m_count)
-    fraud_risk_score = _fraud_risk_score_for_order(
-        new_address_score,
-        amount_anomaly_score,
-        bulk_order_score,
-        new_account_big_order_score,
-        rapid_order_score,
+    order_status = _order_status_for_count(recent_orders_30m_count)
+    order_score = _order_score_for_status(order_status)
+    summary = _order_monitoring_summary_from_scores(
+        device_score,
+        password_score,
+        otp_score,
+        address_score,
+        account_order_score,
+        order_score,
     )
-    total_risk_score = _total_risk_score_for_order(hijack_risk_score, fraud_risk_score)
     current_device_label = device_label(request)
 
     with transaction.atomic():
@@ -466,27 +483,20 @@ def create_order(request):
             login_id=login_id,
             trusted_device=trusted_device,
             device_label_snapshot=trusted_device.device_label if trusted_device else current_device_label,
-            trusted_device_status=trusted_device_status,
-            device_risk_score=device_risk_score,
-            failed_password_count=failed_password_count,
-            failed_password_score=failed_password_score,
-            failed_otp_count=failed_otp_count,
-            failed_otp_score=failed_otp_score,
-            hijack_risk_score=hijack_risk_score,
-            address_age_minutes=address_age_minutes,
-            new_address_score=new_address_score,
-            order_amount_ratio_percent=order_amount_ratio_percent,
-            amount_anomaly_score=amount_anomaly_score,
-            total_item_quantity=total_item_quantity,
-            max_single_product_quantity=max_single_product_quantity,
-            bulk_order_score=bulk_order_score,
-            account_age_days=account_age_days,
-            new_account_big_order_score=new_account_big_order_score,
-            recent_orders_30m_count=recent_orders_30m_count,
-            rapid_order_score=rapid_order_score,
-            fraud_risk_score=fraud_risk_score,
-            total_risk_score=total_risk_score,
-            trusted_device_created_at_snapshot=trusted_device.created_at if trusted_device else None,
+            device_status=device_status,
+            device_score=device_score,
+            password_count=password_count,
+            password_status=password_status,
+            password_score=password_score,
+            otp_count=otp_count,
+            otp_status=otp_status,
+            otp_score=otp_score,
+            address_status=address_status,
+            address_score=address_score,
+            account_order_status=account_order_status,
+            account_order_score=account_order_score,
+            order_status=order_status,
+            order_score=order_score,
         )
 
         OrderItem.objects.bulk_create([
@@ -508,4 +518,5 @@ def create_order(request):
         'order_id': order.id,
         'order_code': order.order_code,
         'status': order.status,
+        'risk_score': summary['total_risk_score'],
     }, status=201)

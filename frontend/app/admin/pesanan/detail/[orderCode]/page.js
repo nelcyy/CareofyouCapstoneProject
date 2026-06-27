@@ -69,6 +69,221 @@ function statusMeta(status) {
 function riskMeta(level) {
   return RISK_META[level] || { label: level || '-', color: '#9ca3af', bg: 'rgba(156,163,175,0.14)' };
 }
+function toNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function describeDeviceRisk(device = {}) {
+  const status = device.device_status || device.trusted_device_status || '';
+  switch (status) {
+    case 'usual_device':
+      return 'Perangkat ini sudah biasa dipakai untuk order.';
+    case 'known_rare_device':
+      return 'Perangkat ini pernah dipakai, tapi tidak sesering biasanya.';
+    case 'new_trusted_device':
+      return 'Perangkat tepercaya ini masih baru digunakan.';
+    case 'not_registered_device':
+      return 'Perangkat ini belum dikenali sebagai perangkat tepercaya.';
+    default:
+      return device.device_status_label || device.trusted_device_status_label || 'Status perangkat tidak tersedia.';
+  }
+}
+
+function summarizeDeviceRisk(device = {}) {
+  const status = device.device_status || device.trusted_device_status || '';
+  switch (status) {
+    case 'usual_device':
+      return 'Perangkat yang biasa dipakai.';
+    case 'known_rare_device':
+      return 'Perangkat dikenal, tapi jarang dipakai.';
+    case 'new_trusted_device':
+      return 'Trusted device ini masih baru.';
+    case 'not_registered_device':
+      return 'Belum ada di daftar trusted device.';
+    default:
+      return device.device_status_label || device.trusted_device_status_label || 'Status perangkat tidak tersedia.';
+  }
+}
+
+function describePasswordRisk(password = {}) {
+  const count = toNumber(password.password_count ?? password.failed_password_count);
+  if (count <= 0) return 'Aman, tidak ada salah password sebelum order ini.';
+  if (count === 1) return 'Ada 1x salah password sebelum order ini.';
+  if (count === 2) return 'Ada 2x salah password sebelum order ini.';
+  return `Ada ${count}x salah password sebelum order ini.`;
+}
+
+function summarizePasswordRisk(password = {}) {
+  const count = toNumber(password.password_count ?? password.failed_password_count);
+  if (count <= 0) return 'Tidak ada salah password.';
+  if (count === 1) return '1x salah password.';
+  if (count === 2) return '2x salah password.';
+  return `${count}x salah password.`;
+}
+
+function describeOtpRisk(otp = {}) {
+  const count = toNumber(otp.otp_count ?? otp.failed_otp_count);
+  if (count <= 0) return 'Aman, tidak ada percobaan OTP yang gagal.';
+  if (count === 1) return 'Ada 1x gagal OTP sebelum order ini.';
+  if (count === 2) return 'Ada 2x gagal OTP sebelum order ini.';
+  return `Ada ${count}x gagal OTP sebelum order ini.`;
+}
+
+function summarizeOtpRisk(otp = {}) {
+  const count = toNumber(otp.otp_count ?? otp.failed_otp_count);
+  if (count <= 0) return 'Tidak ada gagal OTP.';
+  if (count === 1) return '1x gagal OTP.';
+  if (count === 2) return '2x gagal OTP.';
+  return `${count}x gagal OTP.`;
+}
+
+function describeAddressRisk(address = {}) {
+  const status = address.address_status || '';
+  switch (status) {
+    case 'fresh_address':
+      return 'Alamat pengiriman ini baru saja ditambahkan sebelum order.';
+    case 'recent_address':
+      return 'Alamat pengiriman ini masih tergolong baru.';
+    case 'stable_address':
+      return 'Alamat pengiriman ini sudah lama tersimpan.';
+    default:
+      return address.address_status_label || 'Status alamat tidak tersedia.';
+  }
+}
+
+function summarizeAddressRisk(address = {}) {
+  const status = address.address_status || '';
+  switch (status) {
+    case 'fresh_address':
+      return 'Alamat baru saja ditambahkan.';
+    case 'recent_address':
+      return 'Alamat ini masih baru.';
+    case 'stable_address':
+      return 'Alamat lama yang sudah stabil.';
+    default:
+      return address.address_status_label || 'Status alamat tidak tersedia.';
+  }
+}
+
+function describeAccountOrderRisk(accountOrder = {}) {
+  const status = accountOrder.account_order_status || '';
+  switch (status) {
+    case 'very_high_new_account_order':
+      return 'Akun sangat baru dan nilai ordernya besar.';
+    case 'high_new_account_order':
+      return 'Akun baru dengan nilai order yang cukup besar.';
+    case 'watch_new_account_order':
+      return 'Akun relatif baru dan nilai order mulai besar.';
+    case 'normal_new_account_order':
+      return 'Umur akun dan nilai order masih terlihat wajar.';
+    default:
+      return accountOrder.account_order_status_label || 'Status akun dan order tidak tersedia.';
+  }
+}
+
+function summarizeAccountOrderRisk(accountOrder = {}) {
+  const status = accountOrder.account_order_status || '';
+  switch (status) {
+    case 'very_high_new_account_order':
+      return 'Akun sangat baru dengan order besar.';
+    case 'high_new_account_order':
+      return 'Akun baru dengan order cukup besar.';
+    case 'watch_new_account_order':
+      return 'Akun relatif baru dengan order besar.';
+    case 'normal_new_account_order':
+      return 'Masih terlihat normal.';
+    default:
+      return accountOrder.account_order_status_label || 'Status akun dan order tidak tersedia.';
+  }
+}
+
+function describeOrderFrequencyRisk(orderFrequency = {}) {
+  const status = orderFrequency.order_status || '';
+  switch (status) {
+    case 'one_recent_order':
+      return 'Ada 1 order lain dalam 30 menit terakhir.';
+    case 'two_recent_order':
+      return 'Ada 2 order lain dalam 30 menit terakhir.';
+    case 'many_recent_order':
+      return 'Ada 3 atau lebih order lain dalam 30 menit terakhir.';
+    case 'normal_order_frequency':
+      return 'Tidak ada pola order beruntun dalam waktu dekat.';
+    default:
+      return orderFrequency.order_status_label || 'Frekuensi order terlihat normal.';
+  }
+}
+
+function summarizeOrderFrequencyRisk(orderFrequency = {}) {
+  const status = orderFrequency.order_status || '';
+  switch (status) {
+    case 'one_recent_order':
+      return 'Ada 1 order berdekatan.';
+    case 'two_recent_order':
+      return 'Ada 2 order berdekatan.';
+    case 'many_recent_order':
+      return 'Ada 3+ order berdekatan.';
+    case 'normal_order_frequency':
+      return 'Frekuensi order normal.';
+    default:
+      return orderFrequency.order_status_label || 'Frekuensi order terlihat normal.';
+  }
+}
+
+function buildMonitoringInsights(monitoring = {}) {
+  const device = monitoring.device || {};
+  const password = monitoring.password || {};
+  const otp = monitoring.otp || {};
+  const fraud = monitoring.fraud || {};
+  const address = fraud.address || {};
+  const accountOrder = fraud.account_order || fraud.new_account || {};
+  const orderFrequency = fraud.order_frequency || fraud.rapid_order || {};
+
+  return [
+    {
+      key: 'device',
+      label: 'Device',
+      summary: summarizeDeviceRisk(device),
+      description: describeDeviceRisk(device),
+      score: toNumber(device.device_score ?? device.device_risk_score),
+    },
+    {
+      key: 'password',
+      label: 'Password',
+      summary: summarizePasswordRisk(password),
+      description: describePasswordRisk(password),
+      score: toNumber(password.password_score ?? password.failed_password_score),
+    },
+    {
+      key: 'otp',
+      label: 'OTP',
+      summary: summarizeOtpRisk(otp),
+      description: describeOtpRisk(otp),
+      score: toNumber(otp.otp_score ?? otp.failed_otp_score),
+    },
+    {
+      key: 'address',
+      label: 'Alamat',
+      summary: summarizeAddressRisk(address),
+      description: describeAddressRisk(address),
+      score: toNumber(address.address_score ?? address.new_address_score),
+    },
+    {
+      key: 'account_order',
+      label: 'Akun + Order',
+      summary: summarizeAccountOrderRisk(accountOrder),
+      description: describeAccountOrderRisk(accountOrder),
+      score: toNumber(accountOrder.account_order_score ?? accountOrder.new_account_big_order_score),
+    },
+    {
+      key: 'order_frequency',
+      label: 'Order Cepat',
+      summary: summarizeOrderFrequencyRisk(orderFrequency),
+      description: describeOrderFrequencyRisk(orderFrequency),
+      score: toNumber(orderFrequency.order_score ?? orderFrequency.rapid_order_score),
+    },
+  ];
+}
 
 /* ── presentational helpers ── */
 function Card({ title, action, children, className = '' }) {
@@ -603,6 +818,14 @@ export default function DetailPesananPage() {
 
   const st = detail ? statusMeta(detail.status) : null;
   const risk = detail ? riskMeta(detail.risk_level) : null;
+  const monitoring = detail?.monitoring || {};
+  const monitoringInsights = buildMonitoringInsights(monitoring);
+  const monitoringDevice = monitoring.device || {};
+  const monitoringTopInsights = monitoringInsights
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  const monitoringPositiveCount = monitoringTopInsights.length;
+  const monitoringSummary = monitoring.summary || {};
   const hasAction = canProcess || showShipAction || showCompleteAction;
 
   return (
@@ -638,6 +861,65 @@ export default function DetailPesananPage() {
                 <div className="adm-od-pills">
                   <span className="adm-status-pill" style={{ color: st.color, background: st.bg }}>{st.label}</span>
                   <span className="adm-risk-pill" style={{ color: risk.color, background: risk.bg }}>Risiko {risk.label}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="adm-card adm-od-topmon">
+                <div className="adm-od-topmon-head">
+                  <div className="adm-od-topmon-head-main">
+                    <span className="adm-od-subhead">Monitoring Ringkas</span>
+                    <h3 className="adm-od-topmon-title">Ringkasan risiko pesanan</h3>
+                  </div>
+                  <div className="adm-od-topmon-device-meta">
+                    <span className="adm-od-topmon-device-label">Device Saat Order</span>
+                    <strong className="adm-od-topmon-device-value">{monitoringDevice.device_label_snapshot || '-'}</strong>
+                </div>
+              </div>
+
+              <div className="adm-od-topmon-grid">
+                <div className="adm-od-topmon-total">
+                  <div className="adm-od-topmon-total-top">
+                    <span className="adm-od-topmon-total-caption">Total Risk Score</span>
+                    {risk && (
+                      <span className="adm-od-topmon-pill" style={{ color: risk.color, background: risk.bg }}>
+                        {risk.label}
+                      </span>
+                    )}
+                  </div>
+                  <strong className="adm-od-topmon-total-value">{monitoringSummary.total_risk_score ?? 0}</strong>
+                  <p className="adm-od-topmon-total-note">
+                    {monitoringPositiveCount > 0
+                      ? `${monitoringPositiveCount} faktor utama perlu diperhatikan pada pesanan ini.`
+                      : 'Saat ini belum ada faktor utama yang perlu diperhatikan.'}
+                  </p>
+                </div>
+
+                <div className="adm-od-topmon-factors-wrap">
+                  <div className="adm-od-topmon-factors-head">
+                    <span className="adm-od-topmon-factors-title">Faktor Utama</span>
+                    {monitoringPositiveCount > 0 && (
+                      <span className="adm-od-topmon-factors-count">{monitoringPositiveCount} faktor</span>
+                    )}
+                  </div>
+
+                  {monitoringTopInsights.length > 0 ? (
+                    <div className="adm-od-topmon-factors">
+                      {monitoringTopInsights.map((item) => (
+                        <article key={item.key} className="adm-od-topmon-factor">
+                          <div className="adm-od-topmon-factor-top">
+                            <span className="adm-od-topmon-factor-label">{item.label}</span>
+                            <span className="adm-od-topmon-factor-score">+{item.score}</span>
+                          </div>
+                          <p className="adm-od-topmon-factor-copy">{item.summary}</p>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="adm-od-topmon-empty">
+                      Saat ini belum ada faktor utama yang perlu diperhatikan.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -816,67 +1098,55 @@ export default function DetailPesananPage() {
 
                 {/* Monitoring */}
                 <Card title="Monitoring Risiko">
-                  <div className="adm-od-mon">
-                    <div className="adm-od-mon-block">
-                      <p className="adm-od-subhead">Device</p>
-                      <Row label="Device Label">{detail.monitoring?.device?.device_label_snapshot || '-'}</Row>
-                      <Row label="Status Saat Order">{detail.monitoring?.device?.trusted_device_status_label || '-'}</Row>
-                      <Row label="Score Device">{detail.monitoring?.device?.device_risk_score ?? 0}</Row>
-                    </div>
-                    <div className="adm-od-mon-block">
-                      <p className="adm-od-subhead">Password</p>
-                      <Row label="Jumlah Salah Password">{detail.monitoring?.password?.failed_password_count ?? 0}</Row>
-                      <Row label="Score Password">{detail.monitoring?.password?.failed_password_score ?? 0}</Row>
-                    </div>
-                    <div className="adm-od-mon-block">
-                      <p className="adm-od-subhead">OTP</p>
-                      <Row label="Jumlah Gagal OTP">{detail.monitoring?.otp?.failed_otp_count ?? 0}</Row>
-                      <Row label="Score OTP">{detail.monitoring?.otp?.failed_otp_score ?? 0}</Row>
-                    </div>
-                    <div className="adm-od-mon-block">
-                      <p className="adm-od-subhead">Fraud — Alamat</p>
-                      <Row label="Umur Alamat Saat Order">{detail.monitoring?.fraud?.address?.address_age_minutes ?? 0} menit</Row>
-                      <Row label="Score Alamat Baru">{detail.monitoring?.fraud?.address?.new_address_score ?? 0}</Row>
-                    </div>
-                    <div className="adm-od-mon-block">
-                      <p className="adm-od-subhead">Fraud — Nominal</p>
-                      <Row label="Rasio Nominal vs Kebiasaan">
-                        {detail.monitoring?.fraud?.amount?.order_amount_ratio_percent
-                          ? `${detail.monitoring?.fraud?.amount?.order_amount_ratio_percent}%`
-                          : '-'}
-                      </Row>
-                      <Row label="Score Nominal">{detail.monitoring?.fraud?.amount?.amount_anomaly_score ?? 0}</Row>
-                    </div>
-                    <div className="adm-od-mon-block">
-                      <p className="adm-od-subhead">Fraud — Qty</p>
-                      <Row label="Total Qty Item">{detail.monitoring?.fraud?.qty?.total_item_quantity ?? 0}</Row>
-                      <Row label="Qty Terbanyak per Produk">{detail.monitoring?.fraud?.qty?.max_single_product_quantity ?? 0}</Row>
-                      <Row label="Score Borong">{detail.monitoring?.fraud?.qty?.bulk_order_score ?? 0}</Row>
-                    </div>
-                    <div className="adm-od-mon-block">
-                      <p className="adm-od-subhead">Fraud — Akun Baru</p>
-                      <Row label="Umur Akun Saat Order">{detail.monitoring?.fraud?.new_account?.account_age_days ?? 0} hari</Row>
-                      <Row label="Score Akun Baru + Order Besar">{detail.monitoring?.fraud?.new_account?.new_account_big_order_score ?? 0}</Row>
-                    </div>
-                    <div className="adm-od-mon-block">
-                      <p className="adm-od-subhead">Fraud — Order Cepat</p>
-                      <Row label="Order Sebelumnya 30 Menit">{detail.monitoring?.fraud?.rapid_order?.recent_orders_30m_count ?? 0}</Row>
-                      <Row label="Score Order Cepat">{detail.monitoring?.fraud?.rapid_order?.rapid_order_score ?? 0}</Row>
-                    </div>
-                  </div>
+                  <div className="adm-od-mon-shell">
+                    <div className="adm-od-mon-hero">
+                      <div className="adm-od-mon-total-card adm-od-mon-total-card--compact">
+                        <span className="adm-od-subhead">Total Risk Score</span>
+                        <strong className="adm-od-mon-total-value">{monitoringSummary.total_risk_score ?? 0}</strong>
+                        <p className="adm-od-mon-total-copy">
+                          {monitoringPositiveCount > 0
+                            ? `${monitoringPositiveCount} faktor utama tercatat pada pesanan ini.`
+                            : 'Belum ada faktor utama yang perlu diperhatikan.'}
+                        </p>
+                      </div>
 
-                  <div className="adm-od-score-grid">
-                    <div className="adm-od-score">
-                      <span className="adm-od-score-val">{detail.monitoring?.summary?.hijack_risk_score ?? 0}</span>
-                      <span className="adm-od-score-label">Hijack Risk</span>
+                      <div className="adm-od-mon-device-card adm-od-mon-device-card--simple">
+                        <div className="adm-od-mon-simple-main">
+                          <span className="adm-od-subhead">Device Saat Order</span>
+                          <p className="adm-od-mon-device">{monitoringDevice.device_label_snapshot || '-'}</p>
+                          <p className="adm-od-mon-status">
+                            {monitoringDevice.device_status_label ||
+                              monitoringDevice.trusted_device_status_label ||
+                              'Status perangkat tidak tersedia.'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="adm-od-score">
-                      <span className="adm-od-score-val">{detail.monitoring?.summary?.fraud_risk_score ?? 0}</span>
-                      <span className="adm-od-score-label">Fraud Risk</span>
-                    </div>
-                    <div className="adm-od-score adm-od-score--total">
-                      <span className="adm-od-score-val">{detail.monitoring?.summary?.total_risk_score ?? 0}</span>
-                      <span className="adm-od-score-label">Total Risk</span>
+
+                    <div className="adm-od-mon-detail">
+                      <div className="adm-od-mon-section-head">
+                        <div>
+                          <span className="adm-od-subhead">Detail Monitoring</span>
+                          <p className="adm-od-mon-section-copy">
+                            Rincian setiap faktor monitoring pesanan.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="adm-od-mon-list">
+                        {monitoringInsights.map((item) => (
+                          <div key={item.key} className={`adm-od-mon-item${item.score > 0 ? ' adm-od-mon-item--active' : ''}`}>
+                            <div className="adm-od-mon-item-main">
+                              <span className="adm-od-mon-item-title">{item.label}</span>
+                              <p className="adm-od-mon-item-desc">{item.description}</p>
+                            </div>
+                            <div className={`adm-od-mon-item-score${item.score > 0 ? ' adm-od-mon-item-score--active' : ''}`}>
+                              <span>Score</span>
+                              <strong>{item.score}</strong>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -903,11 +1173,6 @@ export default function DetailPesananPage() {
                   <div className="adm-od-sum-row"><span>Ongkir</span><span>Rp {formatRibuan(detail.shipping_fee)}</span></div>
                   <div className="adm-od-sum-divider" />
                   <div className="adm-od-sum-total"><span>Grand Total</span><span>Rp {formatRibuan(detail.grand_total)}</span></div>
-
-                  <div className="adm-od-sum-meta">
-                    <Row label="Approve butuh OTP">{detail.approve_requires_otp ? 'Ya' : 'Tidak'}</Row>
-                    <Row label="Reject butuh OTP">{detail.reject_requires_otp ? 'Ya' : 'Tidak'}</Row>
-                  </div>
 
                   {hasAction ? (
                     <div className="adm-od-actions">
