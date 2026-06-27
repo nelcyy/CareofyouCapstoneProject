@@ -1,6 +1,8 @@
 :root {
   --background: #fdf6f5;
   --foreground: #171717;
+  /* warna ujung bawah footer (.site-footer) buat overscroll bawah */
+  --footer-end: #2a1614;
   /* App ini full tema terang. Kunci ke light biar dark-mode OS nggak
      ngebalik warna jadi hitam (yang tadinya kelihatan pas overscroll). */
   color-scheme: light;
@@ -8,8 +10,10 @@
 
 html {
   height: 100%;
-  /* warna canvas/overscroll ikut background brand, bukan hitam */
-  background: var(--background);
+  /* Warna canvas/overscroll = warna footer, biar area setelah footer (pas
+     scroll mentok bawah) menyatu sama footer, bukan putih. Konten sendiri tetap
+     pink karena body & tiap halaman punya background-nya masing-masing. */
+  background: var(--footer-end);
 }
 
 html,

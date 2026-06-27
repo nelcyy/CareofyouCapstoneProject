@@ -24,6 +24,7 @@ urlpatterns = [
 
     # admin > dashboard
     path('api/admin/dashboard/stats', admin_dashboard_views.dashboard_stats),
+    path('api/admin/notifications', admin_dashboard_views.notification_counts),
 
     # admin > produk
     path('api/admin/produk/categories', admin_produk_views.list_categories),

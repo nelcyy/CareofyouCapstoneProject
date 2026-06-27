@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { apiUrl } from '@/api';
 import './AdminSidebar.css';
 
 /* ── inline icons ── */
@@ -42,14 +43,56 @@ const NAV_ITEMS = [
   { href: '/admin/retur', label: 'Retur', icon: <IcReturn />, badge: 'returns' },
 ];
 
-// CATATAN DATA BACKEND (belum di-wire, nunggu di-pass):
-//   - pendingOrders  : jumlah pesanan pending buat badge di menu "Pesanan".
-//   - pendingReturns : jumlah retur pending buat badge di menu "Retur".
-// Default 0 -> badge otomatis disembunyikan. Tidak ada angka palsu di sini.
-export default function AdminSidebar({ pendingOrders = 0, pendingReturns = 0 }) {
+// Badge "pesanan/retur baru" ngambil angka dari backend
+// (GET /api/admin/notifications). Aturan "apa itu baru" dihitung di backend;
+// frontend cuma nampilin angkanya. Badge otomatis hilang kalau 0.
+export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState(0);
+  const [pendingReturns, setPendingReturns] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    const loadCounts = () => {
+      fetch(apiUrl('/api/admin/notifications'))
+        .then((r) => r.json())
+        .then((d) => {
+          if (!alive || !d) return;
+          setPendingOrders(Number(d.pending_orders) || 0);
+          setPendingReturns(Number(d.pending_returns) || 0);
+        })
+        .catch(() => {});
+    };
+    loadCounts();
+    // refresh berkala biar badge ikut update kalau ada pesanan/retur baru
+    const id = setInterval(loadCounts, 30000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  // ingat pilihan hide/show sidebar (desktop) antar halaman
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem('adm_sidebar_collapsed') === '1');
+    } catch (_) {}
+  }, []);
+
+  function hideSidebar() {
+    setCollapsed(true);
+    setOpen(false);
+    try { window.localStorage.setItem('adm_sidebar_collapsed', '1'); } catch (_) {}
+  }
+
+  function showSidebar() {
+    setCollapsed(false);
+    setOpen(true);
+    try { window.localStorage.setItem('adm_sidebar_collapsed', '0'); } catch (_) {}
+  }
 
   const isActive = (href, exact) =>
     exact ? pathname === href : pathname === href || pathname?.startsWith(href + '/');
@@ -68,7 +111,11 @@ export default function AdminSidebar({ pendingOrders = 0, pendingReturns = 0 }) 
   return (
     <>
       {/* Tombol hamburger — cuma muncul di layar kecil */}
-      <button className="adm-sidebar-toggle" onClick={() => setOpen(true)} aria-label="Buka menu">
+      <button
+        className={`adm-sidebar-toggle${collapsed ? ' adm-sidebar-toggle--visible' : ''}`}
+        onClick={showSidebar}
+        aria-label="Buka menu"
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
         </svg>
@@ -76,7 +123,7 @@ export default function AdminSidebar({ pendingOrders = 0, pendingReturns = 0 }) 
 
       {open && <div className="adm-sidebar-overlay" onClick={() => setOpen(false)} />}
 
-      <aside className={`adm-sidebar${open ? ' adm-sidebar--open' : ''}`}>
+      <aside className={`adm-sidebar${open ? ' adm-sidebar--open' : ''}${collapsed ? ' adm-sidebar--collapsed' : ''}`}>
         {/* Logo */}
         <div className="adm-sidebar-logo">
           <img src="/logo-careofyou.png" alt="Careofyou" className="adm-sidebar-logo-img" />
@@ -84,6 +131,16 @@ export default function AdminSidebar({ pendingOrders = 0, pendingReturns = 0 }) 
             <span className="adm-sidebar-brand">careofyou</span>
             <span className="adm-sidebar-role">Panel Admin</span>
           </div>
+          <button
+            className="adm-sidebar-collapse"
+            onClick={hideSidebar}
+            aria-label="Sembunyikan menu"
+            title="Sembunyikan menu"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
         </div>
 
         {/* Nav */}

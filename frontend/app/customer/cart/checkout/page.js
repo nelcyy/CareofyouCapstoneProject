@@ -92,6 +92,7 @@ export default function CheckoutPage() {
   const [paymentCountdown, setPaymentCountdown] = useState(180);
   const [orderError, setOrderError] = useState('');
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(null); // kode order kalau sukses
   // UI-only state (bukan backend): drag-drop + preview gambar bukti transfer
   const [proofDrag, setProofDrag] = useState(false);
   const [proofPreview, setProofPreview] = useState(null);
@@ -199,6 +200,7 @@ export default function CheckoutPage() {
     setPaymentCountdown(180);
     setOrderError('');
     setIsSubmittingOrder(false);
+    setOrderSuccess(null);
     setShowOrderPopup(true);
   }
 
@@ -208,6 +210,7 @@ export default function CheckoutPage() {
     setPaymentCountdown(180);
     setOrderError('');
     setIsSubmittingOrder(false);
+    setOrderSuccess(null);
   }
 
   function updateAddressField(field, value) {
@@ -291,9 +294,7 @@ export default function CheckoutPage() {
       }
 
       setItems([]);
-      closeOrderPopup();
-      alert(`Order berhasil dibuat. Kode order: ${data.order_code}`);
-      router.replace('/customer/profile/order');
+      setOrderSuccess(data.order_code || '-');
     } catch (error) {
       console.error(error);
       setOrderError('Gagal membuat order.');
@@ -607,6 +608,36 @@ export default function CheckoutPage() {
       {showOrderPopup && (
         <div className="co-modal-overlay" onClick={() => !isSubmittingOrder && closeOrderPopup()}>
           <div className="co-modal" onClick={(e) => e.stopPropagation()}>
+            {orderSuccess ? (
+              <div className="co-success">
+                <div className="co-success-icon">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <h3 className="co-success-title">Pesanan Berhasil Dibuat!</h3>
+                <p className="co-success-sub">
+                  Bukti pembayaranmu sudah kami terima dan akan diverifikasi admin secepatnya.
+                </p>
+                <div className="co-success-code">
+                  <span className="co-success-code-label">Kode Order</span>
+                  <span className="co-success-code-val">{orderSuccess}</span>
+                </div>
+                <button
+                  className="co-proof-submit-btn"
+                  onClick={() => { closeOrderPopup(); router.replace('/customer/profile/order'); }}
+                >
+                  Lihat Pesanan Saya →
+                </button>
+                <button
+                  className="co-proof-ghost-btn"
+                  onClick={() => { closeOrderPopup(); router.push('/customer/product'); }}
+                >
+                  Lanjut Belanja
+                </button>
+              </div>
+            ) : (
+              <>
             <div className="co-proof-header">
               <div className="co-proof-header-left">
                 <span className="co-proof-icon-wrap"><IconCard /></span>
@@ -684,6 +715,8 @@ export default function CheckoutPage() {
             </button>
 
             <p className="co-proof-note">Pastikan foto bukti transfer terlihat jelas dan terbaca.</p>
+              </>
+            )}
           </div>
         </div>
       )}

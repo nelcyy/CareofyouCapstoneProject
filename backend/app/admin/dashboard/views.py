@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ...models import Order, OrderItem, Product, User
+from ...models import Order, OrderItem, Product, Return, User
 
 # stok di bawah/sama dengan nilai ini dianggap "menipis"
 LOW_STOCK_THRESHOLD = 5
@@ -40,6 +40,19 @@ def _last_six_months(now):
             y -= 1
         result.append((y, m))
     return result
+
+
+@api_view(['GET'])
+def notification_counts(request):
+    """Jumlah pesanan & retur 'baru' (butuh aksi admin) untuk badge sidebar admin.
+
+    'Baru' = order status 'waiting_admin_approval' dan retur 'waiting_admin_review'.
+    Aturan ini sengaja dihitung di backend (bukan di frontend).
+    """
+    return Response({
+        'pending_orders': Order.objects.filter(status='waiting_admin_approval').count(),
+        'pending_returns': Return.objects.filter(status='waiting_admin_review').count(),
+    })
 
 
 @api_view(['GET'])

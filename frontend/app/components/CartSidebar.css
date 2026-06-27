@@ -175,14 +175,24 @@
 .cart-sidebar-item-remove {
   background: none;
   border: none;
-  color: #ddd;
+  color: #c9bcbc;
   cursor: pointer;
-  padding: 4px;
+  padding: 7px;
+  border-radius: 9px;
   flex-shrink: 0;
+  align-self: flex-start;
   display: flex;
-  transition: color 0.2s;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.18s, background 0.18s, transform 0.12s;
 }
-.cart-sidebar-item-remove:hover { color: #e07a73; }
+.cart-sidebar-item-remove:hover {
+  color: #e0524a;
+  background: #fdeceb;
+}
+.cart-sidebar-item-remove:active {
+  transform: scale(0.92);
+}
 
 /* ── FOOTER ─────────────────────────────────────────────── */
 .cart-sidebar-footer {

@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { apiUrl, mediaUrl } from '@/api';
 import jsQR from 'jsqr';
 import styles from './page.module.css';
+import './page.css';
 
 const API = apiUrl('/api/admin/retur');
 
@@ -26,6 +27,37 @@ function fileUrl(path) {
   return mediaUrl(path);
 }
 
+function initials(name) {
+  return (
+    (name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase() || '?'
+  );
+}
+
+// Warna pill — presentasi saja; nilai status/risk tetap dari backend.
+const STATUS_COLORS = {
+  waiting_admin_review: { color: '#e09a3a', bg: 'rgba(224,154,58,0.12)' },
+  approved: { color: '#16a34a', bg: 'rgba(34,197,94,0.12)' },
+  rejected: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  cancelled: { color: '#9ca3af', bg: 'rgba(156,163,175,0.14)' },
+  shipped_back: { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  received: { color: '#4a9fd4', bg: 'rgba(74,159,212,0.12)' },
+  completed: { color: '#16a34a', bg: 'rgba(34,197,94,0.12)' },
+};
+
+const RISK_COLORS = {
+  low: { label: 'Rendah', color: '#16a34a', bg: 'rgba(34,197,94,0.1)' },
+  medium: { label: 'Sedang', color: '#e09a3a', bg: 'rgba(224,154,58,0.12)' },
+  high: { label: 'Tinggi', color: '#ef6c2f', bg: 'rgba(239,108,47,0.12)' },
+  critical: { label: 'Kritis', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+};
+
 function getAdminUser() {
   if (typeof window === 'undefined') return null;
   try {
@@ -35,11 +67,63 @@ function getAdminUser() {
   }
 }
 
-function DataTable({ children }) {
+function gaugeColor(level) {
+  return RISK_COLORS[level]?.color || '#c4706a';
+}
+
+// Gauge skor risiko melingkar (SVG) — pakai monitoringTotalScore (0-100).
+function RiskGauge({ score, level }) {
+  const pct = Math.max(0, Math.min(100, Number(score) || 0));
+  const r = 34;
+  const circ = 2 * Math.PI * r;
+  const dash = (pct / 100) * circ;
+  const color = gaugeColor(level);
   return (
-    <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse', width: '100%', marginTop: 8 }}>
-      {children}
-    </table>
+    <svg width="96" height="96" viewBox="0 0 92 92" className="adm-rd-gauge">
+      <circle cx="46" cy="46" r={r} fill="none" stroke="#f1e3e1" strokeWidth="9" />
+      <circle
+        cx="46"
+        cy="46"
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="9"
+        strokeLinecap="round"
+        strokeDasharray={`${dash} ${circ}`}
+        transform="rotate(-90 46 46)"
+      />
+      <text x="46" y="44" textAnchor="middle" fontSize="23" fontWeight="800" fill="#2d2d2d">{pct}</text>
+      <text x="46" y="60" textAnchor="middle" fontSize="10" fontWeight="600" fill="#b0a8a6">/ 100</text>
+    </svg>
+  );
+}
+
+function CopyButton({ value, className }) {
+  const [copied, setCopied] = useState(false);
+  if (!value) return null;
+  return (
+    <button
+      type="button"
+      className={className}
+      title="Salin"
+      aria-label="Salin"
+      onClick={() => {
+        if (!navigator.clipboard) return;
+        navigator.clipboard
+          .writeText(String(value))
+          .then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1400);
+          })
+          .catch(() => {});
+      }}
+    >
+      {copied ? (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+      ) : (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+      )}
+    </button>
   );
 }
 
@@ -560,54 +644,79 @@ function CameraScanner({ onScan, onClose }) {
   }
 
   return (
-    <div className={styles.camOverlay} role="presentation" onClick={onClose}>
-      <div className={styles.camModal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.camHeader}>
-          <span className={styles.camTitle}>Scan QR Produk</span>
-          <button type="button" className={styles.camClose} onClick={onClose} aria-label="Tutup">
-            ✕
-          </button>
+    <div className="adm-cam-overlay" role="presentation" onClick={onClose}>
+      <div className="adm-cam-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="adm-cam-header">
+          <span className="adm-cam-title">
+            <span className="adm-cam-title-ico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><line x1="14" y1="14" x2="14" y2="14" /><path d="M14 14h3v3" /><path d="M21 14v7h-7" /><path d="M17 21v-4" />
+              </svg>
+            </span>
+            Scan QR Produk
+          </span>
+          <button type="button" className="adm-cam-close" onClick={onClose} aria-label="Tutup">✕</button>
         </div>
 
-        <div className={styles.camBody}>
+        <div className="adm-cam-body">
           {camErr ? (
-            <div className={styles.camError}>
-              <p>{camErr}</p>
-              <button type="button" onClick={onClose}>Tutup</button>
+            <div className="adm-cam-error">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <p className="adm-cam-error-msg">{camErr}</p>
+              <button type="button" className="adm-cam-err-btn" onClick={onClose}>Tutup</button>
             </div>
           ) : foundCode ? (
-            <div className={styles.camFound}>
-              <p><b>QR Terdeteksi</b></p>
-              <code className={styles.camToken}>{foundCode}</code>
-              <div className={styles.camFoundBtns}>
-                <button type="button" onClick={confirmScan}>Gunakan Token Ini</button>
-                <button type="button" onClick={retryScan}>Scan Ulang</button>
+            <div className="adm-cam-found">
+              <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+              <p className="adm-cam-found-title">QR Terdeteksi</p>
+              <code className="adm-cam-found-token">{foundCode}</code>
+              <div className="adm-cam-found-btns">
+                <button type="button" className="adm-cam-manual-btn" onClick={confirmScan}>Gunakan Token Ini</button>
+                <button type="button" className="adm-cam-err-btn adm-cam-err-btn--ghost" onClick={retryScan}>Scan Ulang</button>
               </div>
             </div>
           ) : (
-            <div className={styles.camViewfinder}>
-              <video ref={videoRef} className={styles.camVideo} muted playsInline />
-              <canvas ref={canvasRef} className={styles.camCanvas} />
-              {!scanning && <div className={styles.camPreparing}>Mempersiapkan kamera…</div>}
+            <div className="adm-cam-viewfinder">
+              <video ref={videoRef} className="adm-cam-video" muted playsInline />
+              <canvas ref={canvasRef} className="adm-cam-canvas" />
+              <div className="adm-cam-frame">
+                <span className="adm-cam-corner adm-cam-corner--tl" />
+                <span className="adm-cam-corner adm-cam-corner--tr" />
+                <span className="adm-cam-corner adm-cam-corner--bl" />
+                <span className="adm-cam-corner adm-cam-corner--br" />
+                {scanning && <div className="adm-cam-scanline" />}
+              </div>
+              {!scanning && (
+                <div className="adm-cam-preparing">
+                  <svg className="adm-cam-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  <span>Mempersiapkan kamera…</span>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {!foundCode && !camErr && (
           <>
-            <p className={styles.camHint}>
+            <p className="adm-cam-hint">
               {scanning ? 'Arahkan kamera ke QR code produk' : 'Mempersiapkan kamera…'}
             </p>
-            <div className={styles.camManual}>
+            <div className="adm-cam-manual">
               <input
-                className={styles.camManualInput}
+                className="adm-cam-manual-input"
                 type="text"
                 placeholder="Atau ketik / tempel token QR..."
                 value={manualToken}
                 onChange={(e) => setManualToken(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') submitManual(); }}
               />
-              <button type="button" onClick={submitManual} disabled={!manualToken.trim()}>
+              <button type="button" className="adm-cam-manual-btn" onClick={submitManual} disabled={!manualToken.trim()}>
                 Konfirmasi
               </button>
             </div>
@@ -644,6 +753,8 @@ export default function AdminReturnDetailPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanItem, setScanItem] = useState(null);
   const [refundFile, setRefundFile] = useState(null);
+  const [refundPreview, setRefundPreview] = useState(null);
+  const [refundDrag, setRefundDrag] = useState(false);
   const [exchangeTracking, setExchangeTracking] = useState('');
   const [scannedByItem, setScannedByItem] = useState({});
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
@@ -825,6 +936,21 @@ export default function AdminReturnDetailPage() {
     }
   }
 
+  function pickRefundFile(file) {
+    setRefundFile(file || null);
+    setRefundPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return file && file.type && file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+    });
+  }
+
+  function handleRefundDrop(event) {
+    event.preventDefault();
+    setRefundDrag(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) pickRefundFile(file);
+  }
+
   async function handleComplete(event) {
     event?.preventDefault();
     if (actionLoading) return;
@@ -875,6 +1001,7 @@ export default function AdminReturnDetailPage() {
       setDetail(data.return_entry || null);
       setMessage(data.message || 'Retur berhasil diselesaikan.');
       setRefundFile(null);
+      setRefundPreview(null);
       setExchangeTracking('');
     } catch (err) {
       console.error(err);
@@ -1091,7 +1218,10 @@ export default function AdminReturnDetailPage() {
     .filter((item) => item.score > 0)
     .sort((left, right) => right.score - left.score);
   const monitoringRiskLevel = monitoringSummary.risk_level || detail?.risk_level || 'low';
+  const headStatus = STATUS_COLORS[detail?.status] || { color: '#c4706a', bg: 'rgba(214,134,124,0.12)' };
+  const headRisk = RISK_COLORS[detail?.risk_level] || { label: detail?.risk_level || '-', color: '#9ca3af', bg: 'rgba(156,163,175,0.14)' };
   const monitoringTotalScore = toNumber(monitoringSummary.total_risk_score ?? detail?.total_risk_score);
+  const maxFactorScore = Math.max(1, ...monitoringHighlights.map((h) => Number(h.score) || 0));
   const ereceiptChecked = Boolean(receiptVerification.status);
   const scannedCountFor = (item) => (scannedByItem[item.return_item_id]?.size || 0);
   const totalScanned = (qrUnits || []).reduce((sum, item) => sum + scannedCountFor(item), 0);
@@ -1100,483 +1230,376 @@ export default function AdminReturnDetailPage() {
     && (qrUnits || []).every((item) => scannedCountFor(item) >= (item.requested_quantity || 0));
 
   return (
-    <div style={{ padding: 16 }}>
-      <h2>Detail Retur</h2>
+    <div className="adm-rd-page">
+      <div className="adm-rd-inner">
+        <Link href="/admin/retur" className="adm-rd-back">← Kembali ke daftar retur</Link>
+        <div className="adm-rd-content">
+          <h2 className="adm-rd-title">Detail Retur</h2>
 
-      {loading && <p>Memuat detail retur...</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {message && <p style={{ color: 'green' }}>{message}</p>}
-      {receiptMessage && <p style={{ color: '#355f7d' }}>{receiptMessage}</p>}
+          {loading && <p className="adm-rd-feedback">Memuat detail retur...</p>}
+          {error && <p className="adm-rd-feedback adm-rd-feedback--error">{error}</p>}
+          {message && <p className="adm-rd-feedback adm-rd-feedback--ok">{message}</p>}
+          {receiptMessage && <p className="adm-rd-feedback adm-rd-feedback--info">{receiptMessage}</p>}
 
       {detail && (
         <>
-          <h3 style={{ marginTop: 20 }}>Info Retur</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Kode Retur</td>
-                <td>{detail.return_code || '-'}</td>
-              </tr>
-              <tr>
-                <td>Kode Order</td>
-                <td>{detail.order_code || '-'}</td>
-              </tr>
-              <tr>
-                <td>Customer</td>
-                <td>{detail.customer_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Email</td>
-                <td>{detail.customer_email || '-'}</td>
-              </tr>
-              <tr>
-                <td>Status</td>
-                <td>{detail.status_label || detail.status || '-'}</td>
-              </tr>
-              <tr>
-                <td>Approve Butuh OTP</td>
-                <td>{detail.approve_requires_otp ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Reject Butuh OTP</td>
-                <td>{detail.reject_requires_otp ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>OTP Diverifikasi</td>
-                <td>{detail.otp_verified_for_action ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Tipe Penyelesaian</td>
-                <td>{detail.resolution_type_label || detail.resolution_type || '-'}</td>
-              </tr>
-              <tr>
-                <td>Diajukan Pada</td>
-                <td>{formatTanggal(detail.created_at)}</td>
-              </tr>
-              <tr>
-                <td>Diproses Pada</td>
-                <td>{formatTanggal(detail.processed_at)}</td>
-              </tr>
-              <tr>
-                <td>Diproses Oleh</td>
-                <td>{detail.processed_by_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Alasan Customer</td>
-                <td>{detail.reason || '-'}</td>
-              </tr>
-              <tr>
-                <td>Catatan Admin</td>
-                <td>{detail.decision_reason || '-'}</td>
-              </tr>
-              <tr>
-                <td>Foto Produk</td>
-                <td>
-                  {detail.product_photo ? (
-                    <a href={fileUrl(detail.product_photo)} target="_blank" rel="noreferrer">
-                      Lihat Foto
-                    </a>
-                  ) : '-'}
-                </td>
-              </tr>
-              <tr>
-                <td>E-Receipt Upload</td>
-                <td>
-                  {detail.ereceipt_proof ? (
-                    <a href={fileUrl(detail.ereceipt_proof)} target="_blank" rel="noreferrer">
-                      Lihat File
-                    </a>
-                  ) : '-'}
-                </td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <h3 style={{ marginTop: 24 }}>Verifikasi E-Receipt</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Status Verifikasi</td>
-                <td>
-                  {receiptVerification.status === 'valid'
-                    ? 'Valid'
-                    : receiptVerification.status === 'invalid'
-                      ? 'Invalid'
-                      : 'Belum dicek'}
-                </td>
-              </tr>
-              <tr>
-                <td>Diverifikasi Pada</td>
-                <td>{formatTanggal(receiptVerification.verified_at)}</td>
-              </tr>
-              <tr>
-                <td>Diverifikasi Oleh</td>
-                <td>{receiptVerification.verified_by_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Receipt ID</td>
-                <td>{receiptVerification.receipt_id || '-'}</td>
-              </tr>
-              <tr>
-                <td>PDF Order Code</td>
-                <td>{receiptVerification.pdf_order_code || '-'}</td>
-              </tr>
-              <tr>
-                <td>Nama Pelanggan</td>
-                <td>{receiptVerification.customer_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Email Pelanggan</td>
-                <td>{receiptVerification.customer_email || '-'}</td>
-              </tr>
-              <tr>
-                <td>Total</td>
-                <td>
-                  {receiptVerification.total
-                    ? `Rp ${formatRibuan(receiptVerification.total)}`
-                    : '-'}
-                </td>
-              </tr>
-              <tr>
-                <td>Generated At</td>
-                <td>{formatTanggal(receiptVerification.generated_at)}</td>
-              </tr>
-              <tr>
-                <td>Alasan / Hasil</td>
-                <td>{receiptVerification.failure_reason || '-'}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-          {detail.ereceipt_proof ? (
-            <p style={{ marginTop: 12 }}>
-              <button type="button" onClick={handleVerifyReceipt} disabled={receiptLoading}>
-                {receiptLoading
-                  ? 'Memverifikasi...'
-                  : receiptVerification.status
-                    ? 'Periksa Ulang E-Receipt'
-                    : 'Verifikasi E-Receipt'}
-              </button>
+        <div className="adm-rd-head">
+          <div className="adm-rd-head-left">
+            <span className="adm-rd-code">{detail.return_code || '-'}</span>
+            <p className="adm-rd-head-sub">
+              Order {detail.order_code || '-'} · Diajukan {formatTanggal(detail.created_at)}
             </p>
-          ) : (
-            <p style={{ marginTop: 12 }}>Customer belum melampirkan e-receipt.</p>
+          </div>
+          <div className="adm-rd-head-right">
+            <div className="adm-rd-head-customer">
+              <span className="adm-rd-avatar">{initials(detail.customer_name)}</span>
+              <div className="adm-rd-head-cust-meta">
+                <span className="adm-rd-cust-name">{detail.customer_name || '-'}</span>
+                {detail.customer_email && <span className="adm-rd-cust-email">{detail.customer_email}</span>}
+              </div>
+            </div>
+            <div className="adm-rd-head-badges">
+              <span className="adm-rd-pill" style={{ color: headStatus.color, background: headStatus.bg }}>
+                {detail.status_label || detail.status || '-'}
+              </span>
+              <span className="adm-rd-pill" style={{ color: headRisk.color, background: headRisk.bg }}>
+                Risiko {headRisk.label}
+              </span>
+              {detail.resolution_type_label && (
+                <span className="adm-rd-pill adm-rd-pill--type">{detail.resolution_type_label}</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="adm-rd-grid">
+          <div className="adm-rd-col adm-rd-col--left">
+          <section className="adm-rd-card">
+          <h3 className="adm-rd-card-title">Verifikasi E-Receipt</h3>
+          {/* Status banner */}
+          <div
+            className={`adm-rd-rv-banner${
+              receiptVerification.status === 'valid'
+                ? ' adm-rd-rv-banner--valid'
+                : receiptVerification.status === 'invalid'
+                  ? ' adm-rd-rv-banner--invalid'
+                  : ' adm-rd-rv-banner--pending'
+            }`}
+          >
+            <span className="adm-rd-rv-ico">
+              {receiptVerification.status === 'valid' ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              ) : receiptVerification.status === 'invalid' ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+              )}
+            </span>
+            <div className="adm-rd-rv-text">
+              <span className="adm-rd-rv-status">
+                {receiptVerification.status === 'valid'
+                  ? 'E-Receipt Valid'
+                  : receiptVerification.status === 'invalid'
+                    ? 'E-Receipt Tidak Valid'
+                    : 'Belum Diverifikasi'}
+              </span>
+              <span className="adm-rd-rv-sub">
+                {receiptVerification.status === 'valid'
+                  ? 'Tanda tangan digital cocok dengan database.'
+                  : receiptVerification.status === 'invalid'
+                    ? (receiptVerification.failure_reason || 'Data e-receipt tidak cocok dengan database.')
+                    : 'Periksa keaslian e-receipt yang dilampirkan customer.'}
+              </span>
+            </div>
+          </div>
+
+          {/* Detail verifikasi (kalau sudah pernah dicek) */}
+          {receiptVerification.status && (
+            <div className="adm-rd-metalist">
+              <div className="adm-rd-metarow"><span>Receipt ID</span><span>{receiptVerification.receipt_id || '-'}</span></div>
+              <div className="adm-rd-metarow"><span>PDF Order Code</span><span>{receiptVerification.pdf_order_code || '-'}</span></div>
+              <div className="adm-rd-metarow"><span>Nama Pelanggan</span><span>{receiptVerification.customer_name || '-'}</span></div>
+              <div className="adm-rd-metarow"><span>Email Pelanggan</span><span>{receiptVerification.customer_email || '-'}</span></div>
+              <div className="adm-rd-metarow"><span>Total</span><span>{receiptVerification.total ? `Rp ${formatRibuan(receiptVerification.total)}` : '-'}</span></div>
+              <div className="adm-rd-metarow"><span>Generated At</span><span>{formatTanggal(receiptVerification.generated_at)}</span></div>
+              <div className="adm-rd-metarow"><span>Diverifikasi Pada</span><span>{formatTanggal(receiptVerification.verified_at)}</span></div>
+              <div className="adm-rd-metarow"><span>Diverifikasi Oleh</span><span>{receiptVerification.verified_by_name || '-'}</span></div>
+            </div>
           )}
 
+          {detail.ereceipt_proof ? (
+            <button type="button" onClick={handleVerifyReceipt} disabled={receiptLoading}>
+              {receiptLoading
+                ? 'Memverifikasi...'
+                : receiptVerification.status
+                  ? 'Periksa Ulang E-Receipt'
+                  : 'Verifikasi E-Receipt'}
+            </button>
+          ) : (
+            <p>Customer belum melampirkan e-receipt.</p>
+          )}
+          </section>
+
           {detail.resolution_type === 'refund' && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Info Refund</h3>
-              <DataTable>
-                <tbody>
-                  <tr>
-                    <td>Nama Bank</td>
-                    <td>{refundInfo.bank_name || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Nomor Rekening</td>
-                    <td>{refundInfo.account_number || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Nama Pemilik Rekening</td>
-                    <td>{refundInfo.account_holder_name || '-'}</td>
-                  </tr>
-                </tbody>
-              </DataTable>
-            </>
+            <section className="adm-rd-card">
+              <h3 className="adm-rd-card-title">Info Refund</h3>
+              <div className="adm-rd-bank">
+                <div className="adm-rd-bank-top">
+                  <span className="adm-rd-bank-ico">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /><line x1="6" y1="15" x2="10" y2="15" />
+                    </svg>
+                  </span>
+                  <div className="adm-rd-bank-head">
+                    <span className="adm-rd-bank-label">Rekening Tujuan Refund</span>
+                    <span className="adm-rd-bank-name">{refundInfo.bank_name || '-'}</span>
+                  </div>
+                </div>
+                <div className="adm-rd-bank-acc">
+                  <span className="adm-rd-bank-acc-num">{refundInfo.account_number || '-'}</span>
+                  <CopyButton value={refundInfo.account_number} className="adm-rd-bank-copy" />
+                </div>
+                <div className="adm-rd-bank-holder">a.n. {refundInfo.account_holder_name || '-'}</div>
+              </div>
+            </section>
           )}
 
           {detail.resolution_type === 'exchange' && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Info Exchange</h3>
-              <DataTable>
-                <tbody>
-                  <tr>
-                    <td>Kurir</td>
-                    <td>{exchangeInfo.courier_name || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Label</td>
-                    <td>{exchangeInfo.address_label || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Penerima</td>
-                    <td>{exchangeInfo.recipient_name || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Telepon</td>
-                    <td>{exchangeInfo.phone || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Alamat</td>
-                    <td>{exchangeInfo.address_line || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Kota</td>
-                    <td>{exchangeInfo.city || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Provinsi</td>
-                    <td>{exchangeInfo.province || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Kode Pos</td>
-                    <td>{exchangeInfo.postal_code || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Catatan</td>
-                    <td>{exchangeInfo.notes || '-'}</td>
-                  </tr>
-                </tbody>
-              </DataTable>
-            </>
-          )}
+            <section className="adm-rd-card">
+              <h3 className="adm-rd-card-title">Info Exchange</h3>
+              <div className="adm-rd-ship">
+                <span className="adm-rd-ship-ico">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="3" width="15" height="13" rx="1" /><path d="M16 8h4l3 5v3h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
+                  </svg>
+                </span>
+                <div className="adm-rd-ship-info">
+                  <span className="adm-rd-ship-label">Kurir Pengiriman Exchange</span>
+                  <span className="adm-rd-ship-courier">{exchangeInfo.courier_name || '-'}</span>
+                </div>
+              </div>
 
-          <h3 style={{ marginTop: 24 }}>Item Retur</h3>
-          <DataTable>
-            <thead>
-              <tr>
-                <th>Produk</th>
-                <th>Qty Dibeli</th>
-                <th>Qty Retur</th>
-                <th>Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(detail.items || []).map((item, index) => (
-                <tr key={item.id || index}>
-                  <td>{item.product_name || '-'}</td>
-                  <td>{item.ordered_quantity || 0}</td>
-                  <td>{item.quantity || 0}</td>
-                  <td>Rp {formatRibuan(item.subtotal)}</td>
-                </tr>
-              ))}
-              {(detail.items || []).length === 0 && (
-                <tr>
-                  <td colSpan={4}>(tidak ada item retur)</td>
-                </tr>
-              )}
-            </tbody>
-          </DataTable>
-
-          {detail.monitoring && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Monitoring</h3>
-              <DataTable>
-                <tbody>
-                  <tr>
-                    <td>Total Risk Score</td>
-                    <td>
-                      {monitoringTotalScore} ({getRiskLevelLabel(monitoringRiskLevel)})
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Device Saat Retur</td>
-                    <td>{monitoringDevice.device_label_snapshot || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Status Device</td>
-                    <td>{monitoringDevice.device_status_label || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Faktor Aktif</td>
-                    <td>
-                      {monitoringHighlights.length > 0
-                        ? `${monitoringHighlights.length} faktor sedang menambah score retur ini.`
-                        : 'Belum ada faktor yang menambah score retur ini.'}
-                    </td>
-                  </tr>
-                </tbody>
-              </DataTable>
-
-              {monitoringHighlights.length > 0 && (
-                <>
-                  <p style={{ marginTop: 12 }}><b>Faktor yang Menambah Score</b></p>
-                  <DataTable>
-                    <thead>
-                      <tr>
-                        <th>Faktor</th>
-                        <th>Keterangan</th>
-                        <th>Score</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {monitoringHighlights.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.title}</td>
-                          <td>{item.summary}</td>
-                          <td>{item.score}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </DataTable>
-                </>
-              )}
-
-              <p style={{ marginTop: 12 }}><b>Detail Monitoring</b></p>
-              <DataTable>
-                <thead>
-                  <tr>
-                    <th>Faktor</th>
-                    <th>Status</th>
-                    <th>Keterangan</th>
-                    <th>Score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {monitoringInsights.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.title}</td>
-                      <td>{item.statusLabel || '-'}</td>
-                      <td>{item.description}</td>
-                      <td>{item.score}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </DataTable>
-            </>
+              <div className="adm-rd-addr">
+                <div className="adm-rd-addr-head">
+                  <span className="adm-rd-addr-label">Alamat Tujuan</span>
+                  {exchangeInfo.address_label && <span className="adm-rd-addr-badge">{exchangeInfo.address_label}</span>}
+                </div>
+                <span className="adm-rd-addr-name">
+                  {exchangeInfo.recipient_name || '-'}{exchangeInfo.phone ? ` · ${exchangeInfo.phone}` : ''}
+                </span>
+                <p className="adm-rd-addr-text">
+                  {[exchangeInfo.address_line, exchangeInfo.city, exchangeInfo.province, exchangeInfo.postal_code].filter(Boolean).join(', ') || '-'}
+                </p>
+                {exchangeInfo.notes && <p className="adm-rd-addr-note">Catatan: {exchangeInfo.notes}</p>}
+              </div>
+            </section>
           )}
 
           {['shipped_back', 'received', 'completed'].includes(detail.status) && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Pengiriman Balik dari Customer</h3>
-              <DataTable>
-                <tbody>
-                  <tr><td>Kurir</td><td>{detail.return_shipment?.courier_name || '-'}</td></tr>
-                  <tr><td>Nomor Resi</td><td>{detail.return_shipment?.tracking_number || '-'}</td></tr>
-                  <tr><td>Dikirim Pada</td><td>{formatTanggal(detail.return_shipment?.shipped_back_at)}</td></tr>
-                  <tr><td>Diterima Oleh</td><td>{detail.received_by_name || '-'}</td></tr>
-                  <tr><td>Diterima Pada</td><td>{formatTanggal(detail.received_at)}</td></tr>
-                </tbody>
-              </DataTable>
-            </>
+            <section className="adm-rd-card">
+              <h3 className="adm-rd-card-title">Pengiriman Balik dari Customer</h3>
+              <div className="adm-rd-ship">
+                <span className="adm-rd-ship-ico">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="3" width="15" height="13" rx="1" /><path d="M16 8h4l3 5v3h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
+                  </svg>
+                </span>
+                <div className="adm-rd-ship-info">
+                  <span className="adm-rd-ship-label">Kurir Pengembalian</span>
+                  <span className="adm-rd-ship-courier">{detail.return_shipment?.courier_name || '-'}</span>
+                  <div className="adm-rd-ship-resi">
+                    <span className="adm-rd-ship-resi-label">No. Resi</span>
+                    <span className="adm-rd-ship-resi-num">{detail.return_shipment?.tracking_number || '-'}</span>
+                    <CopyButton value={detail.return_shipment?.tracking_number} className="adm-rd-ship-copy" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="adm-rd-metalist">
+                <div className="adm-rd-metarow"><span>Dikirim Pada</span><span>{formatTanggal(detail.return_shipment?.shipped_back_at)}</span></div>
+                <div className="adm-rd-metarow"><span>Diterima Oleh</span><span>{detail.received_by_name || '-'}</span></div>
+                <div className="adm-rd-metarow"><span>Diterima Pada</span><span>{formatTanggal(detail.received_at)}</span></div>
+              </div>
+            </section>
           )}
 
           {detail.status === 'shipped_back' && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Verifikasi QR Unit (Scan Barang Balik)</h3>
-              {qrError && <p style={{ color: 'red' }}>{qrError}</p>}
-              {qrMessage && <p style={{ color: 'green' }}>{qrMessage}</p>}
-              <p style={{ marginTop: 8 }}>
-                Discan: <b>{totalScanned}/{totalRequired}</b> unit · Valid: <b>{detail.return_units?.returned ?? 0}</b>
-                {' '}(invalid tetap dihitung sudah discan)
-              </p>
-              <DataTable>
-                <thead>
-                  <tr>
-                    <th>Produk</th>
-                    <th>Qty Retur</th>
-                    <th>Discan</th>
-                    <th>Valid</th>
-                    <th>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(qrUnits || []).map((item) => {
-                    const scanned = scannedCountFor(item);
-                    const validCount = (item.units || []).filter((u) => u.is_returned).length;
-                    const itemDone = scanned >= (item.requested_quantity || 0);
-                    return (
-                      <tr key={item.return_item_id}>
-                        <td>{item.product_name}</td>
-                        <td>{item.requested_quantity}</td>
-                        <td style={{ color: itemDone ? 'green' : '#a00' }}>
-                          {scanned}/{item.requested_quantity}
-                        </td>
-                        <td>{validCount}</td>
-                        <td>
-                          <button type="button" onClick={() => openScanner(item)} disabled={qrLoading}>
-                            {qrLoading ? '...' : 'Scan QR'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {(qrUnits || []).length === 0 && (
-                    <tr>
-                      <td colSpan={5}>
-                        {qrLoading ? 'Memuat unit...' : '(belum ada unit QR — pastikan QR sudah digenerate di pesanannya)'}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </DataTable>
-              <p style={{ marginTop: 12 }}>
-                <button
-                  type="button"
-                  onClick={handleReceive}
-                  disabled={actionLoading || !allScanned}
-                >
+            <section className="adm-rd-card adm-rd-card--wide">
+              <h3 className="adm-rd-card-title">Verifikasi QR Unit (Scan Barang Balik)</h3>
+              {qrError && <p className="adm-rd-qr-msg adm-rd-qr-msg--err">{qrError}</p>}
+              {qrMessage && <p className="adm-rd-qr-msg adm-rd-qr-msg--ok">{qrMessage}</p>}
+
+              {/* Progress scan */}
+              <div className="adm-rd-qr-progress">
+                <div className="adm-rd-qr-progress-top">
+                  <span className="adm-rd-qr-progress-label">Total Discan</span>
+                  <span className="adm-rd-qr-progress-count"><strong>{totalScanned}</strong> / {totalRequired} unit</span>
+                </div>
+                <div className="adm-rd-qr-bar">
+                  <span style={{ width: `${totalRequired ? Math.min(100, (totalScanned / totalRequired) * 100) : 0}%` }} />
+                </div>
+                <span className="adm-rd-qr-progress-sub">
+                  Valid: {detail.return_units?.returned ?? 0} · invalid tetap dihitung sudah discan
+                </span>
+              </div>
+
+              {/* Daftar unit */}
+              <div className="adm-rd-qr-units">
+                {(qrUnits || []).map((item) => {
+                  const scanned = scannedCountFor(item);
+                  const validCount = (item.units || []).filter((u) => u.is_returned).length;
+                  const itemDone = scanned >= (item.requested_quantity || 0);
+                  return (
+                    <div key={item.return_item_id} className={`adm-rd-qr-unit${itemDone ? ' adm-rd-qr-unit--done' : ''}`}>
+                      <div className="adm-rd-qr-unit-info">
+                        <span className="adm-rd-qr-unit-name">{item.product_name}</span>
+                        <span className="adm-rd-qr-unit-tags">
+                          <span className={`adm-rd-qr-tag${itemDone ? ' adm-rd-qr-tag--done' : ' adm-rd-qr-tag--todo'}`}>
+                            Discan {scanned}/{item.requested_quantity}
+                          </span>
+                          <span className="adm-rd-qr-tag adm-rd-qr-tag--valid">Valid {validCount}</span>
+                        </span>
+                      </div>
+                      <button type="button" className="adm-rd-qr-scanbtn" onClick={() => openScanner(item)} disabled={qrLoading}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3" /><path d="M21 14v7h-7" /><path d="M17 21v-4" />
+                        </svg>
+                        {qrLoading ? '...' : 'Scan QR'}
+                      </button>
+                    </div>
+                  );
+                })}
+                {(qrUnits || []).length === 0 && (
+                  <div className="adm-rd-qr-empty">
+                    {qrLoading ? 'Memuat unit...' : 'Belum ada unit QR — pastikan QR sudah digenerate di pesanannya.'}
+                  </div>
+                )}
+              </div>
+
+              {/* Aksi */}
+              <div className="adm-rd-qr-action">
+                <button type="button" className="adm-rd-qr-receivebtn" onClick={handleReceive} disabled={actionLoading || !allScanned}>
                   {actionLoading ? 'Memproses...' : 'Tandai Diterima'}
                 </button>
                 {!allScanned && (
-                  <span style={{ marginLeft: 8, color: '#a00' }}>
-                    (Semua unit wajib discan dulu: {totalScanned}/{totalRequired})
-                  </span>
+                  <span className="adm-rd-qr-note">Semua unit wajib discan dulu ({totalScanned}/{totalRequired}).</span>
                 )}
-              </p>
-            </>
+              </div>
+            </section>
           )}
 
           {detail.status === 'received' && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Selesaikan Retur ({detail.resolution_type_label || detail.resolution_type})</h3>
-              <form onSubmit={handleComplete} style={{ marginTop: 8 }}>
+            <section className="adm-rd-card">
+              <h3 className="adm-rd-card-title">Selesaikan Retur ({detail.resolution_type_label || detail.resolution_type})</h3>
+              <form onSubmit={handleComplete}>
                 {detail.resolution_type === 'refund' ? (
-                  <p>
-                    <label>Bukti Transfer Refund: </label>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setRefundFile(e.target.files?.[0] || null)}
-                    />
-                  </p>
+                  <div className="adm-rd-field">
+                    <span className="adm-rd-field-label">Bukti Transfer Refund</span>
+                    <label
+                      className={`adm-rd-drop${refundDrag ? ' adm-rd-drop--drag' : ''}${refundFile ? ' adm-rd-drop--filled' : ''}`}
+                      onDragOver={(e) => { e.preventDefault(); setRefundDrag(true); }}
+                      onDragLeave={() => setRefundDrag(false)}
+                      onDrop={handleRefundDrop}
+                    >
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        style={{ display: 'none' }}
+                        onChange={(e) => pickRefundFile(e.target.files?.[0] || null)}
+                      />
+                      {refundFile ? (
+                        <div className="adm-rd-drop-file">
+                          {refundPreview ? (
+                            <img src={refundPreview} alt="preview" className="adm-rd-drop-thumb" />
+                          ) : (
+                            <span className="adm-rd-drop-fileico">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                              </svg>
+                            </span>
+                          )}
+                          <div className="adm-rd-drop-fileinfo">
+                            <span className="adm-rd-drop-filename">✓ {refundFile.name}</span>
+                            <span className="adm-rd-drop-filehint">Ketuk untuk ganti</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="adm-rd-drop-empty">
+                          <span className="adm-rd-drop-ico">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                          </span>
+                          <span className="adm-rd-drop-text">Drag &amp; drop bukti transfer</span>
+                          <span className="adm-rd-drop-sub">atau klik untuk pilih (gambar / PDF)</span>
+                        </div>
+                      )}
+                    </label>
+                  </div>
                 ) : (
-                  <p>
-                    <label>Resi Barang Pengganti: </label>
+                  <div className="adm-rd-field">
+                    <span className="adm-rd-field-label">Resi Barang Pengganti</span>
                     <input
                       type="text"
                       value={exchangeTracking}
                       onChange={(e) => setExchangeTracking(e.target.value)}
                       placeholder="No resi pengiriman exchange"
                     />
-                  </p>
+                  </div>
                 )}
-                <button type="submit" disabled={actionLoading}>
+                <button type="submit" className="adm-rd-complete-btn" disabled={actionLoading}>
                   {actionLoading ? 'Memproses...' : 'Selesaikan Retur'}
                 </button>
               </form>
-            </>
+            </section>
           )}
 
           {detail.status === 'completed' && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Penyelesaian</h3>
-              <DataTable>
-                <tbody>
-                  {detail.resolution_type === 'refund' ? (
-                    <tr>
-                      <td>Bukti Transfer Refund</td>
-                      <td>
-                        {detail.completion?.refund_proof ? (
-                          <a href={fileUrl(detail.completion.refund_proof)} target="_blank" rel="noreferrer">
-                            Lihat Bukti
-                          </a>
-                        ) : '-'}
-                      </td>
-                    </tr>
+            <section className="adm-rd-card">
+              <h3 className="adm-rd-card-title">Penyelesaian</h3>
+              <div className="adm-rd-rv-banner adm-rd-rv-banner--valid">
+                <span className="adm-rd-rv-ico">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                </span>
+                <div className="adm-rd-rv-text">
+                  <span className="adm-rd-rv-status">Retur Selesai</span>
+                  <span className="adm-rd-rv-sub">
+                    {detail.resolution_type === 'refund'
+                      ? 'Refund sudah ditransfer ke customer.'
+                      : 'Barang pengganti sudah dikirim ke customer.'}
+                  </span>
+                </div>
+              </div>
+
+              {detail.resolution_type === 'refund' && (
+                <div className="adm-rd-files">
+                  {detail.completion?.refund_proof ? (
+                    <a className="adm-rd-filebtn" href={fileUrl(detail.completion.refund_proof)} target="_blank" rel="noreferrer">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      Bukti Transfer Refund
+                    </a>
                   ) : (
-                    <tr>
-                      <td>Resi Barang Pengganti</td>
-                      <td>{detail.completion?.exchange_shipment_tracking || '-'}</td>
-                    </tr>
+                    <span className="adm-rd-files-empty">Bukti transfer belum ada.</span>
                   )}
-                  <tr><td>Diselesaikan Oleh</td><td>{detail.completion?.completed_by_name || '-'}</td></tr>
-                  <tr><td>Diselesaikan Pada</td><td>{formatTanggal(detail.completion?.completed_at)}</td></tr>
-                </tbody>
-              </DataTable>
-            </>
+                </div>
+              )}
+
+              <div className="adm-rd-metalist">
+                {detail.resolution_type !== 'refund' && (
+                  <div className="adm-rd-metarow"><span>Resi Barang Pengganti</span><span className="adm-rd-mono">{detail.completion?.exchange_shipment_tracking || '-'}</span></div>
+                )}
+                <div className="adm-rd-metarow"><span>Diselesaikan Oleh</span><span>{detail.completion?.completed_by_name || '-'}</span></div>
+                <div className="adm-rd-metarow"><span>Diselesaikan Pada</span><span>{formatTanggal(detail.completion?.completed_at)}</span></div>
+              </div>
+            </section>
           )}
 
           {detail.status === 'waiting_admin_review' && (
-            <p style={{ marginTop: 16 }}>
+            <section className="adm-rd-card">
+              <h3 className="adm-rd-card-title">Keputusan Admin</h3>
+              <p style={{ marginTop: 0 }}>
               <button
                 type="button"
                 onClick={() => handleAction('approve')}
@@ -1592,14 +1615,184 @@ export default function AdminReturnDetailPage() {
                   (Verifikasi e-receipt dulu sebelum bisa approve.)
                 </span>
               )}
-            </p>
+              </p>
+            </section>
           )}
+          </div>
+
+          <div className="adm-rd-col adm-rd-col--right">
+          <section className="adm-rd-card">
+          <h3 className="adm-rd-card-title">Info Retur</h3>
+          {/* Alasan customer */}
+          <div className="adm-rd-quote">
+            <span className="adm-rd-quote-ico">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7.17 6A5 5 0 0 0 3 11v5a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H5.5a3.5 3.5 0 0 1 3-3.46A1 1 0 0 0 9 4.6 1 1 0 0 0 7.9 4 5 5 0 0 0 7.17 6Zm12 0A5 5 0 0 0 15 11v5a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1h-3.5a3.5 3.5 0 0 1 3-3.46A1 1 0 0 0 21 4.6 1 1 0 0 0 19.9 4a5 5 0 0 0-.73 2Z" />
+              </svg>
+            </span>
+            <div className="adm-rd-quote-body">
+              <span className="adm-rd-quote-label">Alasan Customer</span>
+              <p className="adm-rd-quote-text">&ldquo;{detail.reason || '-'}&rdquo;</p>
+            </div>
+          </div>
+
+          {/* Status OTP / verifikasi */}
+          <div className="adm-rd-chips">
+            <span className={`adm-rd-chip${detail.approve_requires_otp ? ' adm-rd-chip--warn' : ' adm-rd-chip--mute'}`}>
+              Approve · {detail.approve_requires_otp ? 'butuh OTP' : 'tanpa OTP'}
+            </span>
+            <span className={`adm-rd-chip${detail.reject_requires_otp ? ' adm-rd-chip--warn' : ' adm-rd-chip--mute'}`}>
+              Reject · {detail.reject_requires_otp ? 'butuh OTP' : 'tanpa OTP'}
+            </span>
+            <span className={`adm-rd-chip${detail.otp_verified_for_action ? ' adm-rd-chip--ok' : ' adm-rd-chip--mute'}`}>
+              {detail.otp_verified_for_action ? '✓ OTP terverifikasi' : 'OTP belum diverifikasi'}
+            </span>
+          </div>
+
+          {/* Meta pemrosesan */}
+          <div className="adm-rd-metalist">
+            <div className="adm-rd-metarow"><span>Diajukan Pada</span><span>{formatTanggal(detail.created_at)}</span></div>
+            <div className="adm-rd-metarow"><span>Diproses Pada</span><span>{formatTanggal(detail.processed_at)}</span></div>
+            <div className="adm-rd-metarow"><span>Diproses Oleh</span><span>{detail.processed_by_name || '-'}</span></div>
+            <div className="adm-rd-metarow"><span>Catatan Admin</span><span>{detail.decision_reason || '-'}</span></div>
+          </div>
+
+          {/* Lampiran */}
+          <div className="adm-rd-files">
+            {detail.product_photo && (
+              <a className="adm-rd-filebtn" href={fileUrl(detail.product_photo)} target="_blank" rel="noreferrer">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
+                </svg>
+                Foto Produk
+              </a>
+            )}
+            {detail.ereceipt_proof && (
+              <a className="adm-rd-filebtn" href={fileUrl(detail.ereceipt_proof)} target="_blank" rel="noreferrer">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                </svg>
+                E-Receipt
+              </a>
+            )}
+            {!detail.product_photo && !detail.ereceipt_proof && (
+              <span className="adm-rd-files-empty">Tidak ada lampiran.</span>
+            )}
+          </div>
+          </section>
+
+          {detail.monitoring && (
+            <section className="adm-rd-card adm-rd-side-card">
+              <h3 className="adm-rd-card-title">Pemantauan Risiko</h3>
+
+              {/* Gauge skor risiko */}
+              <div className="adm-rd-gauge-wrap">
+                <RiskGauge score={monitoringTotalScore} level={monitoringRiskLevel} />
+                <div className="adm-rd-gauge-meta">
+                  <span
+                    className="adm-rd-gauge-level"
+                    style={{ color: gaugeColor(monitoringRiskLevel), background: (RISK_COLORS[monitoringRiskLevel]?.bg || 'rgba(214,134,124,0.12)') }}
+                  >
+                    Risiko {getRiskLevelLabel(monitoringRiskLevel)}
+                  </span>
+                  <span className="adm-rd-gauge-cap">Skor Risiko / Fraud</span>
+                  <span className="adm-rd-gauge-note">
+                    {monitoringHighlights.length > 0
+                      ? `${monitoringHighlights.length} faktor menambah skor`
+                      : 'Tidak ada faktor menonjol'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Device */}
+              <div className="adm-rd-devicebox">
+                <span className="adm-rd-device-ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                </span>
+                <div className="adm-rd-device-meta">
+                  <span className="adm-rd-device-name">{monitoringDevice.device_label_snapshot || 'Device tidak diketahui'}</span>
+                  <span className="adm-rd-device-status">{monitoringDevice.device_status_label || 'Status device tidak tersedia'}</span>
+                </div>
+              </div>
+
+              {/* Faktor yang menambah skor — pakai bar */}
+              {monitoringHighlights.length > 0 && (
+                <div className="adm-rd-factors">
+                  <p className="adm-rd-sub">Faktor yang Menambah Skor</p>
+                  {monitoringHighlights.map((item) => (
+                    <div key={item.id} className="adm-rd-factor">
+                      <div className="adm-rd-factor-top">
+                        <span className="adm-rd-factor-name">{item.title}</span>
+                        <span className="adm-rd-factor-score">+{item.score}</span>
+                      </div>
+                      <div className="adm-rd-factor-bar">
+                        <span style={{ width: `${Math.min(100, ((Number(item.score) || 0) / maxFactorScore) * 100)}%` }} />
+                      </div>
+                      {item.summary && <span className="adm-rd-factor-desc">{item.summary}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Detail pemantauan — list ringkas */}
+              <div className="adm-rd-insights">
+                <p className="adm-rd-sub">Detail Pemantauan</p>
+                {monitoringInsights.map((item) => (
+                  <div key={item.id} className="adm-rd-insight">
+                    <div className="adm-rd-insight-top">
+                      <span className="adm-rd-insight-name">{item.title}</span>
+                      <span className={`adm-rd-insight-score${(Number(item.score) || 0) > 0 ? ' adm-rd-insight-score--on' : ''}`}>
+                        {item.score}
+                      </span>
+                    </div>
+                    {item.statusLabel && <span className="adm-rd-insight-status">{item.statusLabel}</span>}
+                    {item.description && <span className="adm-rd-insight-desc">{item.description}</span>}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="adm-rd-card adm-rd-card--wide">
+          <h3 className="adm-rd-card-title">Item Retur</h3>
+          <div className="adm-rd-items">
+            {(detail.items || []).map((item, index) => (
+              <div key={item.id || index} className="adm-rd-item">
+                <span className="adm-rd-item-ico">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
+                  </svg>
+                </span>
+                <div className="adm-rd-item-info">
+                  <span className="adm-rd-item-name">{item.product_name || '-'}</span>
+                  <span className="adm-rd-item-meta">Retur {item.quantity || 0} dari {item.ordered_quantity || 0} dibeli</span>
+                </div>
+                <span className="adm-rd-item-qty">×{item.quantity || 0}</span>
+                <span className="adm-rd-item-price">Rp {formatRibuan(item.subtotal)}</span>
+              </div>
+            ))}
+            {(detail.items || []).length === 0 && (
+              <div className="adm-rd-item-empty">Tidak ada item retur.</div>
+            )}
+          </div>
+          {(detail.items || []).length > 0 && (
+            <div className="adm-rd-item-total">
+              <span>Total Refund</span>
+              <span className="adm-rd-item-total-val">
+                Rp {formatRibuan((detail.items || []).reduce((sum, it) => sum + (Number(it.subtotal) || 0), 0))}
+              </span>
+            </div>
+          )}
+          </section>
+          </div>
+        </div>
         </>
       )}
+        </div>
 
-      <Link href="/admin/retur">Kembali ke daftar retur</Link>
-
-      <OtpModal
+        <OtpModal
         open={otpModalOpen}
         onClose={closeOtpModal}
         kicker={`Verifikasi ${otpAction === 'approve' ? 'Approve' : 'Reject'} Retur`}
@@ -1623,9 +1816,10 @@ export default function AdminReturnDetailPage() {
         error={reasonError}
       />
 
-      {scannerOpen && (
-        <CameraScanner onScan={handleScanned} onClose={() => setScannerOpen(false)} />
-      )}
+        {scannerOpen && (
+          <CameraScanner onScan={handleScanned} onClose={() => setScannerOpen(false)} />
+        )}
+      </div>
     </div>
   );
 }

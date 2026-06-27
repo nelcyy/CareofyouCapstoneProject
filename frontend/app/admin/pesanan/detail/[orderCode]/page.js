@@ -63,6 +63,11 @@ const RISK_META = {
   critical: { label: 'Kritis', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
 };
 
+// Daftar jasa pengiriman buat dropdown — mengikuti yang dipakai project ini
+// (sama seperti opsi kurir di halaman checkout). BUKAN aturan baru bikinan UI;
+// idealnya nanti di-pass dari backend. Lihat catatan di handleShipOrder.
+const COURIER_OPTIONS = ['JNE REG', 'J&T REG', 'SiCepat REG'];
+
 function statusMeta(status) {
   return STATUS_META[status] || { label: status || '-', color: '#c4706a', bg: 'rgba(214,134,124,0.12)' };
 }
@@ -382,6 +387,10 @@ export default function DetailPesananPage() {
   const [showCompleteStep, setShowCompleteStep] = useState(false);
   const [completionProofFile, setCompletionProofFile] = useState(null);
   const completionProofInputRef = useRef(null);
+  // popup input resi pengiriman
+  const [shipModalOpen, setShipModalOpen] = useState(false);
+  const [shipForm, setShipForm] = useState({ courier_name: '', tracking_number: '', shipping_notes: '' });
+  const [shipError, setShipError] = useState('');
 
   async function postAction(path, payload) {
     const res = await fetch(path, {
@@ -700,7 +709,8 @@ export default function DetailPesananPage() {
     }
   }
 
-  async function handleShipOrder() {
+  // buka popup input resi (ganti window.prompt)
+  function handleShipOrder() {
     if (!detail?.order_code || actionLoading || detail.status !== 'pengemasan') return;
 
     const adminUser = getAdminUser();
@@ -709,21 +719,40 @@ export default function DetailPesananPage() {
       return;
     }
 
-    const trackingNumber = window.prompt('Masukkan nomor resi pengiriman:', detail.tracking_number || '');
-    if (trackingNumber === null) {
-      setActionMessage('Pengiriman dibatalkan.');
+    setShipForm({
+      courier_name: detail.courier_name || '',
+      tracking_number: detail.tracking_number || '',
+      shipping_notes: detail.shipping_notes || '',
+    });
+    setShipError('');
+    setError('');
+    setActionMessage('');
+    setShipModalOpen(true);
+  }
+
+  function closeShipModal() {
+    if (actionLoading) return;
+    setShipModalOpen(false);
+  }
+
+  // submit popup -> tetap pakai endpoint /ship yang sama (flow backend tidak diubah)
+  async function submitShipOrder() {
+    if (!detail?.order_code || actionLoading || detail.status !== 'pengemasan') return;
+
+    const adminUser = getAdminUser();
+    if (!adminUser?.id || adminUser.role !== 'admin') {
+      setShipError('User admin tidak ditemukan. Silakan login ulang sebagai admin.');
       return;
     }
 
-    const trackingNumberClean = trackingNumber.trim();
+    const trackingNumberClean = (shipForm.tracking_number || '').trim();
     if (!trackingNumberClean) {
-      setError('Nomor resi wajib diisi.');
+      setShipError('Nomor resi wajib diisi.');
       return;
     }
-
-    const shippingNotes = window.prompt('Catatan pengiriman (opsional):', detail.shipping_notes || '');
 
     setActionLoading(true);
+    setShipError('');
     setActionMessage('');
     setError('');
 
@@ -732,7 +761,10 @@ export default function DetailPesananPage() {
         order_code: orderCode,
         admin_user_id: adminUser.id,
         tracking_number: trackingNumberClean,
-        shipping_notes: shippingNotes === null ? '' : shippingNotes.trim(),
+        shipping_notes: (shipForm.shipping_notes || '').trim(),
+        // dikirim juga buat forward-compat; backend /ship saat ini belum
+        // tentu memprosesnya (lihat catatan di summary file).
+        courier_name: shipForm.courier_name || '',
       });
       const data = result.data;
 
@@ -740,12 +772,13 @@ export default function DetailPesananPage() {
         throw new Error(data.error || 'Gagal mengirim pesanan.');
       }
 
+      setShipModalOpen(false);
       setDetail(data.order || null);
       await loadQrUnits(data.order || null);
       setActionMessage(data.message || 'Pesanan berhasil dikirim.');
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Gagal mengirim pesanan.');
+      setShipError(err.message || 'Gagal mengirim pesanan.');
     } finally {
       setActionLoading(false);
     }
@@ -1240,6 +1273,87 @@ export default function DetailPesananPage() {
                 </div>
               </div>
             </div>
+
+            {/* POPUP INPUT RESI PENGIRIMAN */}
+            {shipModalOpen && (
+              <div className="adm-ship-overlay" onClick={closeShipModal}>
+                <div className="adm-ship-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="adm-ship-head">
+                    <span className="adm-ship-head-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="1" y="3" width="15" height="13" rx="1" /><path d="M16 8h4l3 5v3h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
+                      </svg>
+                    </span>
+                    <div className="adm-ship-head-text">
+                      <h3 className="adm-ship-title">Kirim Pesanan</h3>
+                      <p className="adm-ship-sub">Pilih jasa pengiriman lalu masukkan nomor resi.</p>
+                    </div>
+                    <button className="adm-ship-close" onClick={closeShipModal} disabled={actionLoading} aria-label="Tutup">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="adm-ship-body">
+                    <label className="adm-ship-field">
+                      <span className="adm-ship-label">Jasa Pengiriman</span>
+                      <select
+                        className="adm-ship-select"
+                        value={shipForm.courier_name}
+                        onChange={(e) => setShipForm((f) => ({ ...f, courier_name: e.target.value }))}
+                      >
+                        {!shipForm.courier_name && <option value="">— Pilih jasa pengiriman —</option>}
+                        {shipForm.courier_name && !COURIER_OPTIONS.includes(shipForm.courier_name) && (
+                          <option value={shipForm.courier_name}>{shipForm.courier_name}</option>
+                        )}
+                        {COURIER_OPTIONS.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="adm-ship-field">
+                      <span className="adm-ship-label">Nomor Resi <span className="adm-ship-req">*</span></span>
+                      <input
+                        className="adm-ship-input"
+                        placeholder="Masukkan nomor resi pengiriman"
+                        value={shipForm.tracking_number}
+                        onChange={(e) => setShipForm((f) => ({ ...f, tracking_number: e.target.value }))}
+                        autoFocus
+                      />
+                    </label>
+
+                    <label className="adm-ship-field">
+                      <span className="adm-ship-label">Catatan Pengiriman (opsional)</span>
+                      <textarea
+                        className="adm-ship-input adm-ship-textarea"
+                        rows={3}
+                        placeholder="Catatan tambahan untuk pengiriman"
+                        value={shipForm.shipping_notes}
+                        onChange={(e) => setShipForm((f) => ({ ...f, shipping_notes: e.target.value }))}
+                      />
+                    </label>
+
+                    {shipError && <p className="adm-ship-error">{shipError}</p>}
+                  </div>
+
+                  <div className="adm-ship-actions">
+                    <button type="button" className="adm-btn adm-btn--ghost" onClick={closeShipModal} disabled={actionLoading}>
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      className="adm-btn adm-btn--primary"
+                      onClick={submitShipOrder}
+                      disabled={actionLoading || !shipForm.tracking_number.trim()}
+                    >
+                      {actionLoading ? 'Memproses...' : 'Kirim Pesanan'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
