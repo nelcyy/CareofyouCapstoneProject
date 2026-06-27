@@ -326,11 +326,32 @@ function Card({ title, action, children, className = '' }) {
   );
 }
 
-function Row({ label, children }) {
+const GAUGE_FILL = { low: 0.28, medium: 0.55, high: 0.82, critical: 1 };
+function RiskGauge({ score, level, color }) {
+  const r = 54;
+  const circ = 2 * Math.PI * r;
+  const frac = GAUGE_FILL[level] ?? 0.5;
+  const dash = circ * frac;
   return (
-    <div className="adm-od-row">
-      <span className="adm-od-row-label">{label}</span>
-      <span className="adm-od-row-val">{children}</span>
+    <div className="adm-od-gauge">
+      <svg viewBox="0 0 130 130" className="adm-od-gauge-svg" aria-hidden="true">
+        <circle cx="65" cy="65" r={r} fill="none" stroke="#f1e3e1" strokeWidth="12" />
+        <circle
+          cx="65"
+          cy="65"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="12"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ}`}
+          transform="rotate(-90 65 65)"
+        />
+      </svg>
+      <div className="adm-od-gauge-center">
+        <strong style={{ color }}>{score}</strong>
+        <span>Risk Score</span>
+      </div>
     </div>
   );
 }
@@ -405,6 +426,7 @@ export default function DetailPesananPage() {
   const [qrLoading, setQrLoading] = useState(false);
   const [qrMessage, setQrMessage] = useState('');
   const [qrUnits, setQrUnits] = useState([]);
+  const [qrIndex, setQrIndex] = useState(0);
   const [showCompleteStep, setShowCompleteStep] = useState(false);
   const [completionProofFile, setCompletionProofFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -1021,220 +1043,104 @@ export default function DetailPesananPage() {
             </div>
 
             <div className="adm-od-layout">
-              {/* ── MAIN ── */}
-              <div className="adm-od-main">
                 {/* Produk */}
-                <Card title="Produk Dipesan">
-                  <div className="adm-od-table-scroll">
-                    <table className="adm-od-items">
-                      <thead>
-                        <tr><th>Nama</th><th>Harga</th><th>Qty</th><th>Subtotal</th></tr>
-                      </thead>
-                      <tbody>
-                        {detail.items.map((item, index) => (
-                          <tr key={item.id || index}>
-                            <td className="adm-od-item-name">{item.product_name}</td>
-                            <td>Rp {formatRibuan(item.product_price)}</td>
-                            <td>{item.quantity}</td>
-                            <td><strong>Rp {formatRibuan(item.subtotal)}</strong></td>
-                          </tr>
-                        ))}
-                        {detail.items.length === 0 && (
-                          <tr><td colSpan={4} className="adm-od-empty">(tidak ada item)</td></tr>
-                        )}
-                      </tbody>
-                    </table>
+                <Card title="Produk Dipesan" className="adm-od-cell-produk">
+                  <div className="adm-od-prods">
+                    {detail.items.map((item, index) => (
+                      <div key={item.id || index} className="adm-od-prod">
+                        <span className="adm-od-prod-ico">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
+                          </svg>
+                        </span>
+                        <div className="adm-od-prod-info">
+                          <span className="adm-od-prod-name">{item.product_name}</span>
+                          <span className="adm-od-prod-meta">Rp {formatRibuan(item.product_price)} <span className="adm-od-prod-x">×</span> {item.quantity}</span>
+                        </div>
+                        <span className="adm-od-prod-sub">Rp {formatRibuan(item.subtotal)}</span>
+                      </div>
+                    ))}
+                    {detail.items.length === 0 && (
+                      <div className="adm-od-prod-empty">Tidak ada item.</div>
+                    )}
                   </div>
-                </Card>
-
-                {/* Alamat */}
-                <Card title="Alamat Pengiriman">
-                  <div className="adm-od-rows">
-                    <Row label="Label">{detail.address_label || '-'}</Row>
-                    <Row label="Penerima">{detail.recipient_name || '-'}</Row>
-                    <Row label="Telepon">{detail.recipient_phone || '-'}</Row>
-                    <Row label="Alamat">{detail.address_line || '-'}</Row>
-                    <Row label="Kota">{detail.city || '-'}</Row>
-                    <Row label="Provinsi">{detail.province || '-'}</Row>
-                    <Row label="Kode Pos">{detail.postal_code || '-'}</Row>
-                    <Row label="Catatan">{detail.address_notes || '-'}</Row>
-                  </div>
+                  {detail.items.length > 0 && (
+                    <div className="adm-od-prod-total">
+                      <span>Subtotal Produk</span>
+                      <span className="adm-od-prod-total-val">Rp {formatRibuan(detail.subtotal)}</span>
+                    </div>
+                  )}
                 </Card>
 
                 {/* Pengiriman */}
-                <Card title="Pengiriman">
-                  <div className="adm-od-rows">
-                    <Row label="Kurir">{detail.courier_name || '-'}</Row>
-                    <Row label="Ongkir">Rp {formatRibuan(detail.shipping_fee)}</Row>
-                    <Row label="Nomor Resi">{detail.tracking_number || '-'}</Row>
-                    <Row label="Dikirim Pada">{formatTanggal(detail.shipped_at)}</Row>
-                    <Row label="Dikirim Oleh">{detail.shipped_by_name || '-'}</Row>
-                    <Row label="Catatan Pengiriman">{detail.shipping_notes || '-'}</Row>
-                    <Row label="Selesai Pada">{formatTanggal(detail.completed_at)}</Row>
-                    <Row label="Selesai Oleh">{detail.completed_by_name || '-'}</Row>
-                    <Row label="Bukti Terkirim">
-                      {detail.delivery_proof ? (
-                        <div className="adm-od-proof-actions">
-                          {isPreviewableProof(detail.delivery_proof) && (
-                            <button
-                              type="button"
-                              className="adm-od-link adm-od-link-button"
-                              onClick={() => openImagePreview(proofPreview(detail.delivery_proof, 'Bukti Terkirim'))}
-                            >
-                              Lihat Bukti
-                            </button>
-                          )}
-                          <a className="adm-od-link adm-od-proof-raw" href={fileUrl(detail.delivery_proof)} target="_blank" rel="noreferrer">Buka file</a>
-                        </div>
-                      ) : '-'}
-                    </Row>
-                  </div>
-                </Card>
-
-                {/* Pembayaran */}
-                <Card title="Pembayaran">
-                  <div className="adm-od-rows">
-                    <Row label="Metode">{detail.payment_method || '-'}</Row>
-                    <Row label="Tujuan Transfer">{detail.payment_target || '-'}</Row>
-                    <Row label="Bukti Transfer">
-                      {detail.payment_proof ? (
-                        <div className="adm-od-proof-actions">
-                          {isPreviewableProof(detail.payment_proof) && (
-                            <button
-                              type="button"
-                              className="adm-od-link adm-od-link-button"
-                              onClick={() => openImagePreview(proofPreview(detail.payment_proof, 'Bukti Transfer'))}
-                            >
-                              Lihat Bukti
-                            </button>
-                          )}
-                          <a className="adm-od-link adm-od-proof-raw" href={fileUrl(detail.payment_proof)} target="_blank" rel="noreferrer">Buka file</a>
-                        </div>
-                      ) : '-'}
-                    </Row>
-                  </div>
-                </Card>
-
-                {/* E-Receipt */}
-                <Card title="E-Receipt">
-                  <div className="adm-od-rows">
-                    <Row label="Boleh Dibuat">{detail.ereceipt_eligible ? 'Ya' : 'Tidak'}</Row>
-                    <Row label="Sudah Tersedia">{detail.ereceipt_available ? 'Ya' : 'Tidak'}</Row>
-                    <Row label="Receipt ID">{detail.ereceipt_id || '-'}</Row>
-                    <Row label="Generated At">{formatTanggal(detail.ereceipt_generated_at)}</Row>
-                  </div>
-                  <div className="adm-od-btn-row">
-                    {!detail.ereceipt_available && (
-                      <button
-                        type="button"
-                        className="adm-btn adm-btn--primary"
-                        onClick={handleGenerateReceipt}
-                        disabled={!detail.ereceipt_eligible || receiptLoading}
-                      >
-                        {receiptLoading ? 'Memproses...' : 'Generate E-Receipt'}
-                      </button>
-                    )}
-                    <button type="button" className="adm-btn adm-btn--ghost" onClick={() => handleOpenReceipt('view')} disabled={!detail.ereceipt_eligible}>
-                      Lihat PDF
-                    </button>
-                    <button type="button" className="adm-btn adm-btn--ghost" onClick={() => handleOpenReceipt('download')} disabled={!detail.ereceipt_eligible}>
-                      Download PDF
-                    </button>
-                  </div>
-                  {!detail.ereceipt_eligible && (
-                    <p className="adm-od-note">E-receipt baru tersedia setelah order di-approve admin.</p>
-                  )}
-                </Card>
-
-                {/* QR */}
-                <Card
-                  title="QR Code Produk"
-                  action={qrReady && detail.status === 'pengemasan' && pendingQrCount > 0 ? (
-                    <button type="button" className="adm-btn adm-btn--primary adm-btn--sm" onClick={handleGenerateAllQrs} disabled={qrLoading}>
-                      {qrLoading ? 'Memproses...' : 'Generate Semua QR'}
-                    </button>
-                  ) : null}
-                >
-                  {!qrReady ? (
-                    <p className="adm-od-note">QR produk baru tampil setelah order masuk tahap pengemasan.</p>
-                  ) : (
-                    <>
-                      <p className="adm-od-qr-meta">
-                        Total slot QR: <strong>{qrUnits.length}</strong> · Belum digenerate: <strong>{pendingQrCount}</strong>
-                      </p>
-                      <div className="adm-od-table-scroll">
-                        <table className="adm-od-items adm-od-qr-table">
-                          <thead>
-                            <tr>
-                              <th>Unit</th><th>Produk</th><th>Status</th><th>Token</th><th>Generated</th><th>Preview</th><th>Aksi</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {qrUnits.map((unit) => (
-                              <tr key={unit.unitId}>
-                                <td className="adm-od-mono">{unit.unitId}</td>
-                                <td>{unit.productName}<span className="adm-od-sub">Unit #{unit.unitIndex}</span></td>
-                                <td>
-                                  <span className="adm-od-sub-strong">{unit.qrStatus || 'pending'}</span>
-                                  <span className="adm-od-sub">Returned: {unit.isReturned ? 'Ya' : 'Tidak'}</span>
-                                  <span className="adm-od-sub">Verify: {unit.verificationCount ?? 0}</span>
-                                </td>
-                                <td className="adm-od-token">{unit.qrToken || '-'}</td>
-                                <td>{formatTanggal(unit.generatedAt)}<span className="adm-od-sub">{unit.generatedBy || '-'}</span></td>
-                                <td>
-                                  {unit.qrImageUrl ? (
-                                    <button
-                                      type="button"
-                                      className="adm-od-qr-preview"
-                                      onClick={() => openImagePreview({
-                                        src: unit.qrImageUrl,
-                                        label: `QR ${unit.productName} unit ${unit.unitIndex}`,
-                                      })}
-                                    >
-                                      <img src={unit.qrImageUrl} alt={`QR ${unit.productName} unit ${unit.unitIndex}`} className="adm-od-qr-img" />
-                                    </button>
-                                  ) : '-'}
-                                </td>
-                                <td>
-                                  <div className="adm-od-qr-actions">
-                                    {!unit.generatedAt && detail.status === 'pengemasan' && (
-                                      <button type="button" className="adm-btn adm-btn--ghost adm-btn--sm" onClick={() => handleGenerateUnitQr(unit)} disabled={qrLoading}>
-                                        Generate
-                                      </button>
-                                    )}
-                                    {unit.qrImageUrl && (
-                                      <>
-                                        <a className="adm-od-link" href={unit.qrImageUrl} target="_blank" rel="noreferrer">Buka</a>
-                                        <button type="button" className="adm-btn adm-btn--ghost adm-btn--sm" onClick={() => handleDownloadQr(unit)}>Download</button>
-                                      </>
-                                    )}
-                                    {unit.generatedAt && !unit.qrImageUrl && <span>-</span>}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                            {qrUnits.length === 0 && (
-                              <tr><td colSpan={7} className="adm-od-empty">{qrLoading ? 'Memuat data QR...' : '(belum ada slot QR)'}</td></tr>
-                            )}
-                          </tbody>
-                        </table>
+                <Card title="Pengiriman" className="adm-od-cell-ship">
+                  <div className="adm-od-courier">
+                    <span className="adm-od-courier-ico">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="1" y="3" width="15" height="13" rx="1" /><path d="M16 8h4l3 5v3h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
+                      </svg>
+                    </span>
+                    <div className="adm-od-courier-info">
+                      <span className="adm-od-courier-label">Kurir Pengiriman</span>
+                      <span className="adm-od-courier-name">{detail.courier_name || '-'}</span>
+                      <div className="adm-od-courier-resi">
+                        <span className="adm-od-courier-resi-label">No. Resi</span>
+                        <span className="adm-od-courier-resi-num">{detail.tracking_number || '-'}</span>
                       </div>
-                    </>
-                  )}
+                    </div>
+                  </div>
+
+                  <div className="adm-od-meta">
+                    <div className="adm-od-meta-row"><span>Ongkir</span><span>Rp {formatRibuan(detail.shipping_fee)}</span></div>
+                    <div className="adm-od-meta-row"><span>Dikirim Pada</span><span>{formatTanggal(detail.shipped_at)}</span></div>
+                    <div className="adm-od-meta-row"><span>Dikirim Oleh</span><span>{detail.shipped_by_name || '-'}</span></div>
+                    <div className="adm-od-meta-row"><span>Catatan Pengiriman</span><span>{detail.shipping_notes || '-'}</span></div>
+                    <div className="adm-od-meta-row"><span>Selesai Pada</span><span>{formatTanggal(detail.completed_at)}</span></div>
+                    <div className="adm-od-meta-row"><span>Selesai Oleh</span><span>{detail.completed_by_name || '-'}</span></div>
+                  </div>
+
+                  <div className="adm-od-files">
+                    <span className="adm-od-files-label">Bukti Terkirim</span>
+                    {detail.delivery_proof ? (
+                      <div className="adm-od-files-btns">
+                        {isPreviewableProof(detail.delivery_proof) && (
+                          <button type="button" className="adm-od-filebtn" onClick={() => openImagePreview(proofPreview(detail.delivery_proof, 'Bukti Terkirim'))}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                            Lihat Bukti
+                          </button>
+                        )}
+                        <a className="adm-od-filebtn adm-od-filebtn--ghost" href={fileUrl(detail.delivery_proof)} target="_blank" rel="noreferrer">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                          Buka File
+                        </a>
+                      </div>
+                    ) : (
+                      <span className="adm-od-files-empty">Belum ada bukti.</span>
+                    )}
+                  </div>
                 </Card>
+
 
                 {/* Monitoring */}
-                <Card title="Monitoring Risiko">
+                <Card title="Monitoring Risiko" className="adm-od-cell-mon">
                   <div className="adm-od-mon-shell">
                     <div className="adm-od-mon-hero">
-                      <div className="adm-od-mon-total-card adm-od-mon-total-card--compact">
-                        <span className="adm-od-subhead">Total Risk Score</span>
-                        <strong className="adm-od-mon-total-value">{monitoringSummary.total_risk_score ?? 0}</strong>
-                        <p className="adm-od-mon-total-copy">
-                          {monitoringPositiveCount > 0
-                            ? `${monitoringPositiveCount} faktor utama tercatat pada pesanan ini.`
-                            : 'Belum ada faktor utama yang perlu diperhatikan.'}
-                        </p>
+                      <div className="adm-od-mon-gaugecard">
+                        <RiskGauge
+                          score={monitoringSummary.total_risk_score ?? 0}
+                          level={detail.risk_level}
+                          color={risk.color}
+                        />
+                        <div className="adm-od-mon-gauge-meta">
+                          <span className="adm-od-mon-gauge-pill" style={{ color: risk.color, background: risk.bg }}>
+                            Risiko {risk.label}
+                          </span>
+                          <p className="adm-od-mon-total-copy">
+                            {monitoringPositiveCount > 0
+                              ? `${monitoringPositiveCount} faktor utama tercatat pada pesanan ini.`
+                              : 'Belum ada faktor utama yang perlu diperhatikan.'}
+                          </p>
+                        </div>
                       </div>
 
                       <div className="adm-od-mon-device-card adm-od-mon-device-card--simple">
@@ -1260,41 +1166,34 @@ export default function DetailPesananPage() {
                         </div>
                       </div>
 
-                      <div className="adm-od-mon-list">
-                        {monitoringInsights.map((item) => (
-                          <div key={item.key} className={`adm-od-mon-item${item.score > 0 ? ' adm-od-mon-item--active' : ''}`}>
-                            <div className="adm-od-mon-item-main">
-                              <span className="adm-od-mon-item-title">{item.label}</span>
-                              <p className="adm-od-mon-item-desc">{item.description}</p>
-                            </div>
-                            <div className={`adm-od-mon-item-score${item.score > 0 ? ' adm-od-mon-item-score--active' : ''}`}>
-                              <span>Score</span>
-                              <strong>{item.score}</strong>
-                            </div>
+                      {(() => {
+                        const monMax = Math.max(1, ...monitoringInsights.map((i) => i.score || 0));
+                        return (
+                          <div className="adm-od-mon-bars">
+                            {monitoringInsights.map((item) => (
+                              <div key={item.key} className={`adm-od-mon-bar${item.score > 0 ? ' adm-od-mon-bar--active' : ''}`}>
+                                <div className="adm-od-mon-bar-top">
+                                  <span className="adm-od-mon-bar-label">{item.label}</span>
+                                  <span className="adm-od-mon-bar-score">{item.score > 0 ? `+${item.score}` : item.score}</span>
+                                </div>
+                                <div className="adm-od-mon-bar-track">
+                                  <span
+                                    className="adm-od-mon-bar-fill"
+                                    style={{ width: `${item.score > 0 ? Math.max(8, (item.score / monMax) * 100) : 0}%` }}
+                                  />
+                                </div>
+                                <p className="adm-od-mon-bar-desc">{item.description}</p>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </Card>
 
-                {/* Keputusan Admin */}
-                <Card title="Keputusan Admin">
-                  <div className="adm-od-rows">
-                    <Row label="Decision">{detail.decision || '-'}</Row>
-                    <Row label="Diproses Oleh">{detail.processed_by_name || '-'}</Row>
-                    <Row label="Diproses Pada">{formatTanggal(detail.processed_at)}</Row>
-                    <Row label="OTP Verified For Action">{detail.otp_verified_for_action ? 'Ya' : 'Tidak'}</Row>
-                    <Row label="Decision Risk Score">{detail.decision_risk_score ?? '-'}</Row>
-                    <Row label="Decision Risk Level">{detail.decision_risk_level || '-'}</Row>
-                    <Row label="Decision Reason">{detail.decision_reason || '-'}</Row>
-                  </div>
-                </Card>
-              </div>
 
-              {/* ── SIDE: ringkasan + aksi ── */}
-              <div className="adm-od-side">
-                <div className="adm-card adm-od-summary">
+                <div className="adm-card adm-od-summary adm-od-cell-sum">
                   <h3 className="adm-card-title">Ringkasan</h3>
                   <div className="adm-od-sum-row"><span>Subtotal</span><span>Rp {formatRibuan(detail.subtotal)}</span></div>
                   <div className="adm-od-sum-row"><span>Ongkir</span><span>Rp {formatRibuan(detail.shipping_fee)}</span></div>
@@ -1365,7 +1264,222 @@ export default function DetailPesananPage() {
                     <p className="adm-od-note adm-od-note--center">Tidak ada aksi untuk status saat ini.</p>
                   )}
                 </div>
-              </div>
+
+                {/* Alamat Pengiriman */}
+                <Card title="Alamat Pengiriman" className="adm-od-cell-addr">
+                  <div className="adm-od-addr">
+                    <div className="adm-od-addr-head">
+                      <span className="adm-od-addr-cap">Alamat Tujuan</span>
+                      {detail.address_label && <span className="adm-od-addr-badge">{detail.address_label}</span>}
+                    </div>
+                    <span className="adm-od-addr-name">
+                      {detail.recipient_name || '-'}{detail.recipient_phone ? ` · ${detail.recipient_phone}` : ''}
+                    </span>
+                    <p className="adm-od-addr-text">
+                      {[detail.address_line, detail.city, detail.province, detail.postal_code].filter(Boolean).join(', ') || '-'}
+                    </p>
+                    {detail.address_notes && <p className="adm-od-addr-note">Catatan: {detail.address_notes}</p>}
+                  </div>
+                </Card>
+
+                {/* Keputusan Admin */}
+                <Card title="Keputusan Admin" className="adm-od-cell-dec">
+                  {(() => {
+                    const dec = (detail.decision || '').toLowerCase();
+                    const variant = dec.includes('approve') ? 'ok' : dec.includes('reject') ? 'no' : 'pending';
+                    return (
+                      <div className={`adm-od-decision adm-od-decision--${variant}`}>
+                        <span className="adm-od-decision-ico">
+                          {variant === 'ok' ? (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                          ) : variant === 'no' ? (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                          ) : (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                          )}
+                        </span>
+                        <div className="adm-od-decision-text">
+                          <span className="adm-od-decision-status">{detail.decision || 'Belum ada keputusan'}</span>
+                          {detail.decision_reason && <span className="adm-od-decision-sub">{detail.decision_reason}</span>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <div className="adm-od-meta">
+                    <div className="adm-od-meta-row"><span>Diproses Oleh</span><span>{detail.processed_by_name || '-'}</span></div>
+                    <div className="adm-od-meta-row"><span>Diproses Pada</span><span>{formatTanggal(detail.processed_at)}</span></div>
+                    <div className="adm-od-meta-row"><span>OTP Verified</span><span>{detail.otp_verified_for_action ? 'Ya' : 'Tidak'}</span></div>
+                    <div className="adm-od-meta-row"><span>Decision Risk Score</span><span>{detail.decision_risk_score ?? '-'}</span></div>
+                    <div className="adm-od-meta-row"><span>Decision Risk Level</span><span>{detail.decision_risk_level || '-'}</span></div>
+                  </div>
+                </Card>
+
+                <div className="adm-od-trio">
+                {/* Pembayaran */}
+                <Card title="Pembayaran">
+                  <div className="adm-od-pay">
+                    <span className="adm-od-pay-ico">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
+                      </svg>
+                    </span>
+                    <div className="adm-od-pay-info">
+                      <span className="adm-od-pay-label">Metode Pembayaran</span>
+                      <span className="adm-od-pay-method">{detail.payment_method || '-'}</span>
+                      <span className="adm-od-pay-target">Tujuan transfer: <strong>{detail.payment_target || '-'}</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="adm-od-files">
+                    <span className="adm-od-files-label">Bukti Transfer</span>
+                    {detail.payment_proof ? (
+                      <div className="adm-od-files-btns">
+                        {isPreviewableProof(detail.payment_proof) && (
+                          <button type="button" className="adm-od-filebtn" onClick={() => openImagePreview(proofPreview(detail.payment_proof, 'Bukti Transfer'))}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                            Lihat Bukti
+                          </button>
+                        )}
+                        <a className="adm-od-filebtn adm-od-filebtn--ghost" href={fileUrl(detail.payment_proof)} target="_blank" rel="noreferrer">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                          Buka File
+                        </a>
+                      </div>
+                    ) : (
+                      <span className="adm-od-files-empty">Belum ada bukti.</span>
+                    )}
+                  </div>
+                </Card>
+
+                {/* E-Receipt */}
+                <Card title="E-Receipt">
+                  <div className="adm-od-chips">
+                    <span className={`adm-od-chip${detail.ereceipt_eligible ? ' adm-od-chip--ok' : ' adm-od-chip--mute'}`}>
+                      {detail.ereceipt_eligible ? '✓ Boleh dibuat' : 'Belum boleh dibuat'}
+                    </span>
+                    <span className={`adm-od-chip${detail.ereceipt_available ? ' adm-od-chip--ok' : ' adm-od-chip--mute'}`}>
+                      {detail.ereceipt_available ? '✓ Sudah tersedia' : 'Belum tersedia'}
+                    </span>
+                  </div>
+                  <div className="adm-od-meta">
+                    <div className="adm-od-meta-row"><span>Receipt ID</span><span className="adm-od-mono">{detail.ereceipt_id || '-'}</span></div>
+                    <div className="adm-od-meta-row"><span>Generated At</span><span>{formatTanggal(detail.ereceipt_generated_at)}</span></div>
+                  </div>
+                  <div className="adm-od-btn-row">
+                    {!detail.ereceipt_available && (
+                      <button
+                        type="button"
+                        className="adm-btn adm-btn--primary"
+                        onClick={handleGenerateReceipt}
+                        disabled={!detail.ereceipt_eligible || receiptLoading}
+                      >
+                        {receiptLoading ? 'Memproses...' : 'Generate E-Receipt'}
+                      </button>
+                    )}
+                    <button type="button" className="adm-btn adm-btn--ghost" onClick={() => handleOpenReceipt('view')} disabled={!detail.ereceipt_eligible}>
+                      Lihat PDF
+                    </button>
+                    <button type="button" className="adm-btn adm-btn--ghost" onClick={() => handleOpenReceipt('download')} disabled={!detail.ereceipt_eligible}>
+                      Download PDF
+                    </button>
+                  </div>
+                  {!detail.ereceipt_eligible && (
+                    <p className="adm-od-note">E-receipt baru tersedia setelah order di-approve admin.</p>
+                  )}
+                </Card>
+
+                {/* QR */}
+                <Card
+                  title="QR Code Produk"
+                  action={qrReady && detail.status === 'pengemasan' && pendingQrCount > 0 ? (
+                    <button type="button" className="adm-btn adm-btn--primary adm-btn--sm" onClick={handleGenerateAllQrs} disabled={qrLoading}>
+                      {qrLoading ? 'Memproses...' : 'Generate Semua QR'}
+                    </button>
+                  ) : null}
+                >
+                  {!qrReady ? (
+                    <p className="adm-od-note">QR produk baru tampil setelah order masuk tahap pengemasan.</p>
+                  ) : qrUnits.length === 0 ? (
+                    <div className="adm-od-qr-empty">{qrLoading ? 'Memuat data QR...' : 'Belum ada slot QR.'}</div>
+                  ) : (
+                    (() => {
+                      const safe = Math.min(Math.max(qrIndex, 0), qrUnits.length - 1);
+                      const unit = qrUnits[safe];
+                      return (
+                        <div className="adm-od-qr-carousel">
+                          <div className="adm-od-qr-nav">
+                            <button type="button" className="adm-od-qr-arrow" onClick={() => setQrIndex(safe - 1)} disabled={safe === 0} aria-label="QR sebelumnya">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                            </button>
+                            <span className="adm-od-qr-counter">{safe + 1} <i>/</i> {qrUnits.length}</span>
+                            <button type="button" className="adm-od-qr-arrow" onClick={() => setQrIndex(safe + 1)} disabled={safe === qrUnits.length - 1} aria-label="QR berikutnya">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                            </button>
+                          </div>
+
+                          <div className={`adm-od-qr-slide${unit.generatedAt ? ' adm-od-qr-slide--done' : ''}`}>
+                            <div className="adm-od-qr-slide-thumb">
+                              {unit.qrImageUrl ? (
+                                <button
+                                  type="button"
+                                  className="adm-od-qr-preview adm-od-qr-preview--lg"
+                                  onClick={() => openImagePreview({ src: unit.qrImageUrl, label: `QR ${unit.productName} unit ${unit.unitIndex}` })}
+                                >
+                                  <img src={unit.qrImageUrl} alt={`QR ${unit.productName} unit ${unit.unitIndex}`} className="adm-od-qr-img" />
+                                </button>
+                              ) : (
+                                <span className="adm-od-qr-thumb-empty adm-od-qr-thumb-empty--lg">
+                                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3" /><path d="M21 14v7h-7" /><path d="M17 21v-4" />
+                                  </svg>
+                                </span>
+                              )}
+                            </div>
+                            <div className="adm-od-qr-slide-info">
+                              <div className="adm-od-qr-slide-head">
+                                <span className="adm-od-qr-slide-name">{unit.productName}</span>
+                                <span className={`adm-od-qr-badge${unit.generatedAt ? ' adm-od-qr-badge--done' : ' adm-od-qr-badge--pending'}`}>
+                                  {unit.qrStatus || 'pending'}
+                                </span>
+                              </div>
+                              <span className="adm-od-qr-card-unit">Unit #{unit.unitIndex} · {unit.unitId}</span>
+                              <div className="adm-od-qr-card-tags">
+                                <span className="adm-od-qr-tag">Returned: {unit.isReturned ? 'Ya' : 'Tidak'}</span>
+                                <span className="adm-od-qr-tag">Verify: {unit.verificationCount ?? 0}</span>
+                              </div>
+                              <div className="adm-od-qr-card-token">
+                                <span>Token</span>
+                                <code>{unit.qrToken || '-'}</code>
+                              </div>
+                              <div className="adm-od-qr-card-gen">
+                                {unit.generatedAt ? `${formatTanggal(unit.generatedAt)} · ${unit.generatedBy || '-'}` : 'Belum digenerate'}
+                              </div>
+                              <div className="adm-od-qr-card-actions">
+                                {!unit.generatedAt && detail.status === 'pengemasan' && (
+                                  <button type="button" className="adm-btn adm-btn--primary adm-btn--sm" onClick={() => handleGenerateUnitQr(unit)} disabled={qrLoading}>
+                                    Generate
+                                  </button>
+                                )}
+                                {unit.qrImageUrl && (
+                                  <>
+                                    <a className="adm-btn adm-btn--ghost adm-btn--sm" href={unit.qrImageUrl} target="_blank" rel="noreferrer">Buka</a>
+                                    <button type="button" className="adm-btn adm-btn--ghost adm-btn--sm" onClick={() => handleDownloadQr(unit)}>Download</button>
+                                  </>
+                                )}
+                                {unit.generatedAt && !unit.qrImageUrl && <span className="adm-od-qr-card-dash">Tidak ada gambar</span>}
+                              </div>
+                            </div>
+                          </div>
+
+                          <p className="adm-od-qr-meta">
+                            Total slot QR: <strong>{qrUnits.length}</strong> · Belum digenerate: <strong>{pendingQrCount}</strong>
+                          </p>
+                        </div>
+                      );
+                    })()
+                  )}
+                </Card>
+                </div>
             </div>
 
             {/* POPUP INPUT RESI PENGIRIMAN */}

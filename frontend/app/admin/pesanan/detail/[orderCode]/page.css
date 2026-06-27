@@ -451,9 +451,17 @@
 .adm-od-layout {
   display: grid;
   grid-template-columns: 1fr 340px;
-  gap: 18px;
+  gap: 16px 18px;
   align-items: start;
 }
+
+/* penempatan eksplisit tiap kartu ke sel grid */
+.adm-od-cell-produk { grid-column: 1; grid-row: 1; }
+.adm-od-cell-sum    { grid-column: 2; grid-row: 1; }
+.adm-od-cell-ship   { grid-column: 1; grid-row: 2 / 4; align-self: stretch; }
+.adm-od-cell-addr   { grid-column: 2; grid-row: 2; }
+.adm-od-cell-dec    { grid-column: 2; grid-row: 3; }
+.adm-od-cell-mon    { grid-column: 1 / -1; grid-row: 5; }
 
 .adm-od-main {
   display: flex;
@@ -463,8 +471,10 @@
 }
 
 .adm-od-side {
-  position: sticky;
-  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .adm-od-card {
@@ -1182,6 +1192,18 @@
   .adm-od-layout {
     grid-template-columns: 1fr;
   }
+  /* reset penempatan eksplisit -> menumpuk satu kolom */
+  .adm-od-cell-produk,
+  .adm-od-cell-sum,
+  .adm-od-cell-ship,
+  .adm-od-cell-addr,
+  .adm-od-cell-dec,
+  .adm-od-cell-mon,
+  .adm-od-layout > .adm-od-trio {
+    grid-column: 1;
+    grid-row: auto;
+    align-self: auto;
+  }
   .adm-od-side {
     position: static;
   }
@@ -1421,4 +1443,740 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 4px 22px 22px;
+}
+
+/* ════════════════════════════════════════════════════════
+   REDESAIN SEKSI — visual blocks (produk, kurir, bayar,
+   meta, file, chips, qr cards, alamat, keputusan)
+   ════════════════════════════════════════════════════════ */
+
+/* ── Meta list (label–value) ── */
+.adm-od-meta {
+  display: flex;
+  flex-direction: column;
+}
+.adm-od-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-top: 1px solid #f5e9e7;
+}
+.adm-od-meta-row:first-child { border-top: none; }
+.adm-od-meta-row > span:first-child {
+  font-size: 12px;
+  color: var(--adm-text-3);
+  flex-shrink: 0;
+}
+.adm-od-meta-row > span:last-child {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--adm-text);
+  text-align: right;
+  word-break: break-word;
+}
+.adm-od-mono {
+  font-family: monospace;
+  letter-spacing: 0.3px;
+}
+
+/* ── Produk dipesan ── */
+.adm-od-prods {
+  display: flex;
+  flex-direction: column;
+}
+.adm-od-prod {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 0;
+  border-top: 1px solid #f5e9e7;
+}
+.adm-od-prod:first-child { border-top: none; }
+.adm-od-prod-ico {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--adm-brand);
+  background: var(--adm-brand-bg);
+}
+.adm-od-prod-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.adm-od-prod-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--adm-text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+.adm-od-prod-meta {
+  font-size: 12px;
+  color: var(--adm-text-3);
+}
+.adm-od-prod-x { color: var(--adm-brand); font-weight: 700; }
+.adm-od-prod-sub {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--adm-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.adm-od-prod-empty {
+  padding: 14px 0;
+  text-align: center;
+  color: var(--adm-text-3);
+  font-size: 13px;
+}
+.adm-od-prod-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 13px 16px;
+  border-radius: 13px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(249, 212, 207, 0.4) 0%, transparent 55%),
+    linear-gradient(135deg, #fff7f6, #fdf0ef);
+  border: 1.5px solid var(--adm-brand-border);
+}
+.adm-od-prod-total > span:first-child {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--adm-text-2);
+}
+.adm-od-prod-total-val {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--adm-brand);
+}
+
+/* ── Kartu kurir & pembayaran ── */
+.adm-od-courier,
+.adm-od-pay {
+  display: flex;
+  gap: 13px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--adm-bg);
+  border: 1px solid var(--adm-border);
+  margin-bottom: 14px;
+}
+.adm-od-courier-ico,
+.adm-od-pay-ico {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, #e8907f, #c97269);
+  box-shadow: 0 4px 12px rgba(201, 114, 105, 0.3);
+}
+.adm-od-courier-info,
+.adm-od-pay-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.adm-od-courier-label,
+.adm-od-pay-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--adm-brand);
+}
+.adm-od-courier-name,
+.adm-od-pay-method {
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--adm-text);
+  word-break: break-word;
+}
+.adm-od-pay-target {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--adm-text-2);
+}
+.adm-od-courier-resi {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--adm-brand-border);
+}
+.adm-od-courier-resi-label {
+  font-size: 11px;
+  color: var(--adm-text-3);
+  flex-shrink: 0;
+}
+.adm-od-courier-resi-num {
+  font-family: monospace;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--adm-text);
+  word-break: break-all;
+}
+
+/* ── File buttons (bukti) ── */
+.adm-od-files {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #f5e9e7;
+}
+.adm-od-files-label {
+  display: block;
+  font-size: 12px;
+  color: var(--adm-text-3);
+  margin-bottom: 8px;
+}
+.adm-od-files-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.adm-od-filebtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, #e8907f, #c97269);
+  border: 1.5px solid transparent;
+  text-decoration: none;
+  box-shadow: 0 3px 10px rgba(201, 114, 105, 0.28);
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.adm-od-filebtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(201, 114, 105, 0.4);
+}
+.adm-od-filebtn--ghost {
+  color: var(--adm-brand);
+  background: #fff;
+  border-color: var(--adm-brand-border);
+  box-shadow: none;
+}
+.adm-od-filebtn--ghost:hover {
+  background: var(--adm-brand-bg);
+  border-color: var(--adm-brand);
+  box-shadow: none;
+}
+.adm-od-files-empty {
+  font-size: 12.5px;
+  color: var(--adm-text-3);
+}
+
+/* ── Chips (e-receipt) ── */
+.adm-od-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+.adm-od-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border-radius: 50px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.adm-od-chip--ok { color: #16a34a; background: rgba(34, 197, 94, 0.1); }
+.adm-od-chip--mute { color: var(--adm-text-3); background: #f4eeed; }
+
+/* ── QR cards ── */
+.adm-od-qr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.adm-od-qr-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1.5px solid var(--adm-border);
+}
+.adm-od-qr-card--done {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(34, 197, 94, 0.03);
+}
+.adm-od-qr-card-thumb {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+.adm-od-qr-preview {
+  width: 72px;
+  height: 72px;
+  padding: 5px;
+  border: 1.5px solid var(--adm-brand-border);
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+  display: block;
+  transition: border-color 0.15s, transform 0.12s;
+}
+.adm-od-qr-preview:hover { border-color: var(--adm-brand); transform: scale(1.03); }
+.adm-od-qr-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.adm-od-qr-thumb-empty {
+  width: 72px;
+  height: 72px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--adm-text-3);
+  background: var(--adm-bg);
+  border: 1.5px dashed var(--adm-brand-border);
+}
+.adm-od-qr-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.adm-od-qr-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.adm-od-qr-card-titles { min-width: 0; display: flex; flex-direction: column; }
+.adm-od-qr-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--adm-text);
+  word-break: break-word;
+}
+.adm-od-qr-card-unit {
+  font-size: 11px;
+  color: var(--adm-text-3);
+  font-family: monospace;
+}
+.adm-od-qr-badge {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 50px;
+  text-transform: capitalize;
+}
+.adm-od-qr-badge--done { color: #16a34a; background: rgba(34, 197, 94, 0.12); }
+.adm-od-qr-badge--pending { color: #c47c10; background: rgba(224, 154, 58, 0.14); }
+.adm-od-qr-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-od-qr-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--adm-text-2);
+  background: #f4eeed;
+  padding: 2px 8px;
+  border-radius: 50px;
+}
+.adm-od-qr-card-token {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--adm-text-3);
+}
+.adm-od-qr-card-token code {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--adm-text-2);
+  word-break: break-all;
+}
+.adm-od-qr-card-gen { font-size: 11px; color: var(--adm-text-3); }
+.adm-od-qr-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 2px;
+}
+.adm-od-qr-card-dash { font-size: 11.5px; color: var(--adm-text-3); }
+.adm-od-qr-empty {
+  grid-column: 1 / -1;
+  padding: 22px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--adm-text-3);
+  border: 1.5px dashed var(--adm-brand-border);
+  border-radius: 14px;
+}
+
+/* ── Alamat (kartu) ── */
+.adm-od-addr {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--adm-bg);
+  border: 1px solid var(--adm-border);
+}
+.adm-od-addr-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.adm-od-addr-cap {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--adm-brand);
+}
+.adm-od-addr-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--adm-brand);
+  background: #fff;
+  border: 1px solid var(--adm-brand-border);
+  padding: 2px 9px;
+  border-radius: 50px;
+}
+.adm-od-addr-name {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--adm-text);
+}
+.adm-od-addr-text {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--adm-text-2);
+  line-height: 1.5;
+}
+.adm-od-addr-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--adm-text-3);
+  line-height: 1.45;
+}
+
+/* ── Keputusan admin (banner) ── */
+.adm-od-decision {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  border-radius: 13px;
+  border: 1.5px solid transparent;
+  margin-bottom: 14px;
+}
+.adm-od-decision-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.adm-od-decision-text { display: flex; flex-direction: column; min-width: 0; }
+.adm-od-decision-status {
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+.adm-od-decision-sub {
+  font-size: 12px;
+  margin-top: 2px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.adm-od-decision--ok { background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.25); }
+.adm-od-decision--ok .adm-od-decision-ico { background: linear-gradient(135deg, #34d399, #16a34a); }
+.adm-od-decision--ok .adm-od-decision-status { color: #16a34a; }
+.adm-od-decision--ok .adm-od-decision-sub { color: #3f8f5e; }
+.adm-od-decision--no { background: rgba(239, 68, 68, 0.07); border-color: rgba(239, 68, 68, 0.25); }
+.adm-od-decision--no .adm-od-decision-ico { background: linear-gradient(135deg, #f87171, #ef4444); }
+.adm-od-decision--no .adm-od-decision-status { color: #dc2626; }
+.adm-od-decision--no .adm-od-decision-sub { color: #c0524a; }
+.adm-od-decision--pending { background: rgba(224, 154, 58, 0.08); border-color: rgba(224, 154, 58, 0.25); }
+.adm-od-decision--pending .adm-od-decision-ico { background: linear-gradient(135deg, #fbbf24, #e09a3a); }
+.adm-od-decision--pending .adm-od-decision-status { color: #c47c10; }
+.adm-od-decision--pending .adm-od-decision-sub { color: #a07a3a; }
+
+/* ── Trio: Pembayaran · E-Receipt · QR dalam satu baris ── */
+/* membentang penuh dari kolom kiri sampai kanan */
+.adm-od-layout > .adm-od-trio {
+  grid-column: 1 / -1;
+  grid-row: 4;
+}
+.adm-od-trio {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+.adm-od-trio .adm-od-card {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+}
+/* dorong area aksi/bukti ke bawah biar konten ngisi penuh tinggi box */
+.adm-od-trio .adm-od-files,
+.adm-od-trio .adm-od-btn-row {
+  margin-top: auto;
+}
+.adm-od-trio .adm-od-card-head {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* di kolom sempit, kartu unit QR jadi satu per baris */
+.adm-od-trio .adm-od-qr-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 860px) {
+  .adm-od-trio {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Monitoring Risiko: gauge + factor bars (ala retur) ── */
+.adm-od-mon-gaugecard {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1.5px solid var(--adm-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(253, 246, 245, 0.95));
+}
+.adm-od-gauge {
+  position: relative;
+  width: 118px;
+  height: 118px;
+  flex-shrink: 0;
+}
+.adm-od-gauge-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.adm-od-gauge-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.adm-od-gauge-center strong {
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+.adm-od-gauge-center span {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--adm-text-3);
+}
+.adm-od-mon-gauge-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.adm-od-mon-gauge-pill {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.adm-od-mon-bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.adm-od-mon-bar {
+  padding: 13px 15px;
+  border-radius: 14px;
+  border: 1.5px solid var(--adm-border);
+  background: #fff;
+}
+.adm-od-mon-bar--active {
+  border-color: var(--adm-brand-border);
+  background: var(--adm-brand-bg);
+}
+.adm-od-mon-bar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.adm-od-mon-bar-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--adm-text);
+}
+.adm-od-mon-bar-score {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-text-3);
+  flex-shrink: 0;
+}
+.adm-od-mon-bar--active .adm-od-mon-bar-score {
+  color: var(--adm-brand);
+}
+.adm-od-mon-bar-track {
+  height: 7px;
+  border-radius: 50px;
+  background: #f1e3e1;
+  overflow: hidden;
+}
+.adm-od-mon-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 50px;
+  background: linear-gradient(90deg, #e8907f, #c97269);
+  transition: width 0.5s ease;
+}
+.adm-od-mon-bar-desc {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: var(--adm-text-3);
+  line-height: 1.45;
+}
+
+@media (max-width: 560px) {
+  .adm-od-mon-gaugecard {
+    flex-direction: column;
+    text-align: center;
+  }
+  .adm-od-mon-gauge-meta {
+    align-items: center;
+  }
+}
+
+/* ── QR Code Produk: carousel (1 unit per slide + panah) ── */
+.adm-od-qr-carousel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 14px;
+}
+.adm-od-qr-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.adm-od-qr-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--adm-brand-border);
+  background: #fff;
+  color: var(--adm-brand);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+.adm-od-qr-arrow:hover:not(:disabled) {
+  background: var(--adm-brand-bg);
+  border-color: var(--adm-brand);
+}
+.adm-od-qr-arrow:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.adm-od-qr-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.adm-od-qr-counter {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-text);
+}
+.adm-od-qr-counter i {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--adm-text-3);
+  margin: 0 2px;
+}
+
+.adm-od-qr-slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 13px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1.5px solid var(--adm-border);
+  background: #fff;
+}
+.adm-od-qr-slide--done {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(34, 197, 94, 0.03);
+}
+.adm-od-qr-slide-thumb {
+  flex-shrink: 0;
+}
+.adm-od-qr-preview--lg {
+  width: 150px;
+  height: 150px;
+  padding: 9px;
+}
+.adm-od-qr-thumb-empty--lg {
+  width: 150px;
+  height: 150px;
+}
+.adm-od-qr-slide-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.adm-od-qr-slide-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.adm-od-qr-slide-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--adm-text);
+  word-break: break-word;
+}
+.adm-od-qr-carousel .adm-od-qr-meta {
+  margin-top: auto;
+  margin-bottom: 0;
 }

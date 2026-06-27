@@ -1441,34 +1441,6 @@
   word-break: break-all;
 }
 
-.adm-rd-card .adm-rd-bank-copy {
-  width: 34px;
-  height: 34px;
-  margin: 0;
-  border-radius: 10px;
-  flex-shrink: 0;
-  border: 1.5px solid var(--adm-brand-border);
-  background: #fff;
-  color: var(--adm-brand);
-  box-shadow: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.16s, color 0.16s, transform 0.12s;
-}
-
-.adm-rd-card .adm-rd-bank-copy:hover:not(:disabled) {
-  background: var(--adm-brand-bg);
-  border-color: var(--adm-brand);
-  box-shadow: none;
-  transform: none;
-}
-
-.adm-rd-card .adm-rd-bank-copy:active {
-  transform: scale(0.92);
-}
-
 .adm-rd-bank-holder {
   font-size: 13px;
   font-weight: 600;
@@ -1664,34 +1636,6 @@
   letter-spacing: 0.5px;
   color: var(--adm-text);
   word-break: break-all;
-}
-
-.adm-rd-card .adm-rd-ship-copy {
-  width: 30px;
-  height: 30px;
-  margin: 0;
-  border-radius: 8px;
-  flex-shrink: 0;
-  border: 1.5px solid var(--adm-brand-border);
-  background: #fff;
-  color: var(--adm-brand);
-  box-shadow: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.16s, border-color 0.16s, transform 0.12s;
-}
-
-.adm-rd-card .adm-rd-ship-copy:hover:not(:disabled) {
-  background: var(--adm-brand-bg);
-  border-color: var(--adm-brand);
-  box-shadow: none;
-  transform: none;
-}
-
-.adm-rd-card .adm-rd-ship-copy:active {
-  transform: scale(0.92);
 }
 
 /* ════════════════════════════════════════════════════════

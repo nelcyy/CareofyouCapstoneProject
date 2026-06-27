@@ -98,35 +98,6 @@ function RiskGauge({ score, level }) {
   );
 }
 
-function CopyButton({ value, className }) {
-  const [copied, setCopied] = useState(false);
-  if (!value) return null;
-  return (
-    <button
-      type="button"
-      className={className}
-      title="Salin"
-      aria-label="Salin"
-      onClick={() => {
-        if (!navigator.clipboard) return;
-        navigator.clipboard
-          .writeText(String(value))
-          .then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1400);
-          })
-          .catch(() => {});
-      }}
-    >
-      {copied ? (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-      ) : (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-      )}
-    </button>
-  );
-}
-
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -1357,7 +1328,6 @@ export default function AdminReturnDetailPage() {
                 </div>
                 <div className="adm-rd-bank-acc">
                   <span className="adm-rd-bank-acc-num">{refundInfo.account_number || '-'}</span>
-                  <CopyButton value={refundInfo.account_number} className="adm-rd-bank-copy" />
                 </div>
                 <div className="adm-rd-bank-holder">a.n. {refundInfo.account_holder_name || '-'}</div>
               </div>
@@ -1410,7 +1380,6 @@ export default function AdminReturnDetailPage() {
                   <div className="adm-rd-ship-resi">
                     <span className="adm-rd-ship-resi-label">No. Resi</span>
                     <span className="adm-rd-ship-resi-num">{detail.return_shipment?.tracking_number || '-'}</span>
-                    <CopyButton value={detail.return_shipment?.tracking_number} className="adm-rd-ship-copy" />
                   </div>
                 </div>
               </div>
