@@ -8,8 +8,14 @@ export function apiUrl(path = '') {
 }
 
 export function mediaUrl(path) {
-  if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${BACKEND_URL}${normalizedPath}`;
+  const value = String(path || '').trim();
+  if (!value) return '';
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+
+  const normalizedPath = value.startsWith('/') ? value : `/${value}`;
+  const mediaPath = normalizedPath.startsWith('/media/')
+    ? normalizedPath
+    : `/media${normalizedPath}`;
+
+  return `${BACKEND_URL}${mediaPath}`;
 }

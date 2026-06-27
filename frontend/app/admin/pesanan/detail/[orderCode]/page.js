@@ -8,6 +8,8 @@ import './page.css';
 
 const API = apiUrl('/api/admin/pesanan');
 const QR_READY_STATUSES = ['pengemasan', 'pengiriman', 'selesai'];
+const PROOF_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
+const PROOF_IMAGE_TYPES = new Set(PROOF_IMAGE_ACCEPT.split(','));
 
 function formatRibuan(value) {
   const digits = String(value ?? '').replace(/\D/g, '');
@@ -28,6 +30,25 @@ function imgUrl(path) {
 
 function fileUrl(path) {
   return mediaUrl(path);
+}
+
+function proofPreview(path, label) {
+  if (!path) return null;
+  return {
+    src: fileUrl(path),
+    label,
+  };
+}
+
+function isPreviewableProof(path) {
+  return /\.(jpe?g|png|webp)(?:[?#].*)?$/i.test(String(path || ''));
+}
+
+function isAllowedProofImage(file) {
+  if (!file) return false;
+  const hasAllowedType = !file.type || PROOF_IMAGE_TYPES.has(file.type);
+  const hasAllowedName = /\.(jpe?g|png|webp)$/i.test(file.name || '');
+  return hasAllowedType && hasAllowedName;
 }
 
 function isQrReadyStatus(status) {
@@ -381,6 +402,7 @@ export default function DetailPesananPage() {
   const [qrUnits, setQrUnits] = useState([]);
   const [showCompleteStep, setShowCompleteStep] = useState(false);
   const [completionProofFile, setCompletionProofFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const completionProofInputRef = useRef(null);
 
   async function postAction(path, payload) {
@@ -692,6 +714,30 @@ export default function DetailPesananPage() {
     document.body.removeChild(link);
   }
 
+  function openImagePreview(preview) {
+    if (!preview?.src) return;
+    setImagePreview(preview);
+  }
+
+  function closeImagePreview() {
+    setImagePreview(null);
+  }
+
+  function handleCompletionProofChange(event) {
+    const file = event.target.files?.[0] || null;
+    if (!file) {
+      setCompletionProofFile(null);
+      return;
+    }
+    if (!isAllowedProofImage(file)) {
+      setCompletionProofFile(null);
+      setError('Bukti selesai / terkirim harus berupa foto JPG, PNG, atau WebP.');
+      return;
+    }
+    setError('');
+    setCompletionProofFile(file);
+  }
+
   function resetCompleteStep() {
     setShowCompleteStep(false);
     setCompletionProofFile(null);
@@ -757,6 +803,10 @@ export default function DetailPesananPage() {
       setError('Upload bukti selesai / terkirim wajib diisi.');
       return;
     }
+    if (!isAllowedProofImage(completionProofFile)) {
+      setError('Bukti selesai / terkirim harus berupa foto JPG, PNG, atau WebP.');
+      return;
+    }
 
     const adminUser = getAdminUser();
     if (!adminUser?.id || adminUser.role !== 'admin') {
@@ -808,6 +858,19 @@ export default function DetailPesananPage() {
     if (!orderCode) return;
     loadDetail();
   }, [orderCode]);
+
+  useEffect(() => {
+    if (!imagePreview) return undefined;
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        closeImagePreview();
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [imagePreview]);
 
   const canProcess = detail?.status === 'waiting_admin_approval';
   const qrReady = isQrReadyStatus(detail?.status);
@@ -977,9 +1040,20 @@ export default function DetailPesananPage() {
                     <Row label="Selesai Pada">{formatTanggal(detail.completed_at)}</Row>
                     <Row label="Selesai Oleh">{detail.completed_by_name || '-'}</Row>
                     <Row label="Bukti Terkirim">
-                      {detail.delivery_proof
-                        ? <a className="adm-od-link" href={fileUrl(detail.delivery_proof)} target="_blank" rel="noreferrer">Lihat Bukti</a>
-                        : '-'}
+                      {detail.delivery_proof ? (
+                        <div className="adm-od-proof-actions">
+                          {isPreviewableProof(detail.delivery_proof) && (
+                            <button
+                              type="button"
+                              className="adm-od-link adm-od-link-button"
+                              onClick={() => openImagePreview(proofPreview(detail.delivery_proof, 'Bukti Terkirim'))}
+                            >
+                              Lihat Bukti
+                            </button>
+                          )}
+                          <a className="adm-od-link adm-od-proof-raw" href={fileUrl(detail.delivery_proof)} target="_blank" rel="noreferrer">Buka file</a>
+                        </div>
+                      ) : '-'}
                     </Row>
                   </div>
                 </Card>
@@ -990,9 +1064,20 @@ export default function DetailPesananPage() {
                     <Row label="Metode">{detail.payment_method || '-'}</Row>
                     <Row label="Tujuan Transfer">{detail.payment_target || '-'}</Row>
                     <Row label="Bukti Transfer">
-                      {detail.payment_proof
-                        ? <a className="adm-od-link" href={fileUrl(detail.payment_proof)} target="_blank" rel="noreferrer">Lihat Bukti</a>
-                        : '-'}
+                      {detail.payment_proof ? (
+                        <div className="adm-od-proof-actions">
+                          {isPreviewableProof(detail.payment_proof) && (
+                            <button
+                              type="button"
+                              className="adm-od-link adm-od-link-button"
+                              onClick={() => openImagePreview(proofPreview(detail.payment_proof, 'Bukti Transfer'))}
+                            >
+                              Lihat Bukti
+                            </button>
+                          )}
+                          <a className="adm-od-link adm-od-proof-raw" href={fileUrl(detail.payment_proof)} target="_blank" rel="noreferrer">Buka file</a>
+                        </div>
+                      ) : '-'}
                     </Row>
                   </div>
                 </Card>
@@ -1064,9 +1149,18 @@ export default function DetailPesananPage() {
                                 <td className="adm-od-token">{unit.qrToken || '-'}</td>
                                 <td>{formatTanggal(unit.generatedAt)}<span className="adm-od-sub">{unit.generatedBy || '-'}</span></td>
                                 <td>
-                                  {unit.qrImageUrl
-                                    ? <img src={unit.qrImageUrl} alt={`QR ${unit.productName} unit ${unit.unitIndex}`} className="adm-od-qr-img" />
-                                    : '-'}
+                                  {unit.qrImageUrl ? (
+                                    <button
+                                      type="button"
+                                      className="adm-od-qr-preview"
+                                      onClick={() => openImagePreview({
+                                        src: unit.qrImageUrl,
+                                        label: `QR ${unit.productName} unit ${unit.unitIndex}`,
+                                      })}
+                                    >
+                                      <img src={unit.qrImageUrl} alt={`QR ${unit.productName} unit ${unit.unitIndex}`} className="adm-od-qr-img" />
+                                    </button>
+                                  ) : '-'}
                                 </td>
                                 <td>
                                   <div className="adm-od-qr-actions">
@@ -1203,8 +1297,8 @@ export default function DetailPesananPage() {
                           <input
                             ref={completionProofInputRef}
                             type="file"
-                            accept="image/*,.pdf"
-                            onChange={(event) => setCompletionProofFile(event.target.files?.[0] || null)}
+                            accept={PROOF_IMAGE_ACCEPT}
+                            onChange={handleCompletionProofChange}
                             disabled={actionLoading}
                             style={{ display: 'none' }}
                           />
@@ -1227,7 +1321,7 @@ export default function DetailPesananPage() {
                               <p className="adm-od-note">
                                 {completionProofFile
                                   ? `File terpilih: ${completionProofFile.name}`
-                                  : 'Pilih bukti terkirim terlebih dahulu sebelum konfirmasi selesai.'}
+                                  : 'Pilih foto bukti terkirim JPG, PNG, atau WebP sebelum konfirmasi selesai.'}
                               </p>
                             </>
                           )}
@@ -1243,6 +1337,20 @@ export default function DetailPesananPage() {
           </>
         )}
       </div>
+      {imagePreview && (
+        <div className="adm-od-preview-backdrop" role="presentation" onClick={closeImagePreview}>
+          <div className="adm-od-preview-modal" role="dialog" aria-modal="true" aria-label={imagePreview.label} onClick={(event) => event.stopPropagation()}>
+            <div className="adm-od-preview-head">
+              <strong>{imagePreview.label}</strong>
+              <button type="button" className="adm-od-preview-close" onClick={closeImagePreview} aria-label="Tutup preview">×</button>
+            </div>
+            <div className="adm-od-preview-body">
+              <img src={imagePreview.src} alt={imagePreview.label} className="adm-od-preview-img" />
+            </div>
+            <a className="adm-od-preview-open" href={imagePreview.src} target="_blank" rel="noreferrer">Buka di tab baru</a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

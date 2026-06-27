@@ -42,6 +42,15 @@ const PAYMENT_OPTIONS = [
   { id: 'ovo', name: 'OVO', target: '5678', targetLabel: 'Nomor OVO' },
   { id: 'bca-transfer', name: 'Transfer Bank BCA', target: '23456', targetLabel: 'No. Rekening BCA' },
 ];
+const PROOF_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
+const PROOF_IMAGE_TYPES = new Set(PROOF_IMAGE_ACCEPT.split(','));
+
+function isAllowedProofImage(file) {
+  if (!file) return false;
+  const hasAllowedType = !file.type || PROOF_IMAGE_TYPES.has(file.type);
+  const hasAllowedName = /\.(jpe?g|png|webp)$/i.test(file.name || '');
+  return hasAllowedType && hasAllowedName;
+}
 
 /* ── inline icons ── */
 const IconMapPin = () => (
@@ -216,6 +225,11 @@ export default function CheckoutPage() {
 
   function pickProofFile(file) {
     if (!file) return;
+    if (!isAllowedProofImage(file)) {
+      setPaymentProofFile(null);
+      setOrderError('Bukti transfer harus berupa foto JPG, PNG, atau WebP.');
+      return;
+    }
     setPaymentProofFile(file);
     setOrderError('');
   }
@@ -225,7 +239,7 @@ export default function CheckoutPage() {
     setProofDrag(false);
     if (paymentCountdown === 0) return;
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) pickProofFile(file);
+    if (file) pickProofFile(file);
   }
 
   async function submitAddress(e) {
@@ -647,7 +661,7 @@ export default function CheckoutPage() {
             >
               <input
                 type="file"
-                accept="image/*"
+                accept={PROOF_IMAGE_ACCEPT}
                 style={{ display: 'none' }}
                 disabled={paymentCountdown === 0}
                 onChange={(e) => pickProofFile(e.target.files?.[0] || null)}
@@ -664,7 +678,7 @@ export default function CheckoutPage() {
                 <div className="co-proof-dropzone-inner">
                   <IconClip />
                   <p className="co-proof-drop-text">Drag &amp; drop foto bukti transfer</p>
-                  <p className="co-proof-drop-sub">atau klik untuk pilih gambar</p>
+                  <p className="co-proof-drop-sub">JPG, PNG, atau WebP</p>
                 </div>
               )}
             </label>

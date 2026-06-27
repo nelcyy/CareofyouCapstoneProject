@@ -517,8 +517,28 @@
   text-decoration: none;
 }
 
+.adm-od-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
 .adm-od-link:hover {
   text-decoration: underline;
+}
+
+.adm-od-proof-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.adm-od-proof-raw {
+  color: var(--adm-text-3);
+  font-size: 12px;
 }
 
 .adm-od-note {
@@ -627,6 +647,13 @@
   border: 1.5px solid var(--adm-border);
   border-radius: 10px;
   background: #fff;
+}
+
+.adm-od-qr-preview {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
 }
 
 .adm-od-qr-actions {
@@ -1020,6 +1047,91 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 16px;
+}
+
+.adm-od-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(45, 45, 45, 0.58);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.adm-od-preview-modal {
+  width: min(860px, 100%);
+  max-height: min(86vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1.5px solid rgba(255, 255, 255, 0.86);
+  background: #fff;
+  box-shadow: 0 24px 72px rgba(45, 45, 45, 0.26);
+}
+
+.adm-od-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--adm-border);
+  color: var(--adm-text);
+}
+
+.adm-od-preview-close {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--adm-brand-bg);
+  color: var(--adm-brand);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.adm-od-preview-body {
+  min-height: 240px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  background:
+    linear-gradient(45deg, #f7efee 25%, transparent 25%),
+    linear-gradient(-45deg, #f7efee 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f7efee 75%),
+    linear-gradient(-45deg, transparent 75%, #f7efee 75%);
+  background-size: 22px 22px;
+  background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+}
+
+.adm-od-preview-img {
+  display: block;
+  max-width: 100%;
+  max-height: 62vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 10px 34px rgba(45, 45, 45, 0.16);
+}
+
+.adm-od-preview-open {
+  padding: 12px 18px 16px;
+  color: var(--adm-brand);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+  text-decoration: none;
+}
+
+.adm-od-preview-open:hover {
+  text-decoration: underline;
 }
 
 /* ── Side summary ── */

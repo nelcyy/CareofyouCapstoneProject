@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ....common import device_label
+from ....common import device_label, is_proof_image_upload
 from ....models import ActivityLog, Address, CartItem, Order, OrderItem, OrderMonitoring, TrustedDevice, User
 
 COURIER_OPTIONS = {
@@ -233,7 +233,7 @@ def _generate_order_code(user_id):
 
 
 def _save_payment_proof(user_id, uploaded_file):
-    ext = os.path.splitext(uploaded_file.name or '')[1] or '.jpg'
+    ext = (os.path.splitext(uploaded_file.name or '')[1] or '.jpg').lower()
     filename = f'payment_proofs/user-{user_id}-{uuid.uuid4().hex}{ext}'
     return default_storage.save(filename, uploaded_file)
 
@@ -414,6 +414,8 @@ def create_order(request):
     payment_proof = request.FILES.get('payment_proof')
     if payment_proof is None:
         return Response({'error': 'Bukti transfer wajib diupload.'}, status=400)
+    if not is_proof_image_upload(payment_proof):
+        return Response({'error': 'Bukti transfer harus berupa foto JPG, PNG, atau WebP.'}, status=400)
 
     cart_items = list(
         CartItem.objects.select_related('product')
