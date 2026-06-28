@@ -9,7 +9,15 @@ import '../../../../favorites/page.css';
 const ORDER_API = apiUrl('/api/customer/profile/order');
 const RETURN_API = apiUrl('/api/customer/profile/return');
 const ADDRESS_API = apiUrl('/api/customer/profile/address');
-const RETURN_STEP_LABELS = ['Pilih Produk', 'Alasan', 'Foto Produk', 'E-Receipt', 'Penyelesaian', 'Konfirmasi'];
+const RETURN_STEP_LABELS = ['Produk & Alasan', 'Foto Produk', 'E-Receipt', 'Penyelesaian', 'Konfirmasi'];
+const RETURN_REASON_OPTIONS = [
+  'Produk rusak / cacat',
+  'Produk tidak sesuai deskripsi',
+  'Barang salah dikirim',
+  'Reaksi alergi terhadap produk',
+  'Produk kedaluwarsa',
+  'Lainnya',
+];
 const PROOF_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
 const PROOF_IMAGE_TYPES = new Set(PROOF_IMAGE_ACCEPT.split(','));
 const RECEIPT_PDF_ACCEPT = 'application/pdf,.pdf';
@@ -436,6 +444,7 @@ export default function ProfileOrderDetailPage() {
   const [returnStep, setReturnStep] = useState(1);
   const [returnSelections, setReturnSelections] = useState({});
   const [returnReason, setReturnReason] = useState('');
+  const [returnReasonCustom, setReturnReasonCustom] = useState('');
   const [productPhoto, setProductPhoto] = useState(null);
   const [receiptProof, setReceiptProof] = useState(null);
   const [returnResolutionType, setReturnResolutionType] = useState('');
@@ -510,6 +519,7 @@ export default function ProfileOrderDetailPage() {
     setShowReturnWizard(false);
     setReturnStep(1);
     setReturnReason('');
+    setReturnReasonCustom('');
     setProductPhoto(null);
     setReceiptProof(null);
     setReturnResolutionType('');
@@ -606,7 +616,8 @@ export default function ProfileOrderDetailPage() {
       setError('Pilih minimal satu produk untuk diretur.');
       return;
     }
-    if (!returnReason.trim()) {
+    const finalReason = returnReason === 'Lainnya' ? returnReasonCustom.trim() : returnReason;
+    if (!finalReason.trim()) {
       setError('Alasan retur wajib diisi.');
       return;
     }
@@ -643,7 +654,7 @@ export default function ProfileOrderDetailPage() {
       formData.append('order_code', orderCode);
       formData.append('login_id', window.localStorage.getItem('login_id') || '');
       formData.append('trust_token', window.localStorage.getItem('trust_token') || '');
-      formData.append('reason', returnReason.trim());
+      formData.append('reason', finalReason);
       formData.append('resolution_type', returnResolutionType);
       formData.append(
         'items_json',
@@ -799,12 +810,13 @@ export default function ProfileOrderDetailPage() {
   const selectedReturnItems = getSelectedReturnItems(detail, returnSelections);
   const selectedExchangeAddress = addresses.find((item) => String(item.id) === String(exchangeForm.exchange_address_id));
   const resolutionError = getResolutionError(returnResolutionType, refundForm, exchangeForm);
-  const canContinueStep1 = selectedReturnItems.length > 0;
-  const canContinueStep2 = Boolean(returnReason.trim());
-  const canContinueStep3 = Boolean(productPhoto);
-  const canContinueStep4 = Boolean(receiptProof);
-  const canContinueStep5 = Boolean(returnResolutionType);
-  const canSubmitStep6 = !submittingReturn && !addressesLoading && !resolutionError;
+  const canContinueStep1 = selectedReturnItems.length > 0
+    && Boolean(returnReason)
+    && (returnReason !== 'Lainnya' || Boolean(returnReasonCustom.trim()));
+  const canContinueStep2 = Boolean(productPhoto);
+  const canContinueStep3 = Boolean(receiptProof);
+  const canContinueStep4 = Boolean(returnResolutionType);
+  const canSubmitStep5 = !submittingReturn && !addressesLoading && !resolutionError;
 
   // Tombol cancel hanya nongol kalau backend secara eksplisit ngirim
   // `can_cancel: true` — sampai field itu ada, kartu ini gak pernah tampil.
@@ -1139,25 +1151,39 @@ export default function ProfileOrderDetailPage() {
                 const stepNum = i + 1;
                 const state = returnStep === stepNum ? 'active' : returnStep > stepNum ? 'done' : 'pending';
                 return (
-                  <div key={label} className={`od-return-step-item od-return-step-item--${state}`}>
-                    <span className="od-return-step-num">{returnStep > stepNum ? <IconCheck /> : stepNum}</span>
-                    <span className="od-return-step-label">{label}</span>
-                  </div>
+                  <Fragment key={label}>
+                    <span className={`od-return-step-num od-return-step-num--${state}`}>
+                      {returnStep > stepNum ? <IconCheck /> : stepNum}
+                    </span>
+                    {i < RETURN_STEP_LABELS.length - 1 && (
+                      <span className={`od-return-step-track${returnStep > stepNum ? ' od-return-step-track--done' : ''}`} />
+                    )}
+                  </Fragment>
                 );
               })}
             </div>
+            <p className="od-return-step-current">
+              Langkah {returnStep} dari {RETURN_STEP_LABELS.length} · {RETURN_STEP_LABELS[returnStep - 1]}
+            </p>
 
             <div className="od-modal-body">
-              {/* STEP 1 — items */}
+              {/* STEP 1 — items + reason (digabung) */}
               {returnStep === 1 && (
                 <>
                   <p className="od-field-label">Pilih produk dan jumlah pcs yang ingin diretur</p>
                   <div className="od-return-product-list">
                     {(detail.items || []).map((item) => (
                       <div key={item.id} className="od-return-product-row">
+                        <div className="od-return-product-img">
+                          {item.image ? (
+                            <img src={fileUrl(item.image)} alt={item.product_name} />
+                          ) : (
+                            <span>{(item.product_name || '?')[0]}</span>
+                          )}
+                        </div>
                         <div className="od-return-product-info">
                           <p className="od-return-product-name">{item.product_name}</p>
-                          <p className="od-return-product-price">Rp {formatRibuan(item.product_price)} · dibeli {item.quantity}</p>
+                          <p className="od-return-product-price">Rp {formatRibuan(item.product_price)} · dibeli {item.quantity} pcs</p>
                         </div>
                         <div className="od-qty-stepper">
                           <button
@@ -1181,25 +1207,40 @@ export default function ProfileOrderDetailPage() {
                       </div>
                     ))}
                   </div>
+
+                  {selectedReturnItems.length > 0 && (
+                    <div className="od-return-reason-section">
+                      <p className="od-field-label">Pilih alasan retur</p>
+                      <div className="od-reason-chips">
+                        {RETURN_REASON_OPTIONS.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            className={`od-reason-chip${returnReason === option ? ' od-reason-chip--active' : ''}`}
+                            onClick={() => setReturnReason(option)}
+                          >
+                            {returnReason === option && <IconCheck />}
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                      {returnReason === 'Lainnya' && (
+                        <textarea
+                          className="od-textarea"
+                          style={{ marginTop: 10 }}
+                          rows={3}
+                          placeholder="Ceritakan alasanmu di sini..."
+                          value={returnReasonCustom}
+                          onChange={(e) => setReturnReasonCustom(e.target.value)}
+                        />
+                      )}
+                    </div>
+                  )}
                 </>
               )}
 
-              {/* STEP 2 — reason */}
+              {/* STEP 2 — product photo */}
               {returnStep === 2 && (
-                <>
-                  <p className="od-field-label">Tulis alasan retur</p>
-                  <textarea
-                    className="od-textarea"
-                    rows={5}
-                    placeholder="Contoh: produk rusak saat diterima / shade tidak sesuai / segel terbuka."
-                    value={returnReason}
-                    onChange={(e) => setReturnReason(e.target.value)}
-                  />
-                </>
-              )}
-
-              {/* STEP 3 — product photo */}
-              {returnStep === 3 && (
                 <>
                   <div className="od-warning-banner">
                     <IconAlert size={20} />
@@ -1227,10 +1268,14 @@ export default function ProfileOrderDetailPage() {
                 </>
               )}
 
-              {/* STEP 4 — receipt */}
-              {returnStep === 4 && (
+              {/* STEP 3 — receipt */}
+              {returnStep === 3 && (
                 <>
                   <p className="od-field-label">Upload e-receipt / bukti pembelian</p>
+                  <div className="od-info-banner">
+                    <IconReceipt />
+                    <p>Cuma e-receipt resmi careofyou yang sah — belum punya? Download dulu di bagian E-Receipt halaman ini.</p>
+                  </div>
                   <label className={`od-dropzone${receiptProof ? ' od-dropzone--filled' : ''}`}>
                     <input type="file" accept={RECEIPT_PDF_ACCEPT} onChange={handleReceiptProofChange} hidden />
                     {receiptProof ? (
@@ -1249,8 +1294,8 @@ export default function ProfileOrderDetailPage() {
                 </>
               )}
 
-              {/* STEP 5 — resolution type */}
-              {returnStep === 5 && (
+              {/* STEP 4 — resolution type */}
+              {returnStep === 4 && (
                 <>
                   <p className="od-field-label">Pilih jenis penyelesaian retur</p>
                   <div className="od-radio-group">
@@ -1268,8 +1313,8 @@ export default function ProfileOrderDetailPage() {
                 </>
               )}
 
-              {/* STEP 6 — confirm */}
-              {returnStep === 6 && (
+              {/* STEP 5 — confirm */}
+              {returnStep === 5 && (
                 <>
                   {returnResolutionType === 'refund' && (
                     <>
@@ -1366,7 +1411,7 @@ export default function ProfileOrderDetailPage() {
                 {returnStep === 1 ? 'Batal' : 'Kembali'}
               </button>
 
-              {returnStep < 6 && (
+              {returnStep < 5 && (
                 <button
                   type="button"
                   className="od-btn-primary"
@@ -1374,16 +1419,15 @@ export default function ProfileOrderDetailPage() {
                     (returnStep === 1 && !canContinueStep1) ||
                     (returnStep === 2 && !canContinueStep2) ||
                     (returnStep === 3 && !canContinueStep3) ||
-                    (returnStep === 4 && !canContinueStep4) ||
-                    (returnStep === 5 && !canContinueStep5)
+                    (returnStep === 4 && !canContinueStep4)
                   }
                   onClick={() => setReturnStep((cur) => cur + 1)}
                 >
                   Lanjut
                 </button>
               )}
-              {returnStep === 6 && (
-                <button type="button" className="od-btn-primary" disabled={!canSubmitStep6} onClick={handleSubmitReturn}>
+              {returnStep === 5 && (
+                <button type="button" className="od-btn-primary" disabled={!canSubmitStep5} onClick={handleSubmitReturn}>
                   {submittingReturn ? 'Mengirim...' : 'Kirim ke Admin'}
                 </button>
               )}
