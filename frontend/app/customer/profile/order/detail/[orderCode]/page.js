@@ -127,6 +127,20 @@ function getResolutionError(returnResolutionType, refundForm, exchangeForm) {
   return '';
 }
 
+// Label tampilan buat tiap value asli Order.STATUS_CHOICES — murni
+// terjemahan presentasi, bukan rule baru.
+const ORDER_STATUS_LABELS = {
+  waiting_admin_approval: 'Menunggu Persetujuan',
+  rejected: 'Ditolak',
+  pengemasan: 'Pengemasan',
+  pengiriman: 'Pengiriman',
+  selesai: 'Selesai',
+};
+
+function orderStatusLabel(status) {
+  return ORDER_STATUS_LABELS[status] || status || '-';
+}
+
 // Sama persis substring matching yang dipakai di halaman daftar pesanan —
 // dipakai juga buat nentuin step timeline mana yang aktif, biar gak ada
 // anggapan urutan status baru yang gak sesuai sama backend.
@@ -849,7 +863,7 @@ export default function ProfileOrderDetailPage() {
             </div>
             <span className="od-status-badge" style={{ color: status.color, background: status.bg }}>
               {status.group === 'delivered' ? <IconCheckCircle size={14} /> : status.group === 'cancelled' ? <IconXCircle size={14} /> : <IconClock size={14} />}
-              {detail.status || '-'}
+              {orderStatusLabel(detail.status)}
             </span>
           </div>
 
@@ -896,7 +910,7 @@ export default function ProfileOrderDetailPage() {
                   })}
                 </div>
               ) : (
-                <p className="od-meta-note">{detail.status || '-'}</p>
+                <p className="od-meta-note">{orderStatusLabel(detail.status)}</p>
               )}
               {(detail.processed_at || detail.decision_reason) && (
                 <div className="od-timeline-foot">

@@ -47,6 +47,7 @@ def _list_order_payload(order):
         'total_item_quantity': sum((item.quantity or 0) for item in order.items.all()),
         'has_return': return_state['has_return'],
         'return_status': return_state['return_status'],
+        'return_status_label': return_state['return_status_label'],
     }
 
 

@@ -1,11 +1,30 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { apiUrl, mediaUrl } from '@/api';
+import './page.css';
 
 const API = apiUrl('/api/customer/profile/return');
+
+const RETURN_STATUS_META = {
+  waiting_admin_review: { color: '#e09a3a', bg: 'rgba(224,154,58,0.12)' },
+  approved: { color: '#4a9fd4', bg: 'rgba(74,159,212,0.12)' },
+  rejected: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+  cancelled: { color: '#a59b99', bg: 'rgba(165,155,153,0.12)' },
+  shipped_back: { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  received: { color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
+  completed: { color: '#16a34a', bg: 'rgba(34,197,94,0.12)' },
+};
+
+const TIMELINE_STEPS = [
+  { key: 'waiting_admin_review', label: 'Diajukan', icon: 'clock' },
+  { key: 'approved', label: 'Disetujui', icon: 'check' },
+  { key: 'shipped_back', label: 'Dikirim Balik', icon: 'truck' },
+  { key: 'received', label: 'Diterima', icon: 'inbox' },
+  { key: 'completed', label: 'Selesai', icon: 'party' },
+];
 
 function formatRibuan(value) {
   const digits = String(value ?? '').replace(/\D/g, '');
@@ -26,10 +45,7 @@ function fileUrl(path) {
 
 function proofPreview(path, label) {
   if (!path) return null;
-  return {
-    src: fileUrl(path),
-    label,
-  };
+  return { src: fileUrl(path), label };
 }
 
 function isPreviewableProof(path) {
@@ -50,87 +66,155 @@ function getStoredUser() {
   }
 }
 
-function DataTable({ children }) {
+/* ── Icons (line-style) ── */
+function IconBack() {
   return (
-    <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse', width: '100%', marginTop: 8 }}>
-      {children}
-    </table>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+function IconClock(props) {
+  return (
+    <svg width={props?.size || 16} height={props?.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+function IconCheck() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+function IconTruck() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="15" height="13" />
+      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  );
+}
+function IconInbox() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </svg>
+  );
+}
+function IconPartyPopper() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5.8 11.3 2 22l10.7-3.8" />
+      <path d="M4 3h.01" /><path d="M22 8h.01" /><path d="M15 2h.01" /><path d="M22 20h.01" />
+      <path d="m22 2-3.5 3.5" /><path d="m21 15-4.5-4.5" /><path d="m3 21.5 2.5-2.5" /><path d="m20 12-3 3" /><path d="m12 2-2.5 2.5" />
+    </svg>
+  );
+}
+function IconBan() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </svg>
+  );
+}
+function IconPackage() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  );
+}
+function IconImage() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+}
+function IconFileText() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  );
+}
+function IconExternal() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+function IconWhatsapp() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M17.5 14.4c-.3-.1-1.6-.8-1.9-.9-.2-.1-.4-.1-.6.1-.2.2-.6.9-.8 1-.1.2-.3.2-.5.1-.8-.3-1.6-.8-2.3-1.4-.6-.6-1.1-1.3-1.5-2-.1-.2 0-.4.1-.5.2-.2.4-.4.5-.6.1-.2.1-.4 0-.6-.1-.2-.6-1.5-.8-2-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.7.7-1 1.7-.9 2.7.2 1.2.7 2.3 1.5 3.3 1.2 1.6 2.7 2.8 4.5 3.6.5.2 1 .4 1.5.5.6.2 1.2.2 1.8.1.7-.1 1.3-.6 1.7-1.2.1-.3.1-.6.1-.9-.1-.1-.2-.2-.3-.2zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" />
+    </svg>
+  );
+}
+
+function TimelineIcon({ name }) {
+  if (name === 'clock') return <IconClock size={17} />;
+  if (name === 'check') return <IconCheck />;
+  if (name === 'truck') return <IconTruck />;
+  if (name === 'inbox') return <IconInbox />;
+  return <IconPartyPopper />;
+}
+
+function MetaRow({ label, value }) {
+  return (
+    <div className="rd-meta-row">
+      <span className="rd-meta-label">{label}</span>
+      <span className="rd-meta-val">{value}</span>
+    </div>
+  );
+}
+
+function ProofAction({ path, label, onPreview }) {
+  if (!path) return <span className="rd-meta-val--muted">-</span>;
+  if (!isPreviewableProof(path)) {
+    return (
+      <a className="rd-view-proof-btn" href={fileUrl(path)} target="_blank" rel="noreferrer">
+        <IconFileText /> Buka File
+      </a>
+    );
+  }
+  return (
+    <button type="button" className="rd-view-proof-btn" onClick={() => onPreview(proofPreview(path, label))}>
+      <IconImage /> Lihat Bukti
+    </button>
   );
 }
 
 function ImagePreviewModal({ preview, onClose }) {
   if (!preview) return null;
   return (
-    <div
-      role="presentation"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-        background: 'rgba(45,45,45,0.58)',
-        backdropFilter: 'blur(6px)',
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={preview.label}
-        onClick={(event) => event.stopPropagation()}
-        style={{
-          width: 'min(860px, 100%)',
-          maxHeight: '86vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          borderRadius: 18,
-          background: '#fff',
-          boxShadow: '0 24px 72px rgba(45,45,45,0.26)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            padding: '14px 18px',
-            borderBottom: '1px solid #f0e0de',
-          }}
-        >
-          <strong>{preview.label}</strong>
-          <button type="button" onClick={onClose} aria-label="Tutup preview">
-            ×
-          </button>
+    <div className="rd-modal-overlay" role="presentation" onClick={onClose}>
+      <div className="rd-modal" role="dialog" aria-modal="true" aria-label={preview.label} onClick={(e) => e.stopPropagation()}>
+        <div className="rd-modal-header">
+          <h3>{preview.label}</h3>
+          <button type="button" className="rd-modal-close" onClick={onClose} aria-label="Tutup preview">×</button>
         </div>
-        <div
-          style={{
-            minHeight: 240,
-            padding: 18,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'auto',
-            background: '#fdf6f5',
-          }}
-        >
-          <img
-            src={preview.src}
-            alt={preview.label}
-            style={{ display: 'block', maxWidth: '100%', maxHeight: '62vh', objectFit: 'contain', borderRadius: 12 }}
-          />
+        <div className="rd-zoom-body">
+          <img src={preview.src} alt={preview.label} />
         </div>
-        <a
-          href={preview.src}
-          target="_blank"
-          rel="noreferrer"
-          style={{ padding: '12px 18px 16px', color: '#c4706a', fontWeight: 700, textAlign: 'right' }}
-        >
-          Buka di tab baru
+        <a href={preview.src} target="_blank" rel="noreferrer" className="rd-zoom-link">
+          Buka di tab baru <IconExternal />
         </a>
       </div>
     </div>
@@ -148,6 +232,7 @@ export default function ProfileReturnDetailPage() {
   const [shipLoading, setShipLoading] = useState(false);
   const [shipMessage, setShipMessage] = useState('');
   const [imagePreview, setImagePreview] = useState(null);
+
   const refundInfo = detail?.refund_info || {};
   const exchangeInfo = detail?.exchange_info || {};
   const destination = detail?.return_destination || {};
@@ -167,9 +252,7 @@ export default function ProfileReturnDetailPage() {
         `${API}/detail?user_id=${encodeURIComponent(user.id)}&return_code=${encodeURIComponent(returnCode)}`,
       );
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Gagal mengambil detail retur.');
-      }
+      if (!res.ok) throw new Error(data.error || 'Gagal mengambil detail retur.');
       setDetail(data);
     } catch (err) {
       console.error(err);
@@ -181,48 +264,17 @@ export default function ProfileReturnDetailPage() {
 
   useEffect(() => {
     loadDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [returnCode]);
 
   useEffect(() => {
     if (!imagePreview) return undefined;
-
     function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        setImagePreview(null);
-      }
+      if (event.key === 'Escape') setImagePreview(null);
     }
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [imagePreview]);
-
-  function renderProofAction(path, label, previewLabel = 'Lihat Bukti') {
-    if (!path) return '-';
-    return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        {isPreviewableProof(path) && (
-          <button
-            type="button"
-            onClick={() => setImagePreview(proofPreview(path, label))}
-            style={{
-              padding: 0,
-              border: 0,
-              background: 'transparent',
-              color: '#c4706a',
-              cursor: 'pointer',
-              font: 'inherit',
-              fontWeight: 700,
-            }}
-          >
-            {previewLabel}
-          </button>
-        )}
-        <a href={fileUrl(path)} target="_blank" rel="noreferrer">
-          Buka file
-        </a>
-      </span>
-    );
-  }
 
   async function handleShipBack(event) {
     event?.preventDefault();
@@ -254,9 +306,7 @@ export default function ProfileReturnDetailPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Gagal mengirim status pengiriman balik.');
-      }
+      if (!res.ok) throw new Error(data.error || 'Gagal mengirim status pengiriman balik.');
       setDetail(data.return_entry || null);
       setShipMessage(data.message || 'Status retur diperbarui.');
       setShipCourier('');
@@ -269,276 +319,245 @@ export default function ProfileReturnDetailPage() {
     }
   }
 
-  return (
-    <div style={{ paddingBottom: 24 }}>
-      <h2>Detail Retur</h2>
+  const status = detail?.status || '';
+  const statusMeta = RETURN_STATUS_META[status] || { color: '#c4706a', bg: 'rgba(214,134,124,0.12)' };
+  const isBadState = status === 'rejected' || status === 'cancelled';
+  const currentStepIndex = TIMELINE_STEPS.findIndex((step) => step.key === status);
 
-      {loading && <p style={{ marginTop: 12 }}>Memuat detail retur...</p>}
-      {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}
-      {shipMessage && <p style={{ color: 'green', marginTop: 12 }}>{shipMessage}</p>}
+  return (
+    <div className="rd-wrap">
+      <Link href="/customer/profile/return" className="rd-back-btn">
+        <IconBack /> Kembali ke Retur Saya
+      </Link>
+
+      {loading && <p className="rd-banner rd-banner--info">Memuat detail retur...</p>}
+      {error && <p className="rd-banner rd-banner--error">{error}</p>}
+      {shipMessage && <p className="rd-banner rd-banner--success">{shipMessage}</p>}
 
       {detail && (
         <>
-          <h3 style={{ marginTop: 20 }}>Info Retur</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Kode Retur</td>
-                <td>{detail.return_code || '-'}</td>
-              </tr>
-              <tr>
-                <td>Kode Order</td>
-                <td>{detail.order_code || '-'}</td>
-              </tr>
-              <tr>
-                <td>Status</td>
-                <td>{detail.status_label || detail.status || '-'}</td>
-              </tr>
-              <tr>
-                <td>Tipe Penyelesaian</td>
-                <td>{detail.resolution_type_label || detail.resolution_type || '-'}</td>
-              </tr>
-              <tr>
-                <td>Tanggal Ajukan</td>
-                <td>{formatTanggal(detail.created_at)}</td>
-              </tr>
-              <tr>
-                <td>Diproses Pada</td>
-                <td>{formatTanggal(detail.processed_at)}</td>
-              </tr>
-              <tr>
-                <td>Diproses Oleh</td>
-                <td>{detail.processed_by_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Alasan Retur</td>
-                <td>{detail.reason || '-'}</td>
-              </tr>
-              <tr>
-                <td>Catatan Admin</td>
-                <td>{detail.decision_reason || '-'}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          {detail.status === 'approved' && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Kirim Produk Kembali</h3>
-              <p style={{ marginTop: 8 }}>
-                Retur kamu <b>disetujui</b> ✅. Kirim produk ke alamat di bawah ini, lalu isi nomor resinya.
+          <div className="rd-header">
+            <div className="rd-header-left">
+              <h1 className="rd-title">Detail Retur</h1>
+              <p className="rd-sub">
+                #{detail.return_code} · Pesanan{' '}
+                <Link href={`/customer/profile/order/detail/${encodeURIComponent(detail.order_code || '-')}`}>
+                  {detail.order_code}
+                </Link>
               </p>
-              <DataTable>
-                <tbody>
-                  <tr><td>Penerima</td><td>{destination.recipient_name || '-'}</td></tr>
-                  <tr><td>Alamat</td><td>{destination.address_line || '-'}</td></tr>
-                  <tr><td>Kota</td><td>{destination.city || '-'}</td></tr>
-                  <tr><td>Provinsi</td><td>{destination.province || '-'}</td></tr>
-                  <tr><td>Kode Pos</td><td>{destination.postal_code || '-'}</td></tr>
-                  <tr><td>Telepon / WA</td><td>{destination.phone || '-'}</td></tr>
-                  <tr><td>Catatan</td><td>{destination.notes || '-'}</td></tr>
-                </tbody>
-              </DataTable>
-              {destination.whatsapp_number && (
-                <p style={{ marginTop: 8 }}>
-                  <a
-                    href={waLink(destination.whatsapp_number, `Halo, saya mau retur dengan kode ${detail.return_code}`)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Chat WhatsApp Toko
-                  </a>
-                </p>
+            </div>
+            <span className="rd-status-badge" style={{ color: statusMeta.color, background: statusMeta.bg }}>
+              {detail.status_label || detail.status || '-'}
+            </span>
+          </div>
+
+          {isBadState && (
+            <div className="rd-state-banner">
+              <span className="rd-state-icon"><IconBan /></span>
+              <div>
+                <p className="rd-state-title">Retur {detail.status_label || detail.status}</p>
+                <p className="rd-state-desc">{detail.decision_reason || 'Pengajuan retur ini tidak dilanjutkan.'}</p>
+              </div>
+            </div>
+          )}
+
+          {!isBadState && currentStepIndex >= 0 && (
+            <div className="rd-card">
+              <p className="rd-section-label">Status Retur</p>
+              <div className="rd-steps">
+                {TIMELINE_STEPS.map((step, i) => {
+                  const isLastStep = i === TIMELINE_STEPS.length - 1;
+                  // Step terakhir yang udah tercapai dianggap "selesai" penuh,
+                  // bukan "lagi berjalan" — gak ada step sesudahnya buat ditunggu.
+                  const isDone = i < currentStepIndex || (i === currentStepIndex && isLastStep);
+                  const isActive = i === currentStepIndex && !isLastStep;
+                  const dotState = isDone ? 'done' : isActive ? 'active' : 'pending';
+                  return (
+                    <Fragment key={step.key}>
+                      <div className="rd-step">
+                        <div className={`rd-step-dot rd-step-dot--${dotState}`}>
+                          <TimelineIcon name={step.icon} />
+                        </div>
+                        <span className={`rd-step-label rd-step-label--${dotState}`}>{step.label}</span>
+                      </div>
+                      {i < TIMELINE_STEPS.length - 1 && (
+                        <div className={`rd-step-line rd-step-line--${dotState}`} />
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </div>
+              {(detail.processed_at || detail.decision_reason) && (
+                <div className="rd-timeline-foot">
+                  {detail.processed_at && <span>Diproses {formatTanggal(detail.processed_at)}{detail.processed_by_name ? ` oleh ${detail.processed_by_name}` : ''}</span>}
+                  {detail.decision_reason && <span>{detail.decision_reason}</span>}
+                </div>
               )}
-              <form onSubmit={handleShipBack} style={{ marginTop: 12 }}>
-                <p>
-                  <label>
-                    Kurir (opsional):{' '}
-                    <input
-                      type="text"
-                      value={shipCourier}
-                      onChange={(e) => setShipCourier(e.target.value)}
-                      placeholder="mis. JNE / J&T"
-                    />
-                  </label>
-                </p>
-                <p>
-                  <label>
-                    Nomor Resi:{' '}
-                    <input
-                      type="text"
-                      value={shipTracking}
-                      onChange={(e) => setShipTracking(e.target.value)}
-                      placeholder="No resi pengiriman balik"
-                    />
-                  </label>
-                </p>
-                <button type="submit" disabled={shipLoading || !shipTracking.trim()}>
+            </div>
+          )}
+
+          {/* ── Aksi: kirim produk kembali (status approved) ── */}
+          {status === 'approved' && (
+            <div className="rd-card rd-action-card">
+              <p className="rd-section-label">Kirim Produk Kembali</p>
+              <p className="rd-card-subtitle">Retur kamu disetujui. Kirim produk ke alamat berikut, lalu isi nomor resinya di bawah.</p>
+
+              <div className="rd-meta-list">
+                <MetaRow label="Penerima" value={destination.recipient_name || '-'} />
+                <MetaRow label="Telepon" value={destination.phone || '-'} />
+                <MetaRow
+                  label="Alamat"
+                  value={[destination.address_line, destination.city, destination.province, destination.postal_code].filter(Boolean).join(', ') || '-'}
+                />
+                {destination.notes && <MetaRow label="Catatan" value={destination.notes} />}
+              </div>
+
+              {destination.whatsapp_number && (
+                <a
+                  className="rd-wa-btn"
+                  href={waLink(destination.whatsapp_number, `Halo, saya mau retur dengan kode ${detail.return_code}`)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <IconWhatsapp /> Chat WhatsApp Toko
+                </a>
+              )}
+
+              <div className="rd-section-divider" />
+
+              <p className="rd-field-label">Sudah kirim? Isi nomor resinya</p>
+              <form onSubmit={handleShipBack}>
+                <input
+                  type="text"
+                  className="rd-input"
+                  placeholder="Kurir (opsional) — mis. JNE / J&T"
+                  value={shipCourier}
+                  onChange={(e) => setShipCourier(e.target.value)}
+                />
+                <input
+                  type="text"
+                  className="rd-input"
+                  placeholder="Nomor resi pengiriman balik"
+                  value={shipTracking}
+                  onChange={(e) => setShipTracking(e.target.value)}
+                />
+                <button type="submit" className="rd-btn-primary" disabled={shipLoading || !shipTracking.trim()}>
                   {shipLoading ? 'Mengirim...' : 'Saya Sudah Kirim Produk'}
                 </button>
               </form>
-            </>
+            </div>
           )}
 
-          {['shipped_back', 'received', 'completed'].includes(detail.status) && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Pengiriman Balik</h3>
-              <DataTable>
-                <tbody>
-                  <tr><td>Kurir</td><td>{returnShipment.courier_name || '-'}</td></tr>
-                  <tr><td>Nomor Resi</td><td>{returnShipment.tracking_number || '-'}</td></tr>
-                  <tr><td>Dikirim Pada</td><td>{formatTanggal(returnShipment.shipped_back_at)}</td></tr>
-                  <tr><td>Diterima Toko</td><td>{formatTanggal(detail.received_at)}</td></tr>
-                </tbody>
-              </DataTable>
-            </>
+          {/* ── Info pengiriman balik ── */}
+          {['shipped_back', 'received', 'completed'].includes(status) && (
+            <div className="rd-card">
+              <p className="rd-section-label"><IconTruck /> Pengiriman Balik</p>
+              <div className="rd-meta-list">
+                <MetaRow label="Kurir" value={returnShipment.courier_name || '-'} />
+                <MetaRow label="Nomor Resi" value={returnShipment.tracking_number || '-'} />
+                <MetaRow label="Dikirim Pada" value={formatTanggal(returnShipment.shipped_back_at)} />
+                <MetaRow label="Diterima Toko" value={formatTanggal(detail.received_at)} />
+                {detail.received_by_name && <MetaRow label="Diterima Oleh" value={detail.received_by_name} />}
+              </div>
+            </div>
           )}
 
-          {detail.status === 'completed' && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Penyelesaian</h3>
-              <DataTable>
-                <tbody>
-                  {detail.resolution_type === 'refund' ? (
-                    <tr>
-                      <td>Bukti Transfer Refund</td>
-                      <td>{renderProofAction(completion.refund_proof, 'Bukti Transfer Refund')}</td>
-                    </tr>
-                  ) : (
-                    <tr>
-                      <td>Resi Barang Pengganti</td>
-                      <td>{completion.exchange_shipment_tracking || '-'}</td>
-                    </tr>
-                  )}
-                  <tr><td>Diselesaikan Pada</td><td>{formatTanggal(completion.completed_at)}</td></tr>
-                </tbody>
-              </DataTable>
-            </>
+          {/* ── Penyelesaian ── */}
+          {status === 'completed' && (
+            <div className="rd-card">
+              <p className="rd-section-label"><IconCheck /> Penyelesaian</p>
+              <div className="rd-meta-list">
+                {detail.resolution_type === 'refund' ? (
+                  <MetaRow label="Bukti Transfer Refund" value={<ProofAction path={completion.refund_proof} label="Bukti Transfer Refund" onPreview={setImagePreview} />} />
+                ) : (
+                  <MetaRow label="Resi Barang Pengganti" value={completion.exchange_shipment_tracking || '-'} />
+                )}
+                <MetaRow label="Diselesaikan Pada" value={formatTanggal(completion.completed_at)} />
+                {completion.completed_by_name && <MetaRow label="Diselesaikan Oleh" value={completion.completed_by_name} />}
+              </div>
+            </div>
           )}
 
-          {detail.resolution_type === 'refund' && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Info Refund</h3>
-              <DataTable>
-                <tbody>
-                  <tr>
-                    <td>Nama Bank</td>
-                    <td>{refundInfo.bank_name || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Nomor Rekening</td>
-                    <td>{refundInfo.account_number || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Nama Pemilik Rekening</td>
-                    <td>{refundInfo.account_holder_name || '-'}</td>
-                  </tr>
-                </tbody>
-              </DataTable>
-            </>
-          )}
+          <div className="rd-grid">
+            <div className="rd-col-main">
+              <div className="rd-card">
+                <p className="rd-section-label"><IconPackage /> Produk yang Diretur</p>
+                <div className="rd-items">
+                  {(detail.items || []).map((item, i) => (
+                    <div key={item.id || i} className="rd-item">
+                      <div className="rd-item-info">
+                        <p className="rd-item-name">{item.product_name || '-'}</p>
+                        <p className="rd-item-qty">Diretur {item.quantity || 0} dari {item.ordered_quantity || 0} pcs dibeli</p>
+                      </div>
+                      <p className="rd-item-subtotal">Rp {formatRibuan(item.subtotal)}</p>
+                    </div>
+                  ))}
+                  {(detail.items || []).length === 0 && <p className="rd-meta-note">Tidak ada item retur.</p>}
+                </div>
+                <div className="rd-section-divider" />
+                <div className="rd-summary-row rd-summary-row--total">
+                  <span>Total Diajukan ({detail.total_requested_quantity || 0} pcs)</span>
+                  <span>Rp {formatRibuan(detail.total_requested_amount)}</span>
+                </div>
+              </div>
 
-          {detail.resolution_type === 'exchange' && (
-            <>
-              <h3 style={{ marginTop: 24 }}>Info Exchange</h3>
-              <DataTable>
-                <tbody>
-                  <tr>
-                    <td>Kurir</td>
-                    <td>{exchangeInfo.courier_name || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Label</td>
-                    <td>{exchangeInfo.address_label || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Penerima</td>
-                    <td>{exchangeInfo.recipient_name || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Telepon</td>
-                    <td>{exchangeInfo.phone || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Alamat</td>
-                    <td>{exchangeInfo.address_line || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Kota</td>
-                    <td>{exchangeInfo.city || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Provinsi</td>
-                    <td>{exchangeInfo.province || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Kode Pos</td>
-                    <td>{exchangeInfo.postal_code || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td>Catatan</td>
-                    <td>{exchangeInfo.notes || '-'}</td>
-                  </tr>
-                </tbody>
-              </DataTable>
-            </>
-          )}
+              <div className="rd-card">
+                <p className="rd-section-label">Alasan Retur</p>
+                <p className="rd-reason-text">{detail.reason || '-'}</p>
+              </div>
+            </div>
 
-          <h3 style={{ marginTop: 24 }}>Item Retur</h3>
-          <DataTable>
-            <thead>
-              <tr>
-                <th>Produk</th>
-                <th>Qty Dibeli</th>
-                <th>Qty Retur</th>
-                <th>Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(detail.items || []).map((item, index) => (
-                <tr key={item.id || index}>
-                  <td>{item.product_name || '-'}</td>
-                  <td>{item.ordered_quantity || 0}</td>
-                  <td>{item.quantity || 0}</td>
-                  <td>Rp {formatRibuan(item.subtotal)}</td>
-                </tr>
-              ))}
-              {(detail.items || []).length === 0 && (
-                <tr>
-                  <td colSpan={4}>(tidak ada item retur)</td>
-                </tr>
-              )}
-            </tbody>
-          </DataTable>
+            <div className="rd-col-side">
+              <div className="rd-card">
+                <p className="rd-section-label">Bukti Pengajuan</p>
+                <div className="rd-meta-list">
+                  <MetaRow label="Foto Produk" value={<ProofAction path={detail.product_photo} label="Foto Produk Retur" onPreview={setImagePreview} />} />
+                  <MetaRow
+                    label="E-Receipt"
+                    value={detail.ereceipt_proof ? (
+                      <a className="rd-view-proof-btn" href={fileUrl(detail.ereceipt_proof)} target="_blank" rel="noreferrer">
+                        <IconFileText /> Buka File
+                      </a>
+                    ) : <span className="rd-meta-val--muted">-</span>}
+                  />
+                </div>
+              </div>
 
-          <h3 style={{ marginTop: 24 }}>Bukti</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Foto Produk</td>
-                <td>{renderProofAction(detail.product_photo, 'Foto Produk Retur', 'Lihat Foto')}</td>
-              </tr>
-              <tr>
-                <td>E-Receipt</td>
-                <td>
-                  {detail.ereceipt_proof ? (
-                    <a href={fileUrl(detail.ereceipt_proof)} target="_blank" rel="noreferrer">
-                      Lihat File
-                    </a>
-                  ) : '-'}
-                </td>
-              </tr>
-            </tbody>
-          </DataTable>
+              <div className="rd-card">
+                <p className="rd-section-label">{detail.resolution_type_label || 'Penyelesaian'}</p>
+                {detail.resolution_type === 'refund' && (
+                  <div className="rd-meta-list">
+                    <MetaRow label="Nama Bank" value={refundInfo.bank_name || '-'} />
+                    <MetaRow label="No. Rekening" value={refundInfo.account_number || '-'} />
+                    <MetaRow label="Nama Pemilik" value={refundInfo.account_holder_name || '-'} />
+                  </div>
+                )}
+                {detail.resolution_type === 'exchange' && (
+                  <div className="rd-meta-list">
+                    <MetaRow label="Kurir" value={exchangeInfo.courier_name || '-'} />
+                    <MetaRow label="Penerima" value={`${exchangeInfo.recipient_name || '-'}${exchangeInfo.address_label ? ` · ${exchangeInfo.address_label}` : ''}`} />
+                    <MetaRow label="Telepon" value={exchangeInfo.phone || '-'} />
+                    <MetaRow
+                      label="Alamat"
+                      value={[exchangeInfo.address_line, exchangeInfo.city, exchangeInfo.province, exchangeInfo.postal_code].filter(Boolean).join(', ') || '-'}
+                    />
+                    {exchangeInfo.notes && <MetaRow label="Catatan" value={exchangeInfo.notes} />}
+                  </div>
+                )}
+              </div>
 
-          <p style={{ marginTop: 24 }}>
-            <Link href={`/customer/profile/order/detail/${encodeURIComponent(detail.order_code || '-')}`}>
-              Lihat detail pesanan
-            </Link>
-          </p>
+              <div className="rd-card">
+                <p className="rd-section-label">Info Pengajuan</p>
+                <div className="rd-meta-list">
+                  <MetaRow label="Diajukan Pada" value={formatTanggal(detail.created_at)} />
+                  <MetaRow label="Customer" value={detail.customer_name || '-'} />
+                </div>
+              </div>
+            </div>
+          </div>
         </>
       )}
 
-      <Link href="/customer/profile/return">Kembali ke daftar retur</Link>
       <ImagePreviewModal preview={imagePreview} onClose={() => setImagePreview(null)} />
     </div>
   );

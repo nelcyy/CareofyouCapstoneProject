@@ -29,6 +29,16 @@ function getStoredUser() {
   }
 }
 
+const RETURN_STATUS_META = {
+  waiting_admin_review: { color: '#e09a3a', bg: 'rgba(224,154,58,0.12)' },
+  approved: { color: '#4a9fd4', bg: 'rgba(74,159,212,0.12)' },
+  rejected: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+  cancelled: { color: '#a59b99', bg: 'rgba(165,155,153,0.12)' },
+  shipped_back: { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  received: { color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
+  completed: { color: '#16a34a', bg: 'rgba(34,197,94,0.12)' },
+};
+
 export default function ProfileReturnPage() {
   const router = useRouter();
   const [items, setItems] = useState([]);
@@ -95,36 +105,45 @@ export default function ProfileReturnPage() {
 
       {!loading && userFound && items.length > 0 && (
         <div className="profile-return-table-wrap">
-          <table className="profile-return-table">
-            <thead>
-              <tr>
-                <th>Kode Retur</th>
-                <th>Kode Order</th>
-                <th>Tanggal</th>
-                <th>Qty</th>
-                <th>Nominal</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr
-                  key={item.return_code}
-                  className="profile-return-row"
-                  onClick={() => openDetail(item.return_code)}
-                >
-                  <td>
-                    <strong>{item.return_code}</strong>
-                  </td>
-                  <td>{item.order_code || '-'}</td>
-                  <td>{formatTanggal(item.created_at)}</td>
-                  <td>{item.total_requested_quantity || 0} pcs</td>
-                  <td>Rp {formatRibuan(item.total_requested_amount)}</td>
-                  <td>{item.status_label || item.status || '-'}</td>
+          <div className="profile-return-table-scroll">
+            <table className="profile-return-table">
+              <thead>
+                <tr>
+                  <th>Kode Retur</th>
+                  <th>Kode Order</th>
+                  <th>Tanggal</th>
+                  <th>Qty</th>
+                  <th>Nominal</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((item) => {
+                  const statusMeta = RETURN_STATUS_META[item.status] || { color: '#c4706a', bg: 'rgba(214,134,124,0.12)' };
+                  return (
+                    <tr
+                      key={item.return_code}
+                      className="profile-return-row"
+                      onClick={() => openDetail(item.return_code)}
+                    >
+                      <td>
+                        <strong>{item.return_code}</strong>
+                      </td>
+                      <td>{item.order_code || '-'}</td>
+                      <td>{formatTanggal(item.created_at)}</td>
+                      <td>{item.total_requested_quantity || 0} pcs</td>
+                      <td>Rp {formatRibuan(item.total_requested_amount)}</td>
+                      <td>
+                        <span className="profile-return-status-pill" style={{ color: statusMeta.color, background: statusMeta.bg }}>
+                          {item.status_label || item.status || '-'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
