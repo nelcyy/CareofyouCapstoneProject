@@ -271,6 +271,13 @@
   align-items: start;
 }
 
+/* Item grid (kartu) boleh menyusut < lebar kontennya. Tanpa ini, tabel di
+   dalam kartu memaksa kolom melebar -> grid overflow -> sisi kanan (kolom
+   Status & kartu Produk Terlaris) ke-clip oleh overflow-x:hidden global. */
+.adm-dash-grid > * {
+  min-width: 0;
+}
+
 /* ── Chart ── */
 .adm-chart-card {
   padding: 24px;
@@ -381,9 +388,20 @@
 
 .adm-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 13.5px;
 }
+
+/* Lebar kolom tetap supaya tabel selalu pas di dalam card (nggak overflow). */
+.adm-table th:nth-child(1),
+.adm-table td:nth-child(1) { width: 40%; }
+.adm-table th:nth-child(2),
+.adm-table td:nth-child(2) { width: 24%; }
+.adm-table th:nth-child(3),
+.adm-table td:nth-child(3) { width: 18%; text-align: right; }
+.adm-table th:nth-child(4),
+.adm-table td:nth-child(4) { width: 18%; text-align: right; }
 
 .adm-table th {
   padding: 11px 14px;
@@ -406,6 +424,23 @@
   border-bottom: 1px solid var(--adm-border);
   vertical-align: middle;
   color: var(--adm-text);
+}
+
+/* Kolom Pelanggan: potong rapi kalau nama panjang. */
+.adm-table td:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kode order: tampil penuh tapi muat di selnya. */
+.adm-table td:nth-child(1) .adm-order-id {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .adm-table tbody tr {

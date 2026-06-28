@@ -524,6 +524,24 @@ function ReasonModal({ open, action, value, onChange, onSubmit, onCancel, error 
   );
 }
 
+// Pesan validasi per-produk. result_code datang dari backend (verify_qr_token):
+// not_found = token bukan hasil generate Careofyou; wrong_product = QR milik
+// produk lain; dst. UI hanya menerjemahkan kode dari backend, tidak bikin aturan.
+function scanFeedback(code, backendMsg) {
+  switch (code) {
+    case 'wrong_product':
+      return { ok: false, text: 'QR ini tidak sesuai — terdaftar pada produk lain.' };
+    case 'not_found':
+      return { ok: false, text: 'QR ini tidak sesuai — bukan hasil generate Careofyou.' };
+    case 'already_returned':
+      return { ok: false, text: 'QR ini sudah pernah dikembalikan sebelumnya.' };
+    case 'wrong_unit':
+      return { ok: false, text: 'QR ini untuk unit lain dari produk yang sama.' };
+    default:
+      return { ok: false, text: backendMsg || 'QR ini tidak sesuai.' };
+  }
+}
+
 function CameraScanner({ onScan, onClose }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -727,7 +745,7 @@ export default function AdminReturnDetailPage() {
   const [refundPreview, setRefundPreview] = useState(null);
   const [refundDrag, setRefundDrag] = useState(false);
   const [exchangeTracking, setExchangeTracking] = useState('');
-  const [scannedByItem, setScannedByItem] = useState({});
+  const [scanResultByItem, setScanResultByItem] = useState({});
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [reasonAction, setReasonAction] = useState('approve');
   const [reasonValue, setReasonValue] = useState('');
@@ -829,9 +847,12 @@ export default function AdminReturnDetailPage() {
     }
 
     const itemId = scanItem.return_item_id;
+    const itemName = scanItem.product_name;
     setQrLoading(true);
     setQrError('');
     setQrMessage('');
+
+    const setItemFeedback = (fb) => setScanResultByItem((prev) => ({ ...prev, [itemId]: fb }));
 
     try {
       const verify = await postAction(`${API}/qr/verify`, {
@@ -841,17 +862,11 @@ export default function AdminReturnDetailPage() {
         scanned_by: adminUser.id,
       });
 
-      // Token dihitung sebagai "sudah discan" — valid maupun invalid (rule: semua harus discan).
-      setScannedByItem((prev) => {
-        const next = { ...prev };
-        const set = new Set(next[itemId] || []);
-        set.add(token);
-        next[itemId] = set;
-        return next;
-      });
+      const code = verify.data.result_code || (verify.data.is_valid ? 'valid' : 'invalid');
 
+      // QR tidak sesuai -> TIDAK dihitung valid; tombol "Tandai Diterima" tetap mati.
       if (!verify.res.ok || !verify.data.is_valid) {
-        setQrError((verify.data.message || verify.data.error || 'QR tidak valid') + ' — tetap dihitung sudah discan.');
+        setItemFeedback(scanFeedback(code, verify.data.message || verify.data.error));
         return;
       }
 
@@ -860,16 +875,18 @@ export default function AdminReturnDetailPage() {
         approved_by: adminUser.id,
       });
       if (!approve.res.ok) {
-        setQrError(approve.data.error || 'Gagal menandai unit kembali.');
+        setItemFeedback({ ok: false, text: approve.data.error || 'Gagal menandai unit kembali.' });
         return;
       }
 
-      setQrMessage('Unit valid & ditandai kembali.');
+      // Valid: unit ditandai is_returned di backend, lalu data di-refresh.
+      setItemFeedback({ ok: true, text: 'QR sesuai — unit ditandai diterima.' });
+      setQrMessage(`Produk "${itemName}" valid & ditandai diterima.`);
       await loadQrUnits();
       await refreshDetail();
     } catch (err) {
       console.error(err);
-      setQrError('Gagal memproses QR.');
+      setItemFeedback({ ok: false, text: 'Gagal memproses QR.' });
     } finally {
       setQrLoading(false);
     }
@@ -1194,11 +1211,19 @@ export default function AdminReturnDetailPage() {
   const monitoringTotalScore = toNumber(monitoringSummary.total_risk_score ?? detail?.total_risk_score);
   const maxFactorScore = Math.max(1, ...monitoringHighlights.map((h) => Number(h.score) || 0));
   const ereceiptChecked = Boolean(receiptVerification.status);
-  const scannedCountFor = (item) => (scannedByItem[item.return_item_id]?.size || 0);
-  const totalScanned = (qrUnits || []).reduce((sum, item) => sum + scannedCountFor(item), 0);
-  const totalRequired = (qrUnits || []).reduce((sum, item) => sum + (item.requested_quantity || 0), 0);
-  const allScanned = (qrUnits || []).length > 0
-    && (qrUnits || []).every((item) => scannedCountFor(item) >= (item.requested_quantity || 0));
+  // Verifikasi QR: hitung dari data backend (unit yang sudah is_returned = valid).
+  const validCountFor = (item) => (item.units || []).filter((u) => u.is_returned).length;
+  const requiredFor = (item) => item.requested_quantity || 0;
+  const itemQrDone = (item) => validCountFor(item) >= requiredFor(item);
+  const totalValid = (qrUnits || []).reduce((sum, item) => sum + validCountFor(item), 0);
+  const totalRequired = (qrUnits || []).reduce((sum, item) => sum + requiredFor(item), 0);
+  const allValid = (qrUnits || []).length > 0 && (qrUnits || []).every(itemQrDone);
+  // Flow berurutan: produk pertama yang belum lengkap = produk yang sedang aktif.
+  const currentQrIndex = (() => {
+    const idx = (qrUnits || []).findIndex((item) => !itemQrDone(item));
+    return idx === -1 ? (qrUnits || []).length - 1 : idx;
+  })();
+  const currentQrItem = (qrUnits || [])[currentQrIndex] || null;
 
   return (
     <div className="adm-rd-page">
@@ -1396,64 +1421,100 @@ export default function AdminReturnDetailPage() {
             <section className="adm-rd-card adm-rd-card--wide">
               <h3 className="adm-rd-card-title">Verifikasi QR Unit (Scan Barang Balik)</h3>
               {qrError && <p className="adm-rd-qr-msg adm-rd-qr-msg--err">{qrError}</p>}
-              {qrMessage && <p className="adm-rd-qr-msg adm-rd-qr-msg--ok">{qrMessage}</p>}
 
-              {/* Progress scan */}
-              <div className="adm-rd-qr-progress">
-                <div className="adm-rd-qr-progress-top">
-                  <span className="adm-rd-qr-progress-label">Total Discan</span>
-                  <span className="adm-rd-qr-progress-count"><strong>{totalScanned}</strong> / {totalRequired} unit</span>
+              {(qrUnits || []).length === 0 ? (
+                <div className="adm-rd-qr-empty">
+                  {qrLoading ? 'Memuat unit...' : 'Belum ada unit QR — pastikan QR sudah digenerate di pesanannya.'}
                 </div>
-                <div className="adm-rd-qr-bar">
-                  <span style={{ width: `${totalRequired ? Math.min(100, (totalScanned / totalRequired) * 100) : 0}%` }} />
-                </div>
-                <span className="adm-rd-qr-progress-sub">
-                  Valid: {detail.return_units?.returned ?? 0} · invalid tetap dihitung sudah discan
-                </span>
-              </div>
+              ) : (
+                <>
+                  {/* Progress keseluruhan (valid) */}
+                  <div className="adm-rd-qr-progress">
+                    <div className="adm-rd-qr-progress-top">
+                      <span className="adm-rd-qr-progress-label">Progress Verifikasi</span>
+                      <span className="adm-rd-qr-progress-count"><strong>{totalValid}</strong> / {totalRequired} unit valid</span>
+                    </div>
+                    <div className="adm-rd-qr-bar">
+                      <span style={{ width: `${totalRequired ? Math.min(100, (totalValid / totalRequired) * 100) : 0}%` }} />
+                    </div>
+                  </div>
 
-              {/* Daftar unit */}
-              <div className="adm-rd-qr-units">
-                {(qrUnits || []).map((item) => {
-                  const scanned = scannedCountFor(item);
-                  const validCount = (item.units || []).filter((u) => u.is_returned).length;
-                  const itemDone = scanned >= (item.requested_quantity || 0);
-                  return (
-                    <div key={item.return_item_id} className={`adm-rd-qr-unit${itemDone ? ' adm-rd-qr-unit--done' : ''}`}>
-                      <div className="adm-rd-qr-unit-info">
-                        <span className="adm-rd-qr-unit-name">{item.product_name}</span>
-                        <span className="adm-rd-qr-unit-tags">
-                          <span className={`adm-rd-qr-tag${itemDone ? ' adm-rd-qr-tag--done' : ' adm-rd-qr-tag--todo'}`}>
-                            Discan {scanned}/{item.requested_quantity}
+                  {/* Stepper urutan produk */}
+                  <div className="adm-rd-qr-steps">
+                    {(qrUnits || []).map((item, i) => {
+                      const done = itemQrDone(item);
+                      const isCurrent = i === currentQrIndex && !allValid;
+                      return (
+                        <div
+                          key={item.return_item_id}
+                          className={`adm-rd-qr-step${done ? ' adm-rd-qr-step--done' : ''}${isCurrent ? ' adm-rd-qr-step--current' : ''}`}
+                          title={item.product_name}
+                        >
+                          <span className="adm-rd-qr-step-dot">
+                            {done ? (
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            ) : (i + 1)}
                           </span>
-                          <span className="adm-rd-qr-tag adm-rd-qr-tag--valid">Valid {validCount}</span>
-                        </span>
+                          {i < (qrUnits || []).length - 1 && <span className="adm-rd-qr-step-line" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {allValid ? (
+                    <div className="adm-rd-qr-allok">
+                      <span className="adm-rd-qr-allok-ico">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      </span>
+                      <div className="adm-rd-qr-allok-text">
+                        <span className="adm-rd-qr-allok-title">Semua produk sudah diverifikasi</span>
+                        <span className="adm-rd-qr-allok-sub">{totalValid}/{totalRequired} unit valid. Lanjut tandai diterima.</span>
                       </div>
-                      <button type="button" className="adm-rd-qr-scanbtn" onClick={() => openScanner(item)} disabled={qrLoading}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    </div>
+                  ) : currentQrItem && (
+                    <div className="adm-rd-qr-current">
+                      <span className="adm-rd-qr-current-step">Produk {currentQrIndex + 1} dari {(qrUnits || []).length}</span>
+                      <span className="adm-rd-qr-current-name">{currentQrItem.product_name}</span>
+                      <span className="adm-rd-qr-current-count">
+                        Unit valid: <strong>{validCountFor(currentQrItem)}</strong> / {requiredFor(currentQrItem)}
+                      </span>
+
+                      {scanResultByItem[currentQrItem.return_item_id] && (
+                        <div className={`adm-rd-qr-feedback${scanResultByItem[currentQrItem.return_item_id].ok ? ' adm-rd-qr-feedback--ok' : ' adm-rd-qr-feedback--err'}`}>
+                          <span className="adm-rd-qr-feedback-ico">
+                            {scanResultByItem[currentQrItem.return_item_id].ok ? (
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            ) : (
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                            )}
+                          </span>
+                          {scanResultByItem[currentQrItem.return_item_id].text}
+                        </div>
+                      )}
+
+                      <button type="button" className="adm-rd-qr-scanbtn adm-rd-qr-scanbtn--lg" onClick={() => openScanner(currentQrItem)} disabled={qrLoading}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3" /><path d="M21 14v7h-7" /><path d="M17 21v-4" />
                         </svg>
-                        {qrLoading ? '...' : 'Scan QR'}
+                        {qrLoading ? 'Memproses...' : 'Scan QR Produk Ini'}
                       </button>
+                      <span className="adm-rd-qr-hint">
+                        Scan QR untuk <strong>{currentQrItem.product_name}</strong>. QR produk lain atau di luar Careofyou akan ditolak.
+                      </span>
                     </div>
-                  );
-                })}
-                {(qrUnits || []).length === 0 && (
-                  <div className="adm-rd-qr-empty">
-                    {qrLoading ? 'Memuat unit...' : 'Belum ada unit QR — pastikan QR sudah digenerate di pesanannya.'}
-                  </div>
-                )}
-              </div>
+                  )}
 
-              {/* Aksi */}
-              <div className="adm-rd-qr-action">
-                <button type="button" className="adm-rd-qr-receivebtn" onClick={handleReceive} disabled={actionLoading || !allScanned}>
-                  {actionLoading ? 'Memproses...' : 'Tandai Diterima'}
-                </button>
-                {!allScanned && (
-                  <span className="adm-rd-qr-note">Semua unit wajib discan dulu ({totalScanned}/{totalRequired}).</span>
-                )}
-              </div>
+                  {/* Aksi */}
+                  <div className="adm-rd-qr-action">
+                    <button type="button" className="adm-rd-qr-receivebtn" onClick={handleReceive} disabled={actionLoading || !allValid}>
+                      {actionLoading ? 'Memproses...' : 'Tandai Diterima'}
+                    </button>
+                    {!allValid && (
+                      <span className="adm-rd-qr-note">Semua produk wajib discan &amp; valid dulu ({totalValid}/{totalRequired}).</span>
+                    )}
+                  </div>
+                </>
+              )}
             </section>
           )}
 

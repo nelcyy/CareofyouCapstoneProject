@@ -1,0 +1,8 @@
+/* Warna canvas/overscroll halaman admin disamain dengan background page
+   (#fef8f6) biar pas scroll mentok atas/bawah warnanya nyatu, nggak gelap.
+   Pakai :has() supaya scoped HANYA ke area admin — halaman customer tetap
+   pakai overscroll gelap yang nyatu sama footer. */
+html:has(.adm-shell),
+body:has(.adm-shell) {
+  background: #fef8f6;
+}

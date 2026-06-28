@@ -1,0 +1,227 @@
+/* ════════════════════════════════════════════════════════
+   Landing page (root /) — tema rose/cream careofyou
+   ════════════════════════════════════════════════════════ */
+
+/* Warna canvas/overscroll disamain dengan background landing page,
+   biar pas scroll mentok atas/bawah warnanya nyatu (nggak gelap).
+   Pakai :has() supaya hanya berlaku di halaman ini — halaman customer
+   tetap pakai overscroll gelap yang nyatu sama footer. */
+html:has(.lp),
+body:has(.lp) {
+  background: #fdf6f5;
+}
+
+.lp {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 24px;
+  background: #fdf6f5;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* dekorasi soft blob */
+.lp-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  z-index: 0;
+  pointer-events: none;
+}
+.lp-blob--1 {
+  width: 440px;
+  height: 440px;
+  background: #f9d4cf;
+  top: -130px;
+  right: -90px;
+}
+.lp-blob--2 {
+  width: 380px;
+  height: 380px;
+  background: #fce0dc;
+  bottom: -110px;
+  left: -90px;
+}
+
+/* ── Hero ── */
+.lp-hero {
+  position: relative;
+  z-index: 1;
+  max-width: 680px;
+  text-align: center;
+  padding: 92px 0 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: lpFadeUp 0.6s ease both;
+}
+
+.lp-logo {
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+  margin-bottom: 22px;
+  filter: drop-shadow(0 10px 22px rgba(201, 114, 105, 0.28));
+}
+
+.lp-eyebrow {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #c97269;
+  background: #fff;
+  border: 1px solid #f0d5d2;
+  padding: 6px 15px;
+  border-radius: 50px;
+}
+
+.lp-title {
+  margin-top: 18px;
+  font-size: 46px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: -1.2px;
+  color: #2d2d2d;
+}
+.lp-title span {
+  background: linear-gradient(135deg, #e8907f, #c97269);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-lead {
+  margin-top: 16px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #7a7a7a;
+  max-width: 520px;
+}
+
+.lp-cta {
+  margin-top: 30px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.18s, background 0.18s, border-color 0.18s;
+}
+.lp-btn--primary {
+  color: #fff;
+  background: linear-gradient(135deg, #e8907f, #c97269);
+  box-shadow: 0 8px 22px rgba(201, 114, 105, 0.35);
+}
+.lp-btn--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(201, 114, 105, 0.45);
+}
+.lp-btn--ghost {
+  color: #c97269;
+  background: #fff;
+  border: 1.5px solid #f0d5d2;
+}
+.lp-btn--ghost:hover {
+  background: #fdf0ef;
+  border-color: #c97269;
+}
+
+.lp-note {
+  margin-top: 18px;
+  font-size: 14px;
+  color: #9a8f8d;
+}
+.lp-link {
+  color: #c97269;
+  font-weight: 700;
+}
+.lp-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Features ── */
+.lp-features {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 920px;
+  margin: 6px auto 64px;
+}
+
+.lp-feature {
+  background: #fff;
+  border: 1px solid #f0e0de;
+  border-radius: 18px;
+  padding: 26px 22px;
+  text-align: center;
+  transition: transform 0.16s, box-shadow 0.18s;
+}
+.lp-feature:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(201, 114, 105, 0.13);
+}
+.lp-feature-ico {
+  width: 50px;
+  height: 50px;
+  border-radius: 15px;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, #e8907f, #c97269);
+  box-shadow: 0 6px 16px rgba(201, 114, 105, 0.3);
+}
+.lp-feature-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #2d2d2d;
+  margin-bottom: 6px;
+}
+.lp-feature-desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #7a7a7a;
+}
+
+/* ── Footer ── */
+.lp-footer {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  padding: 22px 0 32px;
+  font-size: 13px;
+  color: #b0a8a6;
+  text-align: center;
+}
+
+@keyframes lpFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 760px) {
+  .lp-features { grid-template-columns: 1fr; }
+  .lp-title { font-size: 34px; }
+  .lp-lead { font-size: 15px; }
+  .lp-hero { padding: 64px 0 40px; }
+}
