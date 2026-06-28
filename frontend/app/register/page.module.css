@@ -358,12 +358,19 @@
   color: var(--auth-text);
   font-family: inherit;
   outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, transform 0.15s;
 }
 
 .otpInput:focus {
   border-color: var(--auth-primary);
   box-shadow: 0 0 0 4px rgba(214, 134, 124, 0.12);
   background: #fff;
+  transform: translateY(-1px);
+}
+
+.otpInputFilled {
+  border-color: var(--auth-primary);
+  background: rgba(214, 134, 124, 0.07);
 }
 
 .otpInput:disabled {
@@ -523,6 +530,16 @@
   background: linear-gradient(135deg, #d6867c 0%, #c0605a 100%);
   color: #fff;
   box-shadow: 0 10px 24px rgba(214, 134, 124, 0.3);
+  transition: box-shadow 0.2s;
+}
+
+.otpPrimaryBtnReady {
+  animation: otpReadyPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes otpReadyPulse {
+  0%, 100% { box-shadow: 0 10px 24px rgba(214, 134, 124, 0.3); }
+  50% { box-shadow: 0 10px 32px rgba(214, 134, 124, 0.55); }
 }
 
 .otpSecondaryBtn:disabled,

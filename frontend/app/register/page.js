@@ -174,7 +174,7 @@ function OtpInput({ value, onChange, disabled }) {
           ref={(node) => {
             inputRefs.current[index] = node;
           }}
-          className={styles.otpInput}
+          className={`${styles.otpInput}${digit ? ` ${styles.otpInputFilled}` : ''}`}
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
@@ -247,7 +247,7 @@ function OtpModal({
             </button>
             <button
               type="submit"
-              className={styles.otpPrimaryBtn}
+              className={`${styles.otpPrimaryBtn}${otp.length === 6 && otpState?.verify_allowed && !loading ? ` ${styles.otpPrimaryBtnReady}` : ''}`}
               disabled={loading || otp.length !== 6 || !otpState?.verify_allowed}
             >
               {loading ? <span className={styles.authSpinner} /> : 'Verifikasi'}
