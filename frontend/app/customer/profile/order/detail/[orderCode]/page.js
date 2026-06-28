@@ -1,14 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { apiUrl, mediaUrl } from '@/api';
+import '../../../../favorites/page.css';
 
 const ORDER_API = apiUrl('/api/customer/profile/order');
 const RETURN_API = apiUrl('/api/customer/profile/return');
 const ADDRESS_API = apiUrl('/api/customer/profile/address');
-const RETURN_TOTAL_STEPS = 6;
+const RETURN_STEP_LABELS = ['Pilih Produk', 'Alasan', 'Foto Produk', 'E-Receipt', 'Penyelesaian', 'Konfirmasi'];
 const PROOF_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
 const PROOF_IMAGE_TYPES = new Set(PROOF_IMAGE_ACCEPT.split(','));
 const RECEIPT_PDF_ACCEPT = 'application/pdf,.pdf';
@@ -17,7 +18,14 @@ const EXCHANGE_COURIERS = [
   { id: 'jnt-reg', name: 'J&T REG' },
   { id: 'sicepat-reg', name: 'SiCepat REG' },
 ];
+const TIMELINE_STEPS = [
+  { key: 'pending', label: 'Menunggu', icon: 'clock' },
+  { key: 'packing', label: 'Dikemas', icon: 'package' },
+  { key: 'shipped', label: 'Dikirim', icon: 'truck' },
+  { key: 'delivered', label: 'Sampai', icon: 'party' },
+];
 
+/* ── Helpers (murni presentasi, nilai datang apa adanya dari backend) ── */
 function formatRibuan(value) {
   const digits = String(value ?? '').replace(/\D/g, '');
   if (!digits) return '0';
@@ -37,10 +45,7 @@ function fileUrl(path) {
 
 function proofPreview(path, label) {
   if (!path) return null;
-  return {
-    src: fileUrl(path),
-    label,
-  };
+  return { src: fileUrl(path), label };
 }
 
 function isPreviewableProof(path) {
@@ -79,18 +84,11 @@ function buildInitialReturnSelections(detail) {
 }
 
 function buildInitialRefundForm() {
-  return {
-    bank_name: '',
-    account_number: '',
-    account_holder_name: '',
-  };
+  return { bank_name: '', account_number: '', account_holder_name: '' };
 }
 
 function buildInitialExchangeForm() {
-  return {
-    exchange_courier_id: '',
-    exchange_address_id: '',
-  };
+  return { exchange_courier_id: '', exchange_address_id: '' };
 }
 
 function getSelectedReturnItems(detail, returnSelections) {
@@ -109,9 +107,7 @@ function getSelectedReturnItems(detail, returnSelections) {
 }
 
 function getResolutionError(returnResolutionType, refundForm, exchangeForm) {
-  if (!returnResolutionType) {
-    return 'Tipe penyelesaian retur wajib dipilih.';
-  }
+  if (!returnResolutionType) return 'Tipe penyelesaian retur wajib dipilih.';
   if (returnResolutionType === 'refund') {
     if (!refundForm.bank_name.trim()) return 'Nama bank wajib diisi untuk refund.';
     if (!refundForm.account_number.trim()) return 'Nomor rekening wajib diisi untuk refund.';
@@ -123,87 +119,302 @@ function getResolutionError(returnResolutionType, refundForm, exchangeForm) {
   return '';
 }
 
-function DataTable({ children }) {
+// Sama persis substring matching yang dipakai di halaman daftar pesanan —
+// dipakai juga buat nentuin step timeline mana yang aktif, biar gak ada
+// anggapan urutan status baru yang gak sesuai sama backend.
+// Dicocokin dulu ke value asli `Order.STATUS_CHOICES` di backend
+// (waiting_admin_approval/rejected/pengemasan/pengiriman/selesai), baru fallback
+// ke substring umum buat jaga-jaga kalau ada variasi label lain.
+function statusStyle(status) {
+  const s = String(status || '').toLowerCase();
+  if (s === 'rejected' || s.includes('batal') || s.includes('cancel') || s.includes('tolak') || s.includes('reject'))
+    return { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', group: 'cancelled' };
+  if (s === 'selesai' || s.includes('terkirim') || s.includes('deliver') || s.includes('complete'))
+    return { color: '#16a34a', bg: 'rgba(34,197,94,0.12)', group: 'delivered' };
+  if (s === 'pengiriman' || s.includes('kirim') || s.includes('ship'))
+    return { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', group: 'shipped' };
+  if (s === 'pengemasan' || s.includes('kemas') || s.includes('packing') || s.includes('proses') || s.includes('process'))
+    return { color: '#4a9fd4', bg: 'rgba(74,159,212,0.12)', group: 'packing' };
+  if (s === 'waiting_admin_approval' || s.includes('tunggu') || s.includes('pending') || s.includes('bayar') || s.includes('konfirmasi'))
+    return { color: '#e09a3a', bg: 'rgba(224,154,58,0.12)', group: 'pending' };
+  return { color: '#c4706a', bg: 'rgba(214,134,124,0.12)', group: null };
+}
+
+function timelineIndex(group) {
+  return TIMELINE_STEPS.findIndex((step) => step.key === group);
+}
+
+/* ── Icon set (line-style, sama gaya sama yang udah dipakai di halaman lain) ── */
+function IconBack() {
   return (
-    <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse', width: '100%', marginTop: 8 }}>
-      {children}
-    </table>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+function IconPackage() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  );
+}
+function IconReceipt() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  );
+}
+function IconMapPin() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+function IconTruck() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="15" height="13" />
+      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  );
+}
+function IconCreditCard() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+      <line x1="1" y1="10" x2="23" y2="10" />
+    </svg>
+  );
+}
+function IconDownload() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+function IconEye() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+function IconRotate() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="1 4 1 10 7 10" />
+      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    </svg>
+  );
+}
+function IconClock(props) {
+  return (
+    <svg width={props?.size || 16} height={props?.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+function IconCheck() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+function IconCheckCircle(props) {
+  return (
+    <svg width={props?.size || 18} height={props?.size || 18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  );
+}
+function IconXCircle(props) {
+  return (
+    <svg width={props?.size || 22} height={props?.size || 22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="15" y1="9" x2="9" y2="15" />
+      <line x1="9" y1="9" x2="15" y2="15" />
+    </svg>
+  );
+}
+function IconX() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+function IconPlus() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+function IconMinus() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+function IconUploadCloud() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+      <polyline points="16 16 12 12 8 16" />
+      <line x1="12" y1="12" x2="12" y2="21" />
+    </svg>
+  );
+}
+function IconImage() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+}
+function IconExternal() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+function IconAlert(props) {
+  return (
+    <svg width={props?.size || 18} height={props?.size || 18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+function IconBan() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </svg>
+  );
+}
+function IconStar(props) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={props?.filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
+function IconPartyPopper() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5.8 11.3 2 22l10.7-3.8" />
+      <path d="M4 3h.01" />
+      <path d="M22 8h.01" />
+      <path d="M15 2h.01" />
+      <path d="M22 20h.01" />
+      <path d="m22 2-3.5 3.5" />
+      <path d="m21 15-4.5-4.5" />
+      <path d="m3 21.5 2.5-2.5" />
+      <path d="m20 12-3 3" />
+      <path d="m12 2-2.5 2.5" />
+    </svg>
+  );
+}
+
+function TimelineIcon({ name }) {
+  if (name === 'clock') return <IconClock size={17} />;
+  if (name === 'package') return <IconPackage />;
+  if (name === 'truck') return <IconTruck />;
+  return <IconPartyPopper />;
+}
+
+function MetaRow({ label, value, action }) {
+  return (
+    <div className="od-meta-row">
+      <span className="od-meta-label">{label}</span>
+      <span className="od-meta-val">
+        {value}
+        {action}
+      </span>
+    </div>
+  );
+}
+
+function ProofAction({ path, label, onPreview }) {
+  if (!path) return <span className="od-meta-val--muted">-</span>;
+  if (!isPreviewableProof(path)) {
+    return (
+      <a className="od-view-proof-btn" href={fileUrl(path)} target="_blank" rel="noreferrer">
+        <IconImage /> Lihat Bukti
+      </a>
+    );
+  }
+  return (
+    <button type="button" className="od-view-proof-btn" onClick={() => onPreview(proofPreview(path, label))}>
+      <IconImage /> Lihat Bukti
+    </button>
+  );
+}
+
+function PdfPreviewModal({ preview, onClose }) {
+  if (!preview) return null;
+  return (
+    <div className="od-modal-overlay" role="presentation" onClick={onClose}>
+      <div className="od-modal od-pdf-modal" role="dialog" aria-modal="true" aria-label={preview.label} onClick={(e) => e.stopPropagation()}>
+        <div className="od-modal-header">
+          <h3>{preview.label}</h3>
+          <button type="button" className="od-modal-close" onClick={onClose} aria-label="Tutup preview">
+            <IconX />
+          </button>
+        </div>
+        <div className="od-pdf-frame-wrap">
+          <iframe src={preview.url} title={preview.label} className="od-pdf-frame" />
+        </div>
+      </div>
+    </div>
   );
 }
 
 function ImagePreviewModal({ preview, onClose }) {
   if (!preview) return null;
   return (
-    <div
-      role="presentation"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-        background: 'rgba(45,45,45,0.58)',
-        backdropFilter: 'blur(6px)',
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={preview.label}
-        onClick={(event) => event.stopPropagation()}
-        style={{
-          width: 'min(860px, 100%)',
-          maxHeight: '86vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          borderRadius: 18,
-          background: '#fff',
-          boxShadow: '0 24px 72px rgba(45,45,45,0.26)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            padding: '14px 18px',
-            borderBottom: '1px solid #f0e0de',
-          }}
-        >
-          <strong>{preview.label}</strong>
-          <button type="button" onClick={onClose} aria-label="Tutup preview">
-            ×
+    <div className="od-modal-overlay" role="presentation" onClick={onClose}>
+      <div className="od-modal od-zoom-modal" role="dialog" aria-modal="true" aria-label={preview.label} onClick={(e) => e.stopPropagation()}>
+        <div className="od-modal-header">
+          <h3>{preview.label}</h3>
+          <button type="button" className="od-modal-close" onClick={onClose} aria-label="Tutup preview">
+            <IconX />
           </button>
         </div>
-        <div
-          style={{
-            minHeight: 240,
-            padding: 18,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'auto',
-            background: '#fdf6f5',
-          }}
-        >
-          <img
-            src={preview.src}
-            alt={preview.label}
-            style={{ display: 'block', maxWidth: '100%', maxHeight: '62vh', objectFit: 'contain', borderRadius: 12 }}
-          />
+        <div className="od-zoom-body">
+          <img src={preview.src} alt={preview.label} />
         </div>
-        <a
-          href={preview.src}
-          target="_blank"
-          rel="noreferrer"
-          style={{ padding: '12px 18px 16px', color: '#c4706a', fontWeight: 700, textAlign: 'right' }}
-        >
-          Buka di tab baru
+        <a href={preview.src} target="_blank" rel="noreferrer" className="od-zoom-link">
+          Buka di tab baru <IconExternal />
         </a>
       </div>
     </div>
@@ -217,6 +428,10 @@ export default function ProfileOrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [imagePreview, setImagePreview] = useState(null);
+  const [pdfPreview, setPdfPreview] = useState(null);
+
+  // Return wizard
   const [showReturnWizard, setShowReturnWizard] = useState(false);
   const [returnStep, setReturnStep] = useState(1);
   const [returnSelections, setReturnSelections] = useState({});
@@ -229,14 +444,24 @@ export default function ProfileOrderDetailPage() {
   const [addresses, setAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [submittingReturn, setSubmittingReturn] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
+
+  // Cancel order — UI siap, nunggu field `can_cancel` / `cancel_deadline_at`
+  // dan endpoint cancel dari backend. Lihat catatan di akhir percakapan.
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [cancelTimeLeft, setCancelTimeLeft] = useState(null);
+
+  // Rating produk — UI siap, nunggu field status-sudah-dirating & endpoint
+  // submit rating dari backend.
+  const [ratingMap, setRatingMap] = useState({});
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   async function loadAddresses({ silent = true } = {}) {
     const user = getStoredUser();
     if (!user || user.role !== 'customer') {
-      if (!silent) {
-        setError('Login dulu sebagai customer untuk mengambil alamat.');
-      }
+      if (!silent) setError('Login dulu sebagai customer untuk mengambil alamat.');
       return;
     }
 
@@ -244,15 +469,11 @@ export default function ProfileOrderDetailPage() {
     try {
       const res = await fetch(`${ADDRESS_API}/list?user_id=${encodeURIComponent(user.id)}`);
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Gagal mengambil alamat customer.');
-      }
+      if (!res.ok) throw new Error(data.error || 'Gagal mengambil alamat customer.');
       setAddresses(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
-      if (!silent) {
-        setError(err.message || 'Gagal mengambil alamat customer.');
-      }
+      if (!silent) setError(err.message || 'Gagal mengambil alamat customer.');
     } finally {
       setAddressesLoading(false);
     }
@@ -267,17 +488,13 @@ export default function ProfileOrderDetailPage() {
       return;
     }
 
-    if (!keepMessage) {
-      setMessage('');
-    }
+    if (!keepMessage) setMessage('');
 
     const res = await fetch(
       `${ORDER_API}/detail?user_id=${encodeURIComponent(user.id)}&order_code=${encodeURIComponent(orderCode)}`,
     );
     const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Gagal mengambil detail pesanan.');
-    }
+    if (!res.ok) throw new Error(data.error || 'Gagal mengambil detail pesanan.');
 
     setDetail(data);
     setReturnSelections((current) => {
@@ -285,12 +502,8 @@ export default function ProfileOrderDetailPage() {
       return Object.keys(current).length > 0 ? { ...nextState, ...current } : nextState;
     });
 
-    if (data?.return_info?.eligible) {
-      loadAddresses({ silent: true });
-    }
-    if (!data?.return_info?.eligible) {
-      setShowReturnWizard(false);
-    }
+    if (data?.return_info?.eligible) loadAddresses({ silent: true });
+    if (!data?.return_info?.eligible) setShowReturnWizard(false);
   }
 
   function resetReturnWizard(nextDetail = detail) {
@@ -313,9 +526,12 @@ export default function ProfileOrderDetailPage() {
     }
 
     const action = mode === 'download' ? 'download' : 'view';
-    const url = `${ORDER_API}/ereceipt/${action}?user_id=${encodeURIComponent(
-      user.id,
-    )}&order_code=${encodeURIComponent(orderCode)}`;
+    const url = `${ORDER_API}/ereceipt/${action}?user_id=${encodeURIComponent(user.id)}&order_code=${encodeURIComponent(orderCode)}`;
+
+    if (action === 'view') {
+      setPdfPreview({ url, label: 'E-Receipt' });
+      return;
+    }
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
@@ -326,34 +542,6 @@ export default function ProfileOrderDetailPage() {
 
   function closeImagePreview() {
     setImagePreview(null);
-  }
-
-  function renderProofAction(path, label) {
-    if (!path) return '-';
-    return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        {isPreviewableProof(path) && (
-          <button
-            type="button"
-            onClick={() => openImagePreview(proofPreview(path, label))}
-            style={{
-              padding: 0,
-              border: 0,
-              background: 'transparent',
-              color: '#c4706a',
-              cursor: 'pointer',
-              font: 'inherit',
-              fontWeight: 700,
-            }}
-          >
-            Lihat Bukti
-          </button>
-        )}
-        <a href={fileUrl(path)} target="_blank" rel="noreferrer">
-          Buka file
-        </a>
-      </span>
-    );
   }
 
   function handleProductPhotoChange(event) {
@@ -400,7 +588,6 @@ export default function ProfileOrderDetailPage() {
       setReturnSelections((current) => ({ ...current, [itemId]: '' }));
       return;
     }
-
     const nextQuantity = Math.max(0, Math.min(Number(digits), Number(maxQty) || 0));
     setReturnSelections((current) => ({ ...current, [itemId]: String(nextQuantity) }));
   }
@@ -460,12 +647,7 @@ export default function ProfileOrderDetailPage() {
       formData.append('resolution_type', returnResolutionType);
       formData.append(
         'items_json',
-        JSON.stringify(
-          selectedItems.map((item) => ({
-            order_item_id: item.order_item_id,
-            quantity: item.quantity,
-          })),
-        ),
+        JSON.stringify(selectedItems.map((item) => ({ order_item_id: item.order_item_id, quantity: item.quantity }))),
       );
       formData.append('product_photo', productPhoto);
       formData.append('ereceipt_proof', receiptProof);
@@ -479,14 +661,9 @@ export default function ProfileOrderDetailPage() {
         formData.append('exchange_address_id', exchangeForm.exchange_address_id);
       }
 
-      const res = await fetch(`${RETURN_API}/create`, {
-        method: 'POST',
-        body: formData,
-      });
+      const res = await fetch(`${RETURN_API}/create`, { method: 'POST', body: formData });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Gagal mengirim pengajuan retur.');
-      }
+      if (!res.ok) throw new Error(data.error || 'Gagal mengirim pengajuan retur.');
 
       setMessage(data.message || 'Pengajuan retur berhasil dikirim ke admin.');
       await loadDetail({ keepMessage: true });
@@ -499,6 +676,78 @@ export default function ProfileOrderDetailPage() {
     }
   }
 
+  // ── Cancel order — placeholder pending backend (lihat catatan di akhir chat) ──
+  async function handleConfirmCancel() {
+    if (!detail) return;
+    const user = getStoredUser();
+    if (!user || user.role !== 'customer') {
+      setError('Login dulu sebagai customer untuk membatalkan pesanan.');
+      return;
+    }
+    if (!cancelReason.trim()) {
+      setError('Alasan pembatalan wajib diisi.');
+      return;
+    }
+
+    setCancelSubmitting(true);
+    setError('');
+    setMessage('');
+    try {
+      const res = await fetch(`${ORDER_API}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id, order_code: orderCode, reason: cancelReason.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal membatalkan pesanan.');
+      setMessage(data.message || 'Pesanan berhasil dibatalkan.');
+      setCancelConfirmOpen(false);
+      setCancelReason('');
+      await loadDetail({ keepMessage: true });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Gagal membatalkan pesanan. Fitur ini menunggu endpoint cancel dari backend.');
+    } finally {
+      setCancelSubmitting(false);
+    }
+  }
+
+  // ── Rating produk — placeholder pending backend (lihat catatan di akhir chat) ──
+  async function handleSubmitRatings() {
+    if (!detail) return;
+    const user = getStoredUser();
+    if (!user || user.role !== 'customer') {
+      setError('Login dulu sebagai customer untuk memberi rating.');
+      return;
+    }
+    const entries = Object.entries(ratingMap).filter(([, v]) => v > 0);
+    if (entries.length === 0) return;
+
+    setRatingSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch(`${ORDER_API}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          order_code: orderCode,
+          ratings: entries.map(([orderItemId, rating]) => ({ order_item_id: orderItemId, rating })),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Gagal mengirim rating.');
+      }
+      setRatingSubmitted(true);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Gagal mengirim rating. Fitur ini menunggu endpoint rating dari backend.');
+    } finally {
+      setRatingSubmitting(false);
+    }
+  }
+
   useEffect(() => {
     setLoading(true);
     loadDetail({ keepMessage: true })
@@ -507,26 +756,48 @@ export default function ProfileOrderDetailPage() {
         setError(err.message || 'Gagal mengambil detail pesanan.');
       })
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderCode]);
 
   useEffect(() => {
-    if (!imagePreview) return undefined;
-
+    if (!imagePreview && !pdfPreview) return undefined;
     function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        closeImagePreview();
-      }
+      if (event.key !== 'Escape') return;
+      closeImagePreview();
+      setPdfPreview(null);
     }
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [imagePreview]);
+  }, [imagePreview, pdfPreview]);
 
+  // Countdown pembatalan — hanya aktif kalau backend kirim `cancel_deadline_at`.
+  useEffect(() => {
+    if (!detail?.cancel_deadline_at) {
+      setCancelTimeLeft(null);
+      return undefined;
+    }
+    const deadline = new Date(detail.cancel_deadline_at).getTime();
+    const tick = () => setCancelTimeLeft(Math.max(0, Math.floor((deadline - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [detail?.cancel_deadline_at]);
+
+  function fmtCountdown(totalSeconds) {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    if (h > 0) return `${h}j ${m}m`;
+    if (m > 0) return `${m}m ${s}d`;
+    return `${s}d`;
+  }
+
+  const status = statusStyle(detail?.status);
+  const currentStepIndex = timelineIndex(status.group);
+  const isCancelledOrRejected = status.group === 'cancelled';
   const returnInfo = detail?.return_info || {};
   const selectedReturnItems = getSelectedReturnItems(detail, returnSelections);
-  const selectedExchangeAddress = addresses.find(
-    (item) => String(item.id) === String(exchangeForm.exchange_address_id),
-  );
+  const selectedExchangeAddress = addresses.find((item) => String(item.id) === String(exchangeForm.exchange_address_id));
   const resolutionError = getResolutionError(returnResolutionType, refundForm, exchangeForm);
   const canContinueStep1 = selectedReturnItems.length > 0;
   const canContinueStep2 = Boolean(returnReason.trim());
@@ -535,607 +806,594 @@ export default function ProfileOrderDetailPage() {
   const canContinueStep5 = Boolean(returnResolutionType);
   const canSubmitStep6 = !submittingReturn && !addressesLoading && !resolutionError;
 
-  return (
-    <div style={{ paddingBottom: 24 }}>
-      <h2>Detail Pesanan</h2>
+  // Tombol cancel hanya nongol kalau backend secara eksplisit ngirim
+  // `can_cancel: true` — sampai field itu ada, kartu ini gak pernah tampil.
+  const showCancelCard = Boolean(detail?.can_cancel);
+  // Kartu rating hanya nongol di status "delivered", dicocokin lewat
+  // statusStyle() yang sama dipakai timeline & badge — bukan rule baru.
+  const showRatingCard = status.group === 'delivered' && (detail?.items || []).length > 0 && !ratingSubmitted;
 
-      {loading && <p style={{ marginTop: 12 }}>Memuat detail pesanan...</p>}
-      {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}
-      {message && <p style={{ color: '#166534', marginTop: 12 }}>{message}</p>}
+  return (
+    <div className="od-wrap">
+      <Link href="/customer/profile/order" className="od-back-btn">
+        <IconBack /> Kembali ke Pesanan Saya
+      </Link>
+
+      {loading && <p className="od-banner od-banner--info">Memuat detail pesanan...</p>}
+      {error && <p className="od-banner od-banner--error">{error}</p>}
+      {message && <p className="od-banner od-banner--success">{message}</p>}
 
       {detail && (
         <>
-          <h3 style={{ marginTop: 20 }}>Info Pesanan</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Kode Order</td>
-                <td>{detail.order_code || '-'}</td>
-              </tr>
-              <tr>
-                <td>Status</td>
-                <td>{detail.status || '-'}</td>
-              </tr>
-              <tr>
-                <td>Decision</td>
-                <td>{detail.decision || '-'}</td>
-              </tr>
-              <tr>
-                <td>Tanggal Order</td>
-                <td>{formatTanggal(detail.created_at)}</td>
-              </tr>
-              <tr>
-                <td>Diproses Pada</td>
-                <td>{formatTanggal(detail.processed_at)}</td>
-              </tr>
-              <tr>
-                <td>Alasan / Remarks</td>
-                <td>{detail.decision_reason || '-'}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <h3 style={{ marginTop: 24 }}>Produk</h3>
-          <DataTable>
-            <thead>
-              <tr>
-                <th>Nama</th>
-                <th>Harga</th>
-                <th>Qty</th>
-                <th>Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(detail.items || []).map((item, index) => (
-                <tr key={item.id || index}>
-                  <td>{item.product_name || '-'}</td>
-                  <td>Rp {formatRibuan(item.product_price)}</td>
-                  <td>{item.quantity || 0}</td>
-                  <td>Rp {formatRibuan(item.subtotal)}</td>
-                </tr>
-              ))}
-              {(detail.items || []).length === 0 && (
-                <tr>
-                  <td colSpan={4}>(tidak ada item)</td>
-                </tr>
-              )}
-            </tbody>
-          </DataTable>
-
-          <h3 style={{ marginTop: 24 }}>Alamat</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Label</td>
-                <td>{detail.address_label || '-'}</td>
-              </tr>
-              <tr>
-                <td>Penerima</td>
-                <td>{detail.recipient_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Telepon</td>
-                <td>{detail.recipient_phone || '-'}</td>
-              </tr>
-              <tr>
-                <td>Alamat</td>
-                <td>{detail.address_line || '-'}</td>
-              </tr>
-              <tr>
-                <td>Kota</td>
-                <td>{detail.city || '-'}</td>
-              </tr>
-              <tr>
-                <td>Provinsi</td>
-                <td>{detail.province || '-'}</td>
-              </tr>
-              <tr>
-                <td>Kode Pos</td>
-                <td>{detail.postal_code || '-'}</td>
-              </tr>
-              <tr>
-                <td>Catatan</td>
-                <td>{detail.address_notes || '-'}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <h3 style={{ marginTop: 24 }}>Pengiriman</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Kurir</td>
-                <td>{detail.courier_name || '-'}</td>
-              </tr>
-              <tr>
-                <td>Ongkir</td>
-                <td>Rp {formatRibuan(detail.shipping_fee)}</td>
-              </tr>
-              <tr>
-                <td>Nomor Resi</td>
-                <td>{detail.tracking_number || '-'}</td>
-              </tr>
-              <tr>
-                <td>Dikirim Pada</td>
-                <td>{formatTanggal(detail.shipped_at)}</td>
-              </tr>
-              <tr>
-                <td>Catatan Pengiriman</td>
-                <td>{detail.shipping_notes || '-'}</td>
-              </tr>
-              <tr>
-                <td>Selesai Pada</td>
-                <td>{formatTanggal(detail.completed_at)}</td>
-              </tr>
-              <tr>
-                <td>Bukti Terkirim</td>
-                <td>{renderProofAction(detail.delivery_proof, 'Bukti Terkirim')}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <h3 style={{ marginTop: 24 }}>Pembayaran</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Metode</td>
-                <td>{detail.payment_method || '-'}</td>
-              </tr>
-              <tr>
-                <td>Tujuan Transfer</td>
-                <td>{detail.payment_target || '-'}</td>
-              </tr>
-              <tr>
-                <td>Bukti Transfer</td>
-                <td>{renderProofAction(detail.payment_proof, 'Bukti Transfer')}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-
-          <h3 style={{ marginTop: 24 }}>E-Receipt</h3>
-          <DataTable>
-            <tbody>
-              <tr>
-                <td>Boleh Dilihat</td>
-                <td>{detail.ereceipt_eligible ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Sudah Tersedia</td>
-                <td>{detail.ereceipt_available ? 'Ya' : 'Tidak'}</td>
-              </tr>
-              <tr>
-                <td>Receipt ID</td>
-                <td>{detail.ereceipt_id || '-'}</td>
-              </tr>
-              <tr>
-                <td>Generated At</td>
-                <td>{formatTanggal(detail.ereceipt_generated_at)}</td>
-              </tr>
-            </tbody>
-          </DataTable>
-          <p style={{ marginTop: 12 }}>
-            <button
-              type="button"
-              onClick={() => handleOpenReceipt('view')}
-              disabled={!detail.ereceipt_eligible}
-            >
-              Lihat PDF
-            </button>{' '}
-            <button
-              type="button"
-              onClick={() => handleOpenReceipt('download')}
-              disabled={!detail.ereceipt_eligible}
-            >
-              Download PDF
-            </button>
-          </p>
-          {!detail.ereceipt_eligible && (
-            <p style={{ marginTop: 8 }}>
-              E-receipt baru tersedia setelah pesanan di-approve admin.
-            </p>
-          )}
-
-          <div style={{ marginTop: 24, marginBottom: 24 }}>
-            <p>
-              <b>Subtotal: Rp {formatRibuan(detail.subtotal)}</b>
-            </p>
-            <p>
-              <b>Ongkir: Rp {formatRibuan(detail.shipping_fee)}</b>
-            </p>
-            <p>
-              <b>Grand Total: Rp {formatRibuan(detail.grand_total)}</b>
-            </p>
+          <div className="od-header">
+            <div className="od-header-left">
+              <h1 className="od-title">Detail Pesanan</h1>
+              <p className="od-order-code">#{detail.order_code || orderCode} · Dipesan {formatTanggal(detail.created_at)}</p>
+            </div>
+            <span className="od-status-badge" style={{ color: status.color, background: status.bg }}>
+              {status.group === 'delivered' ? <IconCheckCircle size={14} /> : status.group === 'cancelled' ? <IconXCircle size={14} /> : <IconClock size={14} />}
+              {detail.status || '-'}
+            </span>
           </div>
 
-          {returnInfo.eligible && (
-            <div
-              style={{
-                marginTop: 20,
-                marginBottom: 24,
-                padding: 16,
-                borderRadius: 14,
-                border: '1px solid rgba(196,112,106,0.2)',
-                background: 'rgba(255,245,243,0.9)',
-              }}
-            >
-              <p style={{ margin: 0, color: '#7b5a56' }}>
-                Retur tersedia sampai {formatTanggal(returnInfo.deadline_at)}.
-              </p>
-              {!showReturnWizard && (
-                <button
-                  type="button"
-                  onClick={handleStartReturn}
-                  style={{
-                    display: 'inline-block',
-                    marginTop: 12,
-                    padding: '10px 16px',
-                    borderRadius: 999,
-                    background: '#c4706a',
-                    color: '#fff',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                  }}
-                >
-                  Ajukan Retur
-                </button>
+          {/* ── Rejected / cancelled banner ── */}
+          {isCancelledOrRejected && (
+            <div className="od-state-banner od-state-banner--bad">
+              <span className="od-state-icon"><IconBan /></span>
+              <div>
+                <p className="od-state-title">{detail.decision === 'rejected' ? 'Pesanan Ditolak' : 'Pesanan Dibatalkan'}</p>
+                <p className="od-state-desc">{detail.decision_reason || 'Pesanan ini tidak dilanjutkan.'}</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Timeline status ── */}
+          {!isCancelledOrRejected && (
+            <div className="od-card">
+              <p className="od-section-label">Status Pesanan</p>
+              {currentStepIndex >= 0 ? (
+                <div className="od-steps">
+                  {TIMELINE_STEPS.map((step, i) => {
+                    const isLastStep = i === TIMELINE_STEPS.length - 1;
+                    // Step terakhir yang udah tercapai dianggap "selesai" penuh,
+                    // bukan "lagi berjalan" — gak ada step sesudahnya buat ditunggu.
+                    const isDone = i < currentStepIndex || (i === currentStepIndex && isLastStep);
+                    const isActive = i === currentStepIndex && !isLastStep;
+                    const dotState = isDone ? 'done' : isActive ? 'active' : 'pending';
+                    // Garis setelah step ini ngikutin state step itu sendiri —
+                    // done = hijau, lagi di step ini = gradient (transisi ke step berikut).
+                    const lineState = isDone ? 'done' : isActive ? 'active' : 'pending';
+                    return (
+                      <Fragment key={step.key}>
+                        <div className="od-step">
+                          <div className={`od-step-dot od-step-dot--${dotState}`}>
+                            <TimelineIcon name={step.icon} />
+                          </div>
+                          <span className={`od-step-label od-step-label--${dotState}`}>{step.label}</span>
+                        </div>
+                        {i < TIMELINE_STEPS.length - 1 && (
+                          <div className={`od-step-line od-step-line--${lineState}`} />
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="od-meta-note">{detail.status || '-'}</p>
               )}
-
-              {showReturnWizard && (
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: 16,
-                    borderRadius: 12,
-                    background: '#fff',
-                    border: '1px solid rgba(196,112,106,0.12)',
-                  }}
-                >
-                  <p style={{ marginTop: 0, marginBottom: 12, fontWeight: 700 }}>
-                    Step {returnStep} dari {RETURN_TOTAL_STEPS}
-                  </p>
-
-                  {returnStep === 1 && (
-                    <>
-                      <p style={{ marginTop: 0 }}>Pilih produk dan jumlah pcs yang ingin diretur.</p>
-                      <DataTable>
-                        <thead>
-                          <tr>
-                            <th>Produk</th>
-                            <th>Qty Dibeli</th>
-                            <th>Qty Retur</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(detail.items || []).map((item) => (
-                            <tr key={item.id}>
-                              <td>{item.product_name}</td>
-                              <td>{item.quantity}</td>
-                              <td>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max={item.quantity || 0}
-                                  value={returnSelections[item.id] ?? ''}
-                                  onChange={(event) => handleReturnQtyChange(item.id, event.target.value, item.quantity)}
-                                  style={{ width: 88 }}
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </DataTable>
-                    </>
-                  )}
-
-                  {returnStep === 2 && (
-                    <>
-                      <p style={{ marginTop: 0 }}>Tulis alasan retur.</p>
-                      <textarea
-                        value={returnReason}
-                        onChange={(event) => setReturnReason(event.target.value)}
-                        rows={5}
-                        placeholder="Contoh: produk rusak saat diterima / shade tidak sesuai / segel terbuka."
-                        style={{ width: '100%', padding: 12, resize: 'vertical' }}
-                      />
-                    </>
-                  )}
-
-                  {returnStep === 3 && (
-                    <>
-                      <p style={{ marginTop: 0 }}>Upload foto produk sebagai bukti kondisi barang.</p>
-                      <input
-                        type="file"
-                        accept={PROOF_IMAGE_ACCEPT}
-                        onChange={handleProductPhotoChange}
-                      />
-                      <p style={{ marginBottom: 0, color: '#7b5a56' }}>
-                        {productPhoto ? `File terpilih: ${productPhoto.name}` : 'Pilih foto JPG, PNG, atau WebP.'}
-                      </p>
-                    </>
-                  )}
-
-                  {returnStep === 4 && (
-                    <>
-                      <p style={{ marginTop: 0 }}>Upload file e-receipt PDF untuk melanjutkan pengajuan retur.</p>
-                      <input
-                        type="file"
-                        accept={RECEIPT_PDF_ACCEPT}
-                        onChange={handleReceiptProofChange}
-                      />
-                      <p style={{ marginTop: 12, marginBottom: 0, color: '#7b5a56' }}>
-                        {receiptProof ? `File terpilih: ${receiptProof.name}` : 'Pilih file PDF.'}
-                      </p>
-                    </>
-                  )}
-
-                  {returnStep === 5 && (
-                    <>
-                      <p style={{ marginTop: 0 }}>Pilih jenis penyelesaian retur yang kamu inginkan.</p>
-                      <label style={{ display: 'block', marginBottom: 8 }}>
-                        <input
-                          type="radio"
-                          name="return-resolution-type"
-                          value="refund"
-                          checked={returnResolutionType === 'refund'}
-                          onChange={(event) => setReturnResolutionType(event.target.value)}
-                        />{' '}
-                        Refund
-                      </label>
-                      <label style={{ display: 'block' }}>
-                        <input
-                          type="radio"
-                          name="return-resolution-type"
-                          value="exchange"
-                          checked={returnResolutionType === 'exchange'}
-                          onChange={(event) => setReturnResolutionType(event.target.value)}
-                        />{' '}
-                        Exchange
-                      </label>
-                    </>
-                  )}
-
-                  {returnStep === 6 && (
-                    <>
-                      {returnResolutionType === 'refund' && (
-                        <>
-                          <p style={{ marginTop: 0 }}>Isi data rekening untuk refund.</p>
-                          <p style={{ marginBottom: 8 }}>
-                            <input
-                              type="text"
-                              placeholder="Nama bank"
-                              value={refundForm.bank_name}
-                              onChange={(event) => {
-                                setRefundForm((current) => ({ ...current, bank_name: event.target.value }));
-                              }}
-                              style={{ width: '100%', padding: 10 }}
-                            />
-                          </p>
-                          <p style={{ marginBottom: 8 }}>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="Nomor rekening"
-                              value={refundForm.account_number}
-                              onChange={(event) => {
-                                setRefundForm((current) => ({ ...current, account_number: event.target.value }));
-                              }}
-                              style={{ width: '100%', padding: 10 }}
-                            />
-                          </p>
-                          <p style={{ marginBottom: 0 }}>
-                            <input
-                              type="text"
-                              placeholder="Nama pemilik rekening"
-                              value={refundForm.account_holder_name}
-                              onChange={(event) => {
-                                setRefundForm((current) => ({
-                                  ...current,
-                                  account_holder_name: event.target.value,
-                                }));
-                              }}
-                              style={{ width: '100%', padding: 10 }}
-                            />
-                          </p>
-                        </>
-                      )}
-
-                      {returnResolutionType === 'exchange' && (
-                        <>
-                          <p style={{ marginTop: 0 }}>Pilih kurir dan alamat untuk exchange.</p>
-                          <p style={{ marginBottom: 8 }}>
-                            <select
-                              value={exchangeForm.exchange_courier_id}
-                              onChange={(event) => {
-                                setExchangeForm((current) => ({
-                                  ...current,
-                                  exchange_courier_id: event.target.value,
-                                }));
-                              }}
-                              style={{ width: '100%', padding: 10 }}
-                            >
-                              <option value="">Pilih kurir</option>
-                              {EXCHANGE_COURIERS.map((courier) => (
-                                <option key={courier.id} value={courier.id}>
-                                  {courier.name}
-                                </option>
-                              ))}
-                            </select>
-                          </p>
-
-                          {addressesLoading && <p style={{ marginTop: 0 }}>Memuat alamat customer...</p>}
-                          {!addressesLoading && addresses.length === 0 && (
-                            <p style={{ marginTop: 0 }}>
-                              Belum ada alamat tersimpan. Tambah dulu di{' '}
-                              <Link href="/customer/profile/address">halaman address</Link>.
-                            </p>
-                          )}
-                          {!addressesLoading && addresses.length > 0 && (
-                            <>
-                              <p style={{ marginBottom: 8 }}>
-                                <select
-                                  value={exchangeForm.exchange_address_id}
-                                  onChange={(event) => {
-                                    setExchangeForm((current) => ({
-                                      ...current,
-                                      exchange_address_id: event.target.value,
-                                    }));
-                                  }}
-                                  style={{ width: '100%', padding: 10 }}
-                                >
-                                  <option value="">Pilih alamat</option>
-                                  {addresses.map((address) => (
-                                    <option key={address.id} value={address.id}>
-                                      {address.label} - {address.recipient_name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </p>
-
-                              {selectedExchangeAddress && (
-                                <DataTable>
-                                  <tbody>
-                                    <tr>
-                                      <td>Label</td>
-                                      <td>{selectedExchangeAddress.label || '-'}</td>
-                                    </tr>
-                                    <tr>
-                                      <td>Penerima</td>
-                                      <td>{selectedExchangeAddress.recipient_name || '-'}</td>
-                                    </tr>
-                                    <tr>
-                                      <td>Telepon</td>
-                                      <td>{selectedExchangeAddress.phone || '-'}</td>
-                                    </tr>
-                                    <tr>
-                                      <td>Alamat</td>
-                                      <td>{selectedExchangeAddress.address_line || '-'}</td>
-                                    </tr>
-                                    <tr>
-                                      <td>Kota</td>
-                                      <td>{selectedExchangeAddress.city || '-'}</td>
-                                    </tr>
-                                    <tr>
-                                      <td>Provinsi</td>
-                                      <td>{selectedExchangeAddress.province || '-'}</td>
-                                    </tr>
-                                    <tr>
-                                      <td>Kode Pos</td>
-                                      <td>{selectedExchangeAddress.postal_code || '-'}</td>
-                                    </tr>
-                                    <tr>
-                                      <td>Catatan</td>
-                                      <td>{selectedExchangeAddress.notes || '-'}</td>
-                                    </tr>
-                                  </tbody>
-                                </DataTable>
-                              )}
-                            </>
-                          )}
-                        </>
-                      )}
-
-                      <div style={{ marginTop: 16 }}>
-                        <p style={{ marginTop: 0, fontWeight: 700 }}>Ringkasan retur</p>
-                        <ul style={{ marginTop: 0, paddingLeft: 18 }}>
-                          {selectedReturnItems.map((item) => (
-                            <li key={item.order_item_id}>
-                              {item.product_name}: {item.quantity} pcs
-                            </li>
-                          ))}
-                        </ul>
-                        <p style={{ marginBottom: 0 }}>
-                          Tipe penyelesaian: <b>{returnResolutionType || '-'}</b>
-                        </p>
-                      </div>
-                    </>
-                  )}
-
-                  <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (returnStep === 1) {
-                          resetReturnWizard(detail);
-                          return;
-                        }
-                        setReturnStep((current) => Math.max(1, current - 1));
-                      }}
-                      disabled={submittingReturn}
-                    >
-                      {returnStep === 1 ? 'Batal' : 'Kembali'}
-                    </button>
-
-                    {returnStep === 1 && (
-                      <button type="button" onClick={() => setReturnStep(2)} disabled={!canContinueStep1}>
-                        Lanjut
-                      </button>
-                    )}
-                    {returnStep === 2 && (
-                      <button type="button" onClick={() => setReturnStep(3)} disabled={!canContinueStep2}>
-                        Lanjut
-                      </button>
-                    )}
-                    {returnStep === 3 && (
-                      <button type="button" onClick={() => setReturnStep(4)} disabled={!canContinueStep3}>
-                        Lanjut
-                      </button>
-                    )}
-                    {returnStep === 4 && (
-                      <button type="button" onClick={() => setReturnStep(5)} disabled={!canContinueStep4}>
-                        Lanjut
-                      </button>
-                    )}
-                    {returnStep === 5 && (
-                      <button type="button" onClick={() => setReturnStep(6)} disabled={!canContinueStep5}>
-                        Lanjut
-                      </button>
-                    )}
-                    {returnStep === 6 && (
-                      <button type="button" onClick={handleSubmitReturn} disabled={!canSubmitStep6}>
-                        {submittingReturn ? 'Mengirim...' : 'Kirim ke Admin'}
-                      </button>
-                    )}
-                  </div>
+              {(detail.processed_at || detail.decision_reason) && (
+                <div className="od-timeline-foot">
+                  {detail.processed_at && <span>Diproses {formatTanggal(detail.processed_at)}</span>}
+                  {detail.decision_reason && <span>{detail.decision_reason}</span>}
                 </div>
               )}
             </div>
           )}
 
-          {!returnInfo.eligible && returnInfo.has_return && (
-            <div
-              style={{
-                marginTop: 20,
-                marginBottom: 24,
-                padding: 16,
-                borderRadius: 14,
-                border: '1px solid rgba(74,159,212,0.2)',
-                background: 'rgba(240,248,255,0.9)',
-              }}
-            >
-              <p style={{ margin: 0, color: '#355f7d' }}>
-                Retur untuk pesanan ini sudah diajukan dengan kode {returnInfo.return_code || '-'} dan status{' '}
-                {returnInfo.return_status_label || returnInfo.return_status || '-'}.
-              </p>
-              <Link
-                href={`/customer/profile/return/detail/${encodeURIComponent(returnInfo.return_code || '-')}`}
-                style={{ display: 'inline-block', marginTop: 10, color: '#355f7d', fontWeight: 600 }}
-              >
-                Lihat detail retur
-              </Link>
-            </div>
-          )}
+          <div className="od-grid">
+            {/* ══ LEFT COLUMN ══ */}
+            <div className="od-col-main">
+              <div className="od-card">
+                <p className="od-section-label"><IconPackage /> Produk yang Dipesan</p>
+                <div className="od-items">
+                  {(detail.items || []).map((item, i) => (
+                    <div key={item.id || i} className="od-item">
+                      <div className="od-item-img">
+                        {item.image ? (
+                          <img src={fileUrl(item.image)} alt={item.product_name} />
+                        ) : (
+                          <span>{(item.product_name || '?')[0]}</span>
+                        )}
+                      </div>
+                      <div className="od-item-info">
+                        <p className="od-item-name">{item.product_name || '-'}</p>
+                        <p className="od-item-qty">Jumlah: {item.quantity || 0}</p>
+                      </div>
+                      <div className="od-item-right">
+                        <p className="od-item-unit">Rp {formatRibuan(item.product_price)} / pcs</p>
+                        <p className="od-item-subtotal">Rp {formatRibuan(item.subtotal)}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {(detail.items || []).length === 0 && <p className="od-meta-note">Tidak ada item.</p>}
+                </div>
 
-          {!returnInfo.eligible && !returnInfo.has_return && returnInfo.expired && (
-            <p style={{ marginTop: 12, color: '#8a6a65' }}>
-              Masa retur 2 hari untuk pesanan ini sudah berakhir.
-            </p>
-          )}
+                <div className="od-section-divider" />
+
+                <div className="od-summary">
+                  <div className="od-summary-row">
+                    <span>Subtotal</span>
+                    <span>Rp {formatRibuan(detail.subtotal)}</span>
+                  </div>
+                  <div className="od-summary-row">
+                    <span>Ongkos Kirim</span>
+                    <span>Rp {formatRibuan(detail.shipping_fee)}</span>
+                  </div>
+                  <div className="od-summary-divider" />
+                  <div className="od-summary-row od-summary-total">
+                    <span>Total</span>
+                    <span>Rp {formatRibuan(detail.grand_total)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Cancel card — nongol cuma kalau backend kirim can_cancel: true ── */}
+              {showCancelCard && (
+                <div className="od-cancel-card">
+                  <div className="od-cancel-info">
+                    <span className="od-cancel-info-icon"><IconClock size={16} /></span>
+                    <div>
+                      <p className="od-cancel-info-title">Pesanan Bisa Dibatalkan</p>
+                      <p className="od-cancel-info-sub">
+                        {cancelTimeLeft != null ? <>Sisa waktu: <strong>{fmtCountdown(cancelTimeLeft)}</strong></> : 'Selama belum diproses admin'}
+                      </p>
+                    </div>
+                  </div>
+                  <button type="button" className="od-cancel-btn" onClick={() => setCancelConfirmOpen(true)}>
+                    Batalkan Pesanan
+                  </button>
+                </div>
+              )}
+
+              {/* ── Rating produk — nongol kalau status sudah delivered ── */}
+              {showRatingCard && (
+                <div className="od-card">
+                  <p className="od-section-label">Nilai Produk Kamu</p>
+                  <p className="od-card-subtitle">Beri bintang 1–5 untuk setiap produk yang sudah kamu terima.</p>
+                  {(detail.items || []).map((item) => (
+                    <div key={item.id} className="od-rating-row">
+                      <p className="od-rating-item-name">{item.product_name}</p>
+                      <div className="od-stars">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            className="od-star-btn"
+                            onClick={() => setRatingMap((prev) => ({ ...prev, [item.id]: star }))}
+                            aria-label={`${star} bintang`}
+                          >
+                            <IconStar filled={(ratingMap[item.id] ?? 0) >= star} />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="od-btn-primary"
+                    style={{ marginTop: 14 }}
+                    disabled={ratingSubmitting || Object.keys(ratingMap).length === 0}
+                    onClick={handleSubmitRatings}
+                  >
+                    {ratingSubmitting ? 'Menyimpan...' : 'Kirim Penilaian'}
+                  </button>
+                </div>
+              )}
+
+              {ratingSubmitted && (
+                <p className="od-banner od-banner--success">Terima kasih sudah memberi penilaian!</p>
+              )}
+            </div>
+
+            {/* ══ RIGHT COLUMN ══ */}
+            <div className="od-col-side">
+              <div className="od-card">
+                <p className="od-section-label"><IconMapPin /> Alamat Penerima</p>
+                <div className="od-meta-list">
+                  <MetaRow label="Penerima" value={`${detail.recipient_name || '-'}${detail.address_label ? ` · ${detail.address_label}` : ''}`} />
+                  <MetaRow label="Telepon" value={detail.recipient_phone || '-'} />
+                  <MetaRow
+                    label="Alamat"
+                    value={[detail.address_line, detail.city, detail.province, detail.postal_code].filter(Boolean).join(', ') || '-'}
+                  />
+                  {detail.address_notes && <MetaRow label="Catatan" value={detail.address_notes} />}
+                </div>
+
+                <div className="od-section-divider" />
+
+                <p className="od-section-label"><IconTruck /> Detail Pengiriman</p>
+                <div className="od-meta-list">
+                  <MetaRow label="Kurir" value={detail.courier_name || '-'} />
+                  <MetaRow label="No. Resi" value={detail.tracking_number || '-'} />
+                  <MetaRow label="Dikirim Pada" value={formatTanggal(detail.shipped_at)} />
+                  <MetaRow label="Selesai Pada" value={formatTanggal(detail.completed_at)} />
+                  {detail.shipping_notes && <MetaRow label="Catatan" value={detail.shipping_notes} />}
+                  <MetaRow label="Bukti Terkirim" value={<ProofAction path={detail.delivery_proof} label="Bukti Terkirim" onPreview={openImagePreview} />} />
+                </div>
+              </div>
+
+              <div className="od-card">
+                <p className="od-section-label"><IconCreditCard /> Pembayaran</p>
+                <div className="od-meta-list">
+                  <MetaRow label="Metode" value={detail.payment_method || '-'} />
+                  <MetaRow label="Tujuan Transfer" value={detail.payment_target || '-'} />
+                  <MetaRow label="Bukti Transfer" value={<ProofAction path={detail.payment_proof} label="Bukti Transfer" onPreview={openImagePreview} />} />
+                </div>
+
+                <div className="od-section-divider" />
+
+                <p className="od-section-label"><IconReceipt /> E-Receipt</p>
+                <p className="od-card-subtitle">
+                  {detail.ereceipt_eligible ? 'Tersedia untuk pesanan ini' : 'Tersedia setelah pesanan di-approve admin'}
+                </p>
+                <div className="od-receipt-actions">
+                  <button type="button" className="od-btn-download" disabled={!detail.ereceipt_eligible} onClick={() => handleOpenReceipt('download')}>
+                    <IconDownload /> Download
+                  </button>
+                  <button type="button" className="od-btn-preview" disabled={!detail.ereceipt_eligible} onClick={() => handleOpenReceipt('view')}>
+                    <IconEye /> Lihat PDF
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Return panel ── */}
+              {returnInfo.eligible && !showReturnWizard && (
+                <div className="od-card od-return-card">
+                  <p className="od-section-label">Retur / Pengembalian</p>
+                  <p className="od-card-subtitle">Retur tersedia sampai {formatTanggal(returnInfo.deadline_at)}.</p>
+                  <button type="button" className="od-return-btn" onClick={handleStartReturn}>
+                    <IconRotate /> Ajukan Retur
+                  </button>
+                </div>
+              )}
+
+              {!returnInfo.eligible && returnInfo.has_return && (
+                <div className="od-card od-return-status-card">
+                  <p className="od-section-label">Status Retur</p>
+                  <div className="od-meta-list">
+                    <MetaRow label="Kode Retur" value={returnInfo.return_code || '-'} />
+                    <MetaRow label="Status" value={returnInfo.return_status_label || returnInfo.return_status || '-'} />
+                  </div>
+                  <Link href={`/customer/profile/return/detail/${encodeURIComponent(returnInfo.return_code || '-')}`} className="od-return-status-link">
+                    Lihat detail retur <IconExternal />
+                  </Link>
+                </div>
+              )}
+
+              {!returnInfo.eligible && !returnInfo.has_return && returnInfo.expired && (
+                <p className="od-meta-note">Masa retur 2 hari untuk pesanan ini sudah berakhir.</p>
+              )}
+            </div>
+          </div>
         </>
       )}
 
-      <Link href="/customer/profile/order">Kembali ke daftar pesanan</Link>
+      {/* ════════════════════════════════════════════════
+          CANCEL MODAL
+          ════════════════════════════════════════════════ */}
+      {cancelConfirmOpen && (
+        <div className="od-modal-overlay" onClick={() => !cancelSubmitting && setCancelConfirmOpen(false)}>
+          <div className="od-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="od-modal-header">
+              <div>
+                <h3>Batalkan Pesanan</h3>
+                <p className="od-modal-sub">#{detail?.order_code || orderCode}</p>
+              </div>
+              <button type="button" className="od-modal-close" onClick={() => setCancelConfirmOpen(false)}>
+                <IconX />
+              </button>
+            </div>
+            <div className="od-modal-body">
+              <p className="od-field-label">Alasan pembatalan</p>
+              <textarea
+                className="od-textarea"
+                rows={4}
+                placeholder="Ceritakan alasanmu di sini..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              />
+              <div className="od-warning-note">
+                <IconAlert size={14} /> Tindakan ini tidak dapat dibatalkan setelah dikonfirmasi.
+              </div>
+            </div>
+            <div className="od-modal-footer">
+              <button type="button" className="od-btn-secondary" onClick={() => setCancelConfirmOpen(false)} disabled={cancelSubmitting}>
+                Kembali
+              </button>
+              <button type="button" className="od-btn-danger" onClick={handleConfirmCancel} disabled={cancelSubmitting || !cancelReason.trim()}>
+                {cancelSubmitting ? 'Memproses...' : 'Konfirmasi Batalkan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════
+          RETURN WIZARD MODAL
+          ════════════════════════════════════════════════ */}
+      {showReturnWizard && (
+        <div className="od-modal-overlay" onClick={() => !submittingReturn && resetReturnWizard(detail)}>
+          <div className="od-modal od-return-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="od-modal-header">
+              <div>
+                <h3>Ajukan Retur</h3>
+                <p className="od-modal-sub">#{detail?.order_code || orderCode}</p>
+              </div>
+              <button type="button" className="od-modal-close" onClick={() => resetReturnWizard(detail)}>
+                <IconX />
+              </button>
+            </div>
+
+            <div className="od-return-steps-bar">
+              {RETURN_STEP_LABELS.map((label, i) => {
+                const stepNum = i + 1;
+                const state = returnStep === stepNum ? 'active' : returnStep > stepNum ? 'done' : 'pending';
+                return (
+                  <div key={label} className={`od-return-step-item od-return-step-item--${state}`}>
+                    <span className="od-return-step-num">{returnStep > stepNum ? <IconCheck /> : stepNum}</span>
+                    <span className="od-return-step-label">{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="od-modal-body">
+              {/* STEP 1 — items */}
+              {returnStep === 1 && (
+                <>
+                  <p className="od-field-label">Pilih produk dan jumlah pcs yang ingin diretur</p>
+                  <div className="od-return-product-list">
+                    {(detail.items || []).map((item) => (
+                      <div key={item.id} className="od-return-product-row">
+                        <div className="od-return-product-info">
+                          <p className="od-return-product-name">{item.product_name}</p>
+                          <p className="od-return-product-price">Rp {formatRibuan(item.product_price)} · dibeli {item.quantity}</p>
+                        </div>
+                        <div className="od-qty-stepper">
+                          <button
+                            type="button"
+                            className="od-qty-btn"
+                            disabled={Number(returnSelections[item.id] || 0) <= 0}
+                            onClick={() => handleReturnQtyChange(item.id, String(Math.max(0, Number(returnSelections[item.id] || 0) - 1)), item.quantity)}
+                          >
+                            <IconMinus />
+                          </button>
+                          <span className="od-qty-val">{returnSelections[item.id] || 0}</span>
+                          <button
+                            type="button"
+                            className="od-qty-btn"
+                            disabled={Number(returnSelections[item.id] || 0) >= (item.quantity || 0)}
+                            onClick={() => handleReturnQtyChange(item.id, String(Math.min(item.quantity || 0, Number(returnSelections[item.id] || 0) + 1)), item.quantity)}
+                          >
+                            <IconPlus />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* STEP 2 — reason */}
+              {returnStep === 2 && (
+                <>
+                  <p className="od-field-label">Tulis alasan retur</p>
+                  <textarea
+                    className="od-textarea"
+                    rows={5}
+                    placeholder="Contoh: produk rusak saat diterima / shade tidak sesuai / segel terbuka."
+                    value={returnReason}
+                    onChange={(e) => setReturnReason(e.target.value)}
+                  />
+                </>
+              )}
+
+              {/* STEP 3 — product photo */}
+              {returnStep === 3 && (
+                <>
+                  <div className="od-warning-banner">
+                    <IconAlert size={20} />
+                    <div>
+                      <p className="od-warning-title">Foto harus jelas</p>
+                      <p className="od-warning-desc">Pastikan foto menunjukkan kondisi produk secara lengkap. Foto buram atau gelap bisa menyebabkan pengajuan ditolak.</p>
+                    </div>
+                  </div>
+                  <p className="od-field-label" style={{ marginTop: 14 }}>Upload foto produk</p>
+                  <label className={`od-dropzone${productPhoto ? ' od-dropzone--filled' : ''}`}>
+                    <input type="file" accept={PROOF_IMAGE_ACCEPT} onChange={handleProductPhotoChange} hidden />
+                    {productPhoto ? (
+                      <div className="od-file-chip">
+                        <IconImage /> {productPhoto.name}
+                        <span className="od-file-ok"><IconCheck /></span>
+                      </div>
+                    ) : (
+                      <div className="od-dropzone-empty">
+                        <IconUploadCloud />
+                        <p>Klik untuk pilih foto</p>
+                        <p className="od-dropzone-hint">JPG, PNG, atau WebP</p>
+                      </div>
+                    )}
+                  </label>
+                </>
+              )}
+
+              {/* STEP 4 — receipt */}
+              {returnStep === 4 && (
+                <>
+                  <p className="od-field-label">Upload e-receipt / bukti pembelian</p>
+                  <label className={`od-dropzone${receiptProof ? ' od-dropzone--filled' : ''}`}>
+                    <input type="file" accept={RECEIPT_PDF_ACCEPT} onChange={handleReceiptProofChange} hidden />
+                    {receiptProof ? (
+                      <div className="od-file-chip">
+                        <IconReceipt /> {receiptProof.name}
+                        <span className="od-file-ok"><IconCheck /></span>
+                      </div>
+                    ) : (
+                      <div className="od-dropzone-empty">
+                        <IconUploadCloud />
+                        <p>Klik untuk pilih file</p>
+                        <p className="od-dropzone-hint">PDF saja — maks 5 MB</p>
+                      </div>
+                    )}
+                  </label>
+                </>
+              )}
+
+              {/* STEP 5 — resolution type */}
+              {returnStep === 5 && (
+                <>
+                  <p className="od-field-label">Pilih jenis penyelesaian retur</p>
+                  <div className="od-radio-group">
+                    <label className={`od-radio-option${returnResolutionType === 'refund' ? ' od-radio-option--active' : ''}`}>
+                      <input type="radio" name="resolution" value="refund" checked={returnResolutionType === 'refund'} onChange={(e) => setReturnResolutionType(e.target.value)} hidden />
+                      <span className="od-radio-dot" />
+                      Refund
+                    </label>
+                    <label className={`od-radio-option${returnResolutionType === 'exchange' ? ' od-radio-option--active' : ''}`}>
+                      <input type="radio" name="resolution" value="exchange" checked={returnResolutionType === 'exchange'} onChange={(e) => setReturnResolutionType(e.target.value)} hidden />
+                      <span className="od-radio-dot" />
+                      Exchange (Tukar Produk)
+                    </label>
+                  </div>
+                </>
+              )}
+
+              {/* STEP 6 — confirm */}
+              {returnStep === 6 && (
+                <>
+                  {returnResolutionType === 'refund' && (
+                    <>
+                      <p className="od-field-label">Data rekening untuk refund</p>
+                      <input
+                        type="text"
+                        className="od-input"
+                        placeholder="Nama bank"
+                        value={refundForm.bank_name}
+                        onChange={(e) => setRefundForm((cur) => ({ ...cur, bank_name: e.target.value }))}
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="od-input"
+                        placeholder="Nomor rekening"
+                        value={refundForm.account_number}
+                        onChange={(e) => setRefundForm((cur) => ({ ...cur, account_number: e.target.value }))}
+                      />
+                      <input
+                        type="text"
+                        className="od-input"
+                        placeholder="Nama pemilik rekening"
+                        value={refundForm.account_holder_name}
+                        onChange={(e) => setRefundForm((cur) => ({ ...cur, account_holder_name: e.target.value }))}
+                      />
+                    </>
+                  )}
+
+                  {returnResolutionType === 'exchange' && (
+                    <>
+                      <p className="od-field-label">Kurir &amp; alamat exchange</p>
+                      <select
+                        className="od-select"
+                        value={exchangeForm.exchange_courier_id}
+                        onChange={(e) => setExchangeForm((cur) => ({ ...cur, exchange_courier_id: e.target.value }))}
+                      >
+                        <option value="">Pilih kurir</option>
+                        {EXCHANGE_COURIERS.map((courier) => (
+                          <option key={courier.id} value={courier.id}>{courier.name}</option>
+                        ))}
+                      </select>
+
+                      {addressesLoading && <p className="od-meta-note">Memuat alamat customer...</p>}
+                      {!addressesLoading && addresses.length === 0 && (
+                        <p className="od-meta-note">
+                          Belum ada alamat tersimpan. Tambah dulu di{' '}
+                          <Link href="/customer/profile/address">halaman address</Link>.
+                        </p>
+                      )}
+                      {!addressesLoading && addresses.length > 0 && (
+                        <select
+                          className="od-select"
+                          value={exchangeForm.exchange_address_id}
+                          onChange={(e) => setExchangeForm((cur) => ({ ...cur, exchange_address_id: e.target.value }))}
+                        >
+                          <option value="">Pilih alamat</option>
+                          {addresses.map((address) => (
+                            <option key={address.id} value={address.id}>{address.label} - {address.recipient_name}</option>
+                          ))}
+                        </select>
+                      )}
+
+                      {selectedExchangeAddress && (
+                        <div className="od-meta-list" style={{ marginTop: 10 }}>
+                          <MetaRow label="Penerima" value={selectedExchangeAddress.recipient_name || '-'} />
+                          <MetaRow label="Alamat" value={selectedExchangeAddress.address_line || '-'} />
+                          <MetaRow label="Kota" value={selectedExchangeAddress.city || '-'} />
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <div className="od-confirm-summary">
+                    <p className="od-field-label">Ringkasan retur</p>
+                    <ul className="od-confirm-list">
+                      {selectedReturnItems.map((item) => (
+                        <li key={item.order_item_id}>{item.product_name}: {item.quantity} pcs</li>
+                      ))}
+                    </ul>
+                    <p className="od-meta-note">Tipe penyelesaian: <strong>{returnResolutionType || '-'}</strong></p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="od-modal-footer">
+              <button
+                type="button"
+                className="od-btn-secondary"
+                disabled={submittingReturn}
+                onClick={() => (returnStep === 1 ? resetReturnWizard(detail) : setReturnStep((cur) => cur - 1))}
+              >
+                {returnStep === 1 ? 'Batal' : 'Kembali'}
+              </button>
+
+              {returnStep < 6 && (
+                <button
+                  type="button"
+                  className="od-btn-primary"
+                  disabled={
+                    (returnStep === 1 && !canContinueStep1) ||
+                    (returnStep === 2 && !canContinueStep2) ||
+                    (returnStep === 3 && !canContinueStep3) ||
+                    (returnStep === 4 && !canContinueStep4) ||
+                    (returnStep === 5 && !canContinueStep5)
+                  }
+                  onClick={() => setReturnStep((cur) => cur + 1)}
+                >
+                  Lanjut
+                </button>
+              )}
+              {returnStep === 6 && (
+                <button type="button" className="od-btn-primary" disabled={!canSubmitStep6} onClick={handleSubmitReturn}>
+                  {submittingReturn ? 'Mengirim...' : 'Kirim ke Admin'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <ImagePreviewModal preview={imagePreview} onClose={closeImagePreview} />
+      <PdfPreviewModal preview={pdfPreview} onClose={() => setPdfPreview(null)} />
     </div>
   );
 }

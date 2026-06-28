@@ -3,6 +3,7 @@
 import base64
 
 from django.http import HttpResponse
+from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -170,9 +171,10 @@ def _receipt_response(request, as_attachment):
     return response
 
 
+@xframe_options_exempt
 @api_view(['GET'])
 def view_receipt(request):
-    """Lihat PDF e-receipt untuk customer pemilik order."""
+    """Lihat PDF e-receipt untuk customer pemilik order (di-embed dalam iframe popup)."""
     return _receipt_response(request, as_attachment=False)
 
 

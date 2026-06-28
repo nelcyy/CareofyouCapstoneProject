@@ -89,19 +89,12 @@ def _approval_date_label(order):
 
 
 def _build_receipt_html(order):
-    customer_name = escape((order.user.name if order.user else '') or order.recipient_name or '-')
     recipient_name = escape(order.recipient_name or '-')
-    customer_email = escape(order.user.email if order.user else '-')
-    address_line = escape(order.address_line or '-')
-    city = escape(order.city or '-')
-    province = escape(order.province or '-')
-    postal_code = escape(order.postal_code or '-')
-    courier_name = escape(order.courier_name or '-')
     payment_label = escape(_payment_label(order))
     order_code = escape(order.order_code or '-')
     order_ref = escape((order.order_code or '').replace('-', '') + ' 0 1 7 5 8 3')
     barcode = _barcode_bars(order.order_code or '')
-    address_summary = f'{address_line}, {city}, {province} {postal_code}'
+    shipping_fee = int(order.shipping_fee or 0)
     items_html = ''
 
     for item in order.items.all().order_by('id'):
@@ -111,15 +104,19 @@ def _build_receipt_html(order):
         item_subtotal = _fmt_idr(item.subtotal)
         items_html += f"""
         <div class="rc-item">
-          <div class="rc-item-header">
-            <div class="rc-item-dot"></div>
+          <div class="rc-item-dot"></div>
+          <div class="rc-item-left">
             <span class="rc-item-name">{product_name}</span>
-          </div>
-          <div class="rc-item-footer">
             <span class="rc-item-qty">{item_qty} pcs x {product_price}</span>
-            <span class="rc-item-total">{item_subtotal}</span>
           </div>
+          <span class="rc-item-total">{item_subtotal}</span>
         </div>"""
+
+    shipping_row = (
+        '<span style="color:#22c55e;font-weight:700">Gratis &#10003;</span>'
+        if shipping_fee <= 0
+        else f'<span style="font-weight:700;color:#2d2d2d">{_fmt_idr(shipping_fee)}</span>'
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="id">
@@ -148,18 +145,38 @@ def _build_receipt_html(order):
       padding: 28px 24px 20px;
       text-align: center;
       color: white;
+      position: relative;
+      overflow: hidden;
+    }}
+    .rc-head::before {{
+      content: "";
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 130px; height: 130px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+    }}
+    .rc-head::after {{
+      content: "";
+      position: absolute;
+      bottom: -25px; left: -25px;
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
     }}
     .rc-logo-text {{
       font-size: 26px;
       font-weight: 900;
       letter-spacing: 1.5px;
       margin-bottom: 6px;
+      position: relative;
     }}
     .rc-tagline {{
       font-size: 10px;
       letter-spacing: 2.5px;
       text-transform: uppercase;
       opacity: 0.85;
+      position: relative;
     }}
     .rc-head-id {{
       display: inline-block;
@@ -171,6 +188,7 @@ def _build_receipt_html(order):
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.5px;
+      position: relative;
     }}
     .rc-success {{
       background: linear-gradient(90deg, #f0fdf4, #ecfdf5);
@@ -205,6 +223,9 @@ def _build_receipt_html(order):
       letter-spacing: 1.2px;
       color: #c97269;
       margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }}
     .rc-info-grid {{
       display: grid;
@@ -240,16 +261,13 @@ def _build_receipt_html(order):
       gap: 7px;
     }}
     .rc-item {{
-      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
       background: linear-gradient(135deg, #fffaf9, #fdf5f3);
       border-radius: 10px;
       border: 1.5px solid #f0d5d2;
-    }}
-    .rc-item-header {{
-      display: flex;
-      align-items: flex-start;
-      gap: 9px;
-      margin-bottom: 7px;
     }}
     .rc-item-dot {{
       width: 8px;
@@ -257,21 +275,19 @@ def _build_receipt_html(order):
       border-radius: 50%;
       background: linear-gradient(135deg, #d6867c, #c97269);
       flex-shrink: 0;
-      margin-top: 3px;
+    }}
+    .rc-item-left {{
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
     }}
     .rc-item-name {{
       font-size: 13px;
       font-weight: 700;
       color: #2d2d2d;
-      line-height: 1.45;
+      line-height: 1.3;
       word-break: break-word;
-    }}
-    .rc-item-footer {{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-left: 17px;
-      gap: 12px;
     }}
     .rc-item-qty {{
       font-size: 11px;
@@ -282,6 +298,7 @@ def _build_receipt_html(order):
       font-size: 13.5px;
       font-weight: 900;
       color: #c97269;
+      white-space: nowrap;
     }}
     .rc-summary {{
       border-top: 1.5px dashed #f0d5d2;
@@ -296,6 +313,7 @@ def _build_receipt_html(order):
       color: #7a7a7a;
       margin-bottom: 6px;
     }}
+    .rc-summary-row:last-child {{ margin-bottom: 0; }}
     .rc-total-row {{
       display: flex;
       justify-content: space-between;
@@ -388,7 +406,7 @@ def _build_receipt_html(order):
           <div class="rc-info-box-val">{order_code}</div>
         </div>
         <div class="rc-info-box">
-          <div class="rc-info-box-label">Tanggal Approve</div>
+          <div class="rc-info-box-label">Tanggal</div>
           <div class="rc-info-box-val">{escape(_approval_date_label(order))}</div>
         </div>
         <div class="rc-info-box">
@@ -398,22 +416,6 @@ def _build_receipt_html(order):
         <div class="rc-info-box">
           <div class="rc-info-box-label">Penerima</div>
           <div class="rc-info-box-val">{recipient_name}</div>
-        </div>
-        <div class="rc-info-box">
-          <div class="rc-info-box-label">Customer</div>
-          <div class="rc-info-box-val">{customer_name}</div>
-        </div>
-        <div class="rc-info-box">
-          <div class="rc-info-box-label">Email</div>
-          <div class="rc-info-box-val">{customer_email}</div>
-        </div>
-        <div class="rc-info-box">
-          <div class="rc-info-box-label">Kurir</div>
-          <div class="rc-info-box-val">{courier_name}</div>
-        </div>
-        <div class="rc-info-box">
-          <div class="rc-info-box-label">Alamat</div>
-          <div class="rc-info-box-val">{address_summary}</div>
         </div>
       </div>
       <p class="rc-section-label">Produk Dipesan</p>
@@ -426,7 +428,7 @@ def _build_receipt_html(order):
       </div>
       <div class="rc-summary-row">
         <span>Ongkos Kirim</span>
-        <span style="font-weight:700;color:#2d2d2d">{_fmt_idr(order.shipping_fee)}</span>
+        {shipping_row}
       </div>
     </div>
     <div class="rc-total-row">
@@ -439,8 +441,7 @@ def _build_receipt_html(order):
     </div>
     <div class="rc-footer">
       <div class="rc-footer-main">Terima kasih sudah belanja di careofyou</div>
-      <div class="rc-footer-sub">Simpan struk ini sebagai bukti pembelian resmi.</div>
-      <div class="rc-footer-sub">Barang akan diproses setelah approval admin selesai.</div>
+      <div class="rc-footer-sub">Simpan struk ini sebagai bukti pembelian resmi kamu</div>
       <div class="rc-footer-brand">careofyou.id</div>
     </div>
   </div>
