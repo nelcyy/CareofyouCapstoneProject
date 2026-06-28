@@ -77,9 +77,11 @@ const IconClock = () => (
     <polyline points="12 6 12 12 16 14" />
   </svg>
 );
-const IconClip = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+const IconUploadCloud = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+    <polyline points="16 16 12 12 8 16" />
+    <line x1="12" y1="12" x2="12" y2="21" />
   </svg>
 );
 
@@ -707,7 +709,7 @@ export default function CheckoutPage() {
                 </div>
               ) : (
                 <div className="co-proof-dropzone-inner">
-                  <IconClip />
+                  <IconUploadCloud />
                   <p className="co-proof-drop-text">Drag &amp; drop foto bukti transfer</p>
                   <p className="co-proof-drop-sub">JPG, PNG, atau WebP</p>
                 </div>

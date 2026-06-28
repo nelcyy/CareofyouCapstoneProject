@@ -93,23 +93,45 @@
   background: #fff;
   padding: 18px 20px;
   display: flex;
-  flex-direction: column;
-  gap: 14px;
+  align-items: flex-start;
+  gap: 16px;
   cursor: pointer;
   box-shadow: 0 2px 14px rgba(214, 134, 124, 0.06);
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
 }
 
 .profile-order-card:hover {
-  box-shadow: 0 6px 22px rgba(214, 134, 124, 0.13);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 26px rgba(214, 134, 124, 0.16);
+  transform: translateY(-2px);
+  border-color: #ecd6d2;
+}
+
+.profile-order-card-icon {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #fce8e6, #fdf0ef);
+  color: #c4706a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-order-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .profile-order-card-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .profile-order-status {
@@ -123,15 +145,32 @@
   text-transform: capitalize;
 }
 
+.profile-order-return-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #4a9fd4;
+  background: rgba(74, 159, 212, 0.12);
+}
+
 .profile-order-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12.5px;
   color: #a59b99;
+  margin-left: auto;
 }
 
 .profile-order-card-body {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .profile-order-code-label {
@@ -149,6 +188,13 @@
   letter-spacing: 0.2px;
 }
 
+.profile-order-qty {
+  font-size: 12.5px;
+  color: #a59b99;
+  padding-left: 8px;
+  border-left: 1px solid #f0e0de;
+}
+
 .profile-order-card-bottom {
   display: flex;
   align-items: center;
@@ -159,8 +205,11 @@
 }
 
 .profile-order-see-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: #c4706a;
 }
 
@@ -173,5 +222,19 @@
 @media (max-width: 640px) {
   .profile-order-title {
     font-size: 24px;
+  }
+
+  .profile-order-card {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .profile-order-card-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .profile-order-date {
+    margin-left: 0;
   }
 }

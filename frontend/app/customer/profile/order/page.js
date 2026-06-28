@@ -30,21 +30,59 @@ function getStoredUser() {
 }
 
 // Pewarnaan badge status — MURNI presentasi, nilai status tetap apa adanya
-// dari backend. Cocokin pakai substring biar fleksibel; kalau tak dikenal,
-// fallback ke warna netral (brand). Nilai status pasti datang dari backend.
+// dari backend. Dicocokin dulu ke value asli Order.STATUS_CHOICES, baru
+// fallback ke substring umum buat jaga-jaga kalau ada variasi label lain.
 function statusStyle(status) {
   const s = String(status || '').toLowerCase();
-  if (s.includes('batal') || s.includes('cancel') || s.includes('tolak') || s.includes('reject'))
+  if (s === 'rejected' || s.includes('batal') || s.includes('cancel') || s.includes('tolak') || s.includes('reject'))
     return { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' };
-  if (s.includes('selesai') || s.includes('terkirim') || s.includes('deliver') || s.includes('complete'))
+  if (s === 'selesai' || s.includes('terkirim') || s.includes('deliver') || s.includes('complete'))
     return { color: '#16a34a', bg: 'rgba(34,197,94,0.12)' };
-  if (s.includes('kirim') || s.includes('ship'))
+  if (s === 'pengiriman' || s.includes('kirim') || s.includes('ship'))
     return { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' };
-  if (s.includes('kemas') || s.includes('packing') || s.includes('proses') || s.includes('process'))
+  if (s === 'pengemasan' || s.includes('kemas') || s.includes('packing') || s.includes('proses') || s.includes('process'))
     return { color: '#4a9fd4', bg: 'rgba(74,159,212,0.12)' };
-  if (s.includes('tunggu') || s.includes('pending') || s.includes('bayar') || s.includes('konfirmasi'))
+  if (s === 'waiting_admin_approval' || s.includes('tunggu') || s.includes('pending') || s.includes('bayar') || s.includes('konfirmasi'))
     return { color: '#e09a3a', bg: 'rgba(224,154,58,0.12)' };
   return { color: '#c4706a', bg: 'rgba(214,134,124,0.12)' };
+}
+
+function IconPackage() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  );
+}
+
+function IconCalendar() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+
+function IconChevronRight() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+function IconRotate() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="1 4 1 10 7 10" />
+      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    </svg>
+  );
 }
 
 export default function ProfileOrderPage() {
@@ -116,27 +154,44 @@ export default function ProfileOrderPage() {
           {items.map((item, index) => {
             const style = statusStyle(item.status);
             const code = item.order_code || '-';
+            const qty = item.total_item_quantity || 0;
             return (
               <div
                 key={item.order_code || index}
                 className="profile-order-card"
                 onClick={() => openDetail(code)}
               >
-                <div className="profile-order-card-top">
-                  <span className="profile-order-status" style={{ color: style.color, background: style.bg }}>
-                    {item.status || '-'}
-                  </span>
-                  <span className="profile-order-date">{formatTanggal(item.created_at)}</span>
+                <div className="profile-order-card-icon">
+                  <IconPackage />
                 </div>
 
-                <div className="profile-order-card-body">
-                  <span className="profile-order-code-label">Kode Order</span>
-                  <span className="profile-order-code">{code}</span>
-                </div>
+                <div className="profile-order-card-main">
+                  <div className="profile-order-card-top">
+                    <span className="profile-order-status" style={{ color: style.color, background: style.bg }}>
+                      {item.status || '-'}
+                    </span>
+                    {item.has_return && (
+                      <span className="profile-order-return-pill">
+                        <IconRotate /> {item.return_status || 'Retur diajukan'}
+                      </span>
+                    )}
+                    <span className="profile-order-date">
+                      <IconCalendar /> {formatTanggal(item.created_at)}
+                    </span>
+                  </div>
 
-                <div className="profile-order-card-bottom">
-                  <span className="profile-order-see-detail">Lihat Detail ›</span>
-                  <span className="profile-order-total">Rp {formatRibuan(item.grand_total)}</span>
+                  <div className="profile-order-card-body">
+                    <span className="profile-order-code-label">Kode Order</span>
+                    <span className="profile-order-code">{code}</span>
+                    {qty > 0 && <span className="profile-order-qty">{qty} produk</span>}
+                  </div>
+
+                  <div className="profile-order-card-bottom">
+                    <span className="profile-order-see-detail">
+                      Lihat Detail <IconChevronRight />
+                    </span>
+                    <span className="profile-order-total">Rp {formatRibuan(item.grand_total)}</span>
+                  </div>
                 </div>
               </div>
             );

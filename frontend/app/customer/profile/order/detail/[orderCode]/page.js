@@ -442,6 +442,7 @@ export default function ProfileOrderDetailPage() {
   // Return wizard
   const [showReturnWizard, setShowReturnWizard] = useState(false);
   const [returnStep, setReturnStep] = useState(1);
+  const [returnSubmitResult, setReturnSubmitResult] = useState(null);
   const [returnSelections, setReturnSelections] = useState({});
   const [returnReason, setReturnReason] = useState('');
   const [returnReasonCustom, setReturnReasonCustom] = useState('');
@@ -489,7 +490,7 @@ export default function ProfileOrderDetailPage() {
   }
 
   async function loadDetail(options = {}) {
-    const { keepMessage = true } = options;
+    const { keepMessage = true, skipWizardAutoClose = false } = options;
     const user = getStoredUser();
     if (!user || user.role !== 'customer') {
       setError('Login dulu sebagai customer untuk melihat detail pesanan.');
@@ -512,7 +513,7 @@ export default function ProfileOrderDetailPage() {
     });
 
     if (data?.return_info?.eligible) loadAddresses({ silent: true });
-    if (!data?.return_info?.eligible) setShowReturnWizard(false);
+    if (!data?.return_info?.eligible && !skipWizardAutoClose) setShowReturnWizard(false);
   }
 
   function resetReturnWizard(nextDetail = detail) {
@@ -526,6 +527,7 @@ export default function ProfileOrderDetailPage() {
     setRefundForm(buildInitialRefundForm());
     setExchangeForm(buildInitialExchangeForm());
     setReturnSelections(buildInitialReturnSelections(nextDetail));
+    setReturnSubmitResult(null);
   }
 
   function handleOpenReceipt(mode) {
@@ -676,9 +678,12 @@ export default function ProfileOrderDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal mengirim pengajuan retur.');
 
-      setMessage(data.message || 'Pengajuan retur berhasil dikirim ke admin.');
-      await loadDetail({ keepMessage: true });
-      resetReturnWizard(detail);
+      await loadDetail({ keepMessage: true, skipWizardAutoClose: true });
+      setReturnSubmitResult({
+        message: data.message || 'Pengajuan retur berhasil dikirim ke admin.',
+        returnCode: data.return_entry?.return_code || '',
+        statusLabel: data.return_entry?.status_label || data.return_entry?.status || '',
+      });
     } catch (err) {
       console.error(err);
       setError(err.message || 'Gagal mengirim pengajuan retur.');
@@ -1146,6 +1151,36 @@ export default function ProfileOrderDetailPage() {
               </button>
             </div>
 
+            {returnSubmitResult ? (
+              <div className="od-return-success">
+                <div className="od-return-success-icon">
+                  <IconCheckCircle size={30} />
+                </div>
+                <h4 className="od-return-success-title">Pengajuan Retur Terkirim!</h4>
+                <p className="od-return-success-desc">{returnSubmitResult.message}</p>
+                {(returnSubmitResult.returnCode || returnSubmitResult.statusLabel) && (
+                  <div className="od-meta-list od-return-success-meta">
+                    {returnSubmitResult.returnCode && <MetaRow label="Kode Retur" value={returnSubmitResult.returnCode} />}
+                    {returnSubmitResult.statusLabel && <MetaRow label="Status" value={returnSubmitResult.statusLabel} />}
+                  </div>
+                )}
+                <div className="od-modal-footer" style={{ border: 'none', padding: '20px 0 0' }}>
+                  <button type="button" className="od-btn-secondary" onClick={() => resetReturnWizard(detail)}>
+                    Tutup
+                  </button>
+                  {returnSubmitResult.returnCode && (
+                    <Link
+                      href={`/customer/profile/return/detail/${encodeURIComponent(returnSubmitResult.returnCode)}`}
+                      className="od-btn-primary"
+                      style={{ textAlign: 'center', textDecoration: 'none' }}
+                    >
+                      Lihat Detail Retur
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ) : (
+            <>
             <div className="od-return-steps-bar">
               {RETURN_STEP_LABELS.map((label, i) => {
                 const stepNum = i + 1;
@@ -1274,7 +1309,7 @@ export default function ProfileOrderDetailPage() {
                   <p className="od-field-label">Upload e-receipt / bukti pembelian</p>
                   <div className="od-info-banner">
                     <IconReceipt />
-                    <p>Cuma e-receipt resmi careofyou yang sah — belum punya? Download dulu di bagian E-Receipt halaman ini.</p>
+                    <p>Mohon upload e-receipt resmi dari careofyou ya.</p>
                   </div>
                   <label className={`od-dropzone${receiptProof ? ' od-dropzone--filled' : ''}`}>
                     <input type="file" accept={RECEIPT_PDF_ACCEPT} onChange={handleReceiptProofChange} hidden />
@@ -1432,6 +1467,8 @@ export default function ProfileOrderDetailPage() {
                 </button>
               )}
             </div>
+            </>
+            )}
           </div>
         </div>
       )}

@@ -1215,6 +1215,48 @@
   letter-spacing: 0.2px;
 }
 
+/* ── Return success state ── */
+.od-return-success {
+  padding: 32px 24px 24px;
+  text-align: center;
+}
+
+.od-return-success-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(34, 197, 94, 0.35);
+}
+
+.od-return-success-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #2d2d2d;
+}
+
+.od-return-success-desc {
+  margin: 0;
+  font-size: 13px;
+  color: #7a7a7a;
+  line-height: 1.5;
+}
+
+.od-return-success-meta {
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fdf6f5;
+  border: 1px solid #f5e9e7;
+  text-align: left;
+}
+
 /* ── Return product list (step 1) ── */
 .od-return-product-list {
   display: flex;
