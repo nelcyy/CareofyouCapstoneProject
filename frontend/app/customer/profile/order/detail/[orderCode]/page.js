@@ -389,11 +389,7 @@ function MetaRow({ label, value, action }) {
 function ProofAction({ path, label, onPreview }) {
   if (!path) return <span className="od-meta-val--muted">-</span>;
   if (!isPreviewableProof(path)) {
-    return (
-      <a className="od-view-proof-btn" href={fileUrl(path)} target="_blank" rel="noreferrer">
-        <IconImage /> Lihat Bukti
-      </a>
-    );
+    return <span className="od-meta-val--muted">Berkas tidak bisa dipreview</span>;
   }
   return (
     <button type="button" className="od-view-proof-btn" onClick={() => onPreview(proofPreview(path, label))}>
@@ -402,27 +398,171 @@ function ProofAction({ path, label, onPreview }) {
   );
 }
 
-function PdfPreviewModal({ preview, onClose }) {
-  if (!preview) return null;
+function formatPaymentLabel(method, target) {
+  const label = String(method || '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return target ? `${label || '-'} - ${target}` : (label || '-');
+}
+
+// Barcode palsu deterministik — algoritma sama persis kayak yang dipakai
+// backend buat render PDF e-receipt, biar pattern-nya konsisten.
+function Barcode({ value, width = 200, height = 44 }) {
+  const BARS = 58;
+  let seed = 0;
+  for (const ch of String(value || '')) {
+    seed = ((seed << 5) - seed + ch.charCodeAt(0)) | 0;
+  }
+  const bars = Array.from({ length: BARS }, (_, i) => {
+    const v = Math.abs(seed ^ (i * 2654435761)) % 100;
+    return { h: 14 + (v % 30), w: v % 3 === 0 ? 3 : v % 2 === 0 ? 2 : 1 };
+  });
+  const totalW = bars.reduce((s, b) => s + b.w + 1, 0);
+  const scale = width / totalW;
+  let x = 0;
+  const rects = bars.map((b, i) => {
+    const el = (
+      <rect key={i} x={x * scale} y={height - b.h} width={Math.max(1, b.w * scale - 0.5)} height={b.h} fill="#2d2d2d" rx="0.5" />
+    );
+    x += b.w + 1;
+    return el;
+  });
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block' }}>
+      {rects}
+    </svg>
+  );
+}
+
+function ReceiptPreviewModal({ open, onClose, detail }) {
+  if (!open || !detail) return null;
+  const shippingFee = detail.shipping_fee || 0;
+  const orderRef = `${String(detail.order_code || '').replace(/-/g, '')} 0 1 7 5 8 3`;
+
   return (
     <div className="od-modal-overlay" role="presentation" onClick={onClose}>
-      <div className="od-modal od-pdf-modal" role="dialog" aria-modal="true" aria-label={preview.label} onClick={(e) => e.stopPropagation()}>
+      <div className="od-modal od-rp-modal" role="dialog" aria-modal="true" aria-label="Preview E-Receipt" onClick={(e) => e.stopPropagation()}>
         <div className="od-modal-header">
-          <h3>{preview.label}</h3>
+          <h3>Preview E-Receipt</h3>
           <button type="button" className="od-modal-close" onClick={onClose} aria-label="Tutup preview">
             <IconX />
           </button>
         </div>
-        <div className="od-pdf-frame-wrap">
-          <iframe src={preview.url} title={preview.label} className="od-pdf-frame" />
+        <div className="od-rp-scroll">
+          <div className="od-rp-receipt">
+            <div className="od-rp-head">
+              <div className="od-rp-logo-text">careofyou</div>
+              <p className="od-rp-tagline">Struk Pembelian Resmi</p>
+              <div className="od-rp-head-id">{detail.order_code}</div>
+            </div>
+
+            <div className="od-rp-success">
+              <span className="od-rp-success-dot"><IconCheck /></span>
+              Pembayaran Berhasil Dikonfirmasi
+            </div>
+
+            <div className="od-rp-body">
+              <p className="od-rp-section-label">Info Transaksi</p>
+              <div className="od-rp-info-grid">
+                <div className="od-rp-info-box">
+                  <div className="od-rp-info-label">No. Pesanan</div>
+                  <div className="od-rp-info-val">{detail.order_code}</div>
+                </div>
+                <div className="od-rp-info-box">
+                  <div className="od-rp-info-label">Tanggal</div>
+                  <div className="od-rp-info-val">{formatTanggal(detail.processed_at || detail.created_at)}</div>
+                </div>
+                <div className="od-rp-info-box">
+                  <div className="od-rp-info-label">Metode Bayar</div>
+                  <div className="od-rp-info-val">{formatPaymentLabel(detail.payment_method, detail.payment_target)}</div>
+                </div>
+                <div className="od-rp-info-box">
+                  <div className="od-rp-info-label">Penerima</div>
+                  <div className="od-rp-info-val">{detail.recipient_name || '-'}</div>
+                </div>
+              </div>
+
+              <p className="od-rp-section-label">Produk Dipesan</p>
+              <div className="od-rp-items">
+                {(detail.items || []).map((item, i) => (
+                  <div key={item.id || i} className="od-rp-item">
+                    <div className="od-rp-item-dot" />
+                    <div className="od-rp-item-left">
+                      <span className="od-rp-item-name">{item.product_name}</span>
+                      <span className="od-rp-item-qty">{item.quantity} pcs x Rp {formatRibuan(item.product_price)}</span>
+                    </div>
+                    <span className="od-rp-item-total">Rp {formatRibuan(item.subtotal)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="od-rp-summary">
+              <div className="od-rp-summary-row">
+                <span>Subtotal</span>
+                <span className="od-rp-summary-val">Rp {formatRibuan(detail.subtotal)}</span>
+              </div>
+              <div className="od-rp-summary-row">
+                <span>Ongkos Kirim</span>
+                {shippingFee > 0 ? (
+                  <span className="od-rp-summary-val">Rp {formatRibuan(shippingFee)}</span>
+                ) : (
+                  <span className="od-rp-summary-free"><IconCheck /> Gratis</span>
+                )}
+              </div>
+            </div>
+
+            <div className="od-rp-total-row">
+              <span className="od-rp-total-label">Total Pembayaran</span>
+              <span className="od-rp-total-val">Rp {formatRibuan(detail.grand_total)}</span>
+            </div>
+
+            <div className="od-rp-barcode-wrap">
+              <Barcode value={detail.order_code || ''} width={200} height={40} />
+              <p className="od-rp-barcode-num">{orderRef}</p>
+            </div>
+
+            <div className="od-rp-footer">
+              <p className="od-rp-footer-main">Terima kasih sudah belanja di careofyou</p>
+              <p className="od-rp-footer-sub">Simpan struk ini sebagai bukti pembelian resmi kamu</p>
+              <p className="od-rp-footer-brand">careofyou.id</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+function IconZoomIn() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      <line x1="11" y1="8" x2="11" y2="14" />
+      <line x1="8" y1="11" x2="14" y2="11" />
+    </svg>
+  );
+}
+function IconZoomOut() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      <line x1="8" y1="11" x2="14" y2="11" />
+    </svg>
+  );
+}
+
 function ImagePreviewModal({ preview, onClose }) {
+  const [zoom, setZoom] = useState(1);
+
+  useEffect(() => {
+    setZoom(1);
+  }, [preview]);
+
   if (!preview) return null;
+
   return (
     <div className="od-modal-overlay" role="presentation" onClick={onClose}>
       <div className="od-modal od-zoom-modal" role="dialog" aria-modal="true" aria-label={preview.label} onClick={(e) => e.stopPropagation()}>
@@ -432,12 +572,18 @@ function ImagePreviewModal({ preview, onClose }) {
             <IconX />
           </button>
         </div>
-        <div className="od-zoom-body">
-          <img src={preview.src} alt={preview.label} />
+        <div className={`od-zoom-body${zoom > 1 ? ' od-zoom-body--zoomed' : ''}`}>
+          <img src={preview.src} alt={preview.label} style={{ transform: `scale(${zoom})` }} />
         </div>
-        <a href={preview.src} target="_blank" rel="noreferrer" className="od-zoom-link">
-          Buka di tab baru <IconExternal />
-        </a>
+        <div className="od-zoom-controls">
+          <button type="button" className="od-zoom-btn" onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))} disabled={zoom <= 1} aria-label="Perkecil">
+            <IconZoomOut />
+          </button>
+          <span className="od-zoom-level">{Math.round(zoom * 100)}%</span>
+          <button type="button" className="od-zoom-btn" onClick={() => setZoom((z) => Math.min(3, +(z + 0.5).toFixed(1)))} disabled={zoom >= 3} aria-label="Perbesar">
+            <IconZoomIn />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -451,7 +597,7 @@ export default function ProfileOrderDetailPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [imagePreview, setImagePreview] = useState(null);
-  const [pdfPreview, setPdfPreview] = useState(null);
+  const [showReceiptPreview, setShowReceiptPreview] = useState(false);
 
   // Return wizard
   const [showReturnWizard, setShowReturnWizard] = useState(false);
@@ -544,20 +690,13 @@ export default function ProfileOrderDetailPage() {
     setReturnSubmitResult(null);
   }
 
-  function handleOpenReceipt(mode) {
+  function handleDownloadReceipt() {
     const user = getStoredUser();
     if (!user || user.role !== 'customer') {
-      setError('Login dulu sebagai customer untuk melihat e-receipt.');
+      setError('Login dulu sebagai customer untuk download e-receipt.');
       return;
     }
-
-    const action = mode === 'download' ? 'download' : 'view';
-    const url = `${ORDER_API}/ereceipt/${action}?user_id=${encodeURIComponent(user.id)}&order_code=${encodeURIComponent(orderCode)}`;
-
-    if (action === 'view') {
-      setPdfPreview({ url, label: 'E-Receipt' });
-      return;
-    }
+    const url = `${ORDER_API}/ereceipt/download?user_id=${encodeURIComponent(user.id)}&order_code=${encodeURIComponent(orderCode)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
@@ -790,15 +929,15 @@ export default function ProfileOrderDetailPage() {
   }, [orderCode]);
 
   useEffect(() => {
-    if (!imagePreview && !pdfPreview) return undefined;
+    if (!imagePreview && !showReceiptPreview) return undefined;
     function handleKeyDown(event) {
       if (event.key !== 'Escape') return;
       closeImagePreview();
-      setPdfPreview(null);
+      setShowReceiptPreview(false);
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [imagePreview, pdfPreview]);
+  }, [imagePreview, showReceiptPreview]);
 
   // Countdown pembatalan — hanya aktif kalau backend kirim `cancel_deadline_at`.
   useEffect(() => {
@@ -922,7 +1061,7 @@ export default function ProfileOrderDetailPage() {
           )}
 
           <div className="od-grid">
-            {/* ══ LEFT COLUMN ══ */}
+            {/* ══ LEFT COLUMN — Pesanan & Pembayaran ══ */}
             <div className="od-col-main">
               <div className="od-card">
                 <p className="od-section-label"><IconPackage /> Produk yang Dipesan</p>
@@ -986,6 +1125,58 @@ export default function ProfileOrderDetailPage() {
                 </div>
               )}
 
+              <div className="od-card">
+                <p className="od-section-label"><IconCreditCard /> Pembayaran</p>
+                <div className="od-meta-list">
+                  <MetaRow label="Metode" value={detail.payment_method || '-'} />
+                  <MetaRow label="Tujuan Transfer" value={detail.payment_target || '-'} />
+                  <MetaRow label="Bukti Transfer" value={<ProofAction path={detail.payment_proof} label="Bukti Transfer" onPreview={openImagePreview} />} />
+                </div>
+
+                <div className="od-section-divider" />
+
+                <p className="od-section-label"><IconReceipt /> E-Receipt</p>
+                <p className="od-card-subtitle">
+                  {detail.ereceipt_eligible ? 'Tersedia untuk pesanan ini' : 'Tersedia setelah pesanan di-approve admin'}
+                </p>
+                <div className="od-receipt-actions">
+                  <button type="button" className="od-btn-download" disabled={!detail.ereceipt_eligible} onClick={handleDownloadReceipt}>
+                    <IconDownload /> Download
+                  </button>
+                  <button type="button" className="od-btn-preview" disabled={!detail.ereceipt_eligible} onClick={() => setShowReceiptPreview(true)}>
+                    <IconEye /> Lihat Preview
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ══ RIGHT COLUMN — Pengiriman & Setelah Pesanan ══ */}
+            <div className="od-col-side">
+              <div className="od-card">
+                <p className="od-section-label"><IconMapPin /> Alamat Penerima</p>
+                <div className="od-meta-list">
+                  <MetaRow label="Penerima" value={`${detail.recipient_name || '-'}${detail.address_label ? ` · ${detail.address_label}` : ''}`} />
+                  <MetaRow label="Telepon" value={detail.recipient_phone || '-'} />
+                  <MetaRow
+                    label="Alamat"
+                    value={[detail.address_line, detail.city, detail.province, detail.postal_code].filter(Boolean).join(', ') || '-'}
+                  />
+                  {detail.address_notes && <MetaRow label="Catatan" value={detail.address_notes} />}
+                </div>
+
+                <div className="od-section-divider" />
+
+                <p className="od-section-label"><IconTruck /> Detail Pengiriman</p>
+                <div className="od-meta-list">
+                  <MetaRow label="Kurir" value={detail.courier_name || '-'} />
+                  <MetaRow label="No. Resi" value={detail.tracking_number || '-'} />
+                  <MetaRow label="Dikirim Pada" value={formatTanggal(detail.shipped_at)} />
+                  <MetaRow label="Selesai Pada" value={formatTanggal(detail.completed_at)} />
+                  {detail.shipping_notes && <MetaRow label="Catatan" value={detail.shipping_notes} />}
+                  <MetaRow label="Bukti Terkirim" value={<ProofAction path={detail.delivery_proof} label="Bukti Terkirim" onPreview={openImagePreview} />} />
+                </div>
+              </div>
+
               {/* ── Rating produk — nongol kalau status sudah delivered ── */}
               {showRatingCard && (
                 <div className="od-card">
@@ -1024,58 +1215,6 @@ export default function ProfileOrderDetailPage() {
               {ratingSubmitted && (
                 <p className="od-banner od-banner--success">Terima kasih sudah memberi penilaian!</p>
               )}
-            </div>
-
-            {/* ══ RIGHT COLUMN ══ */}
-            <div className="od-col-side">
-              <div className="od-card">
-                <p className="od-section-label"><IconMapPin /> Alamat Penerima</p>
-                <div className="od-meta-list">
-                  <MetaRow label="Penerima" value={`${detail.recipient_name || '-'}${detail.address_label ? ` · ${detail.address_label}` : ''}`} />
-                  <MetaRow label="Telepon" value={detail.recipient_phone || '-'} />
-                  <MetaRow
-                    label="Alamat"
-                    value={[detail.address_line, detail.city, detail.province, detail.postal_code].filter(Boolean).join(', ') || '-'}
-                  />
-                  {detail.address_notes && <MetaRow label="Catatan" value={detail.address_notes} />}
-                </div>
-
-                <div className="od-section-divider" />
-
-                <p className="od-section-label"><IconTruck /> Detail Pengiriman</p>
-                <div className="od-meta-list">
-                  <MetaRow label="Kurir" value={detail.courier_name || '-'} />
-                  <MetaRow label="No. Resi" value={detail.tracking_number || '-'} />
-                  <MetaRow label="Dikirim Pada" value={formatTanggal(detail.shipped_at)} />
-                  <MetaRow label="Selesai Pada" value={formatTanggal(detail.completed_at)} />
-                  {detail.shipping_notes && <MetaRow label="Catatan" value={detail.shipping_notes} />}
-                  <MetaRow label="Bukti Terkirim" value={<ProofAction path={detail.delivery_proof} label="Bukti Terkirim" onPreview={openImagePreview} />} />
-                </div>
-              </div>
-
-              <div className="od-card">
-                <p className="od-section-label"><IconCreditCard /> Pembayaran</p>
-                <div className="od-meta-list">
-                  <MetaRow label="Metode" value={detail.payment_method || '-'} />
-                  <MetaRow label="Tujuan Transfer" value={detail.payment_target || '-'} />
-                  <MetaRow label="Bukti Transfer" value={<ProofAction path={detail.payment_proof} label="Bukti Transfer" onPreview={openImagePreview} />} />
-                </div>
-
-                <div className="od-section-divider" />
-
-                <p className="od-section-label"><IconReceipt /> E-Receipt</p>
-                <p className="od-card-subtitle">
-                  {detail.ereceipt_eligible ? 'Tersedia untuk pesanan ini' : 'Tersedia setelah pesanan di-approve admin'}
-                </p>
-                <div className="od-receipt-actions">
-                  <button type="button" className="od-btn-download" disabled={!detail.ereceipt_eligible} onClick={() => handleOpenReceipt('download')}>
-                    <IconDownload /> Download
-                  </button>
-                  <button type="button" className="od-btn-preview" disabled={!detail.ereceipt_eligible} onClick={() => handleOpenReceipt('view')}>
-                    <IconEye /> Lihat PDF
-                  </button>
-                </div>
-              </div>
 
               {/* ── Return panel ── */}
               {returnInfo.eligible && !showReturnWizard && (
@@ -1488,7 +1627,7 @@ export default function ProfileOrderDetailPage() {
       )}
 
       <ImagePreviewModal preview={imagePreview} onClose={closeImagePreview} />
-      <PdfPreviewModal preview={pdfPreview} onClose={() => setPdfPreview(null)} />
+      <ReceiptPreviewModal open={showReceiptPreview} onClose={() => setShowReceiptPreview(false)} detail={detail} />
     </div>
   );
 }

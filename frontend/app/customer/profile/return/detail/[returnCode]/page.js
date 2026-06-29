@@ -142,24 +142,6 @@ function IconImage() {
     </svg>
   );
 }
-function IconFileText() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-    </svg>
-  );
-}
-function IconExternal() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="15 3 21 3 21 9" />
-      <line x1="10" y1="14" x2="21" y2="3" />
-    </svg>
-  );
-}
 function IconWhatsapp() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
@@ -188,11 +170,7 @@ function MetaRow({ label, value }) {
 function ProofAction({ path, label, onPreview }) {
   if (!path) return <span className="rd-meta-val--muted">-</span>;
   if (!isPreviewableProof(path)) {
-    return (
-      <a className="rd-view-proof-btn" href={fileUrl(path)} target="_blank" rel="noreferrer">
-        <IconFileText /> Buka File
-      </a>
-    );
+    return <span className="rd-meta-val--muted">Berkas tidak bisa dipreview</span>;
   }
   return (
     <button type="button" className="rd-view-proof-btn" onClick={() => onPreview(proofPreview(path, label))}>
@@ -201,8 +179,35 @@ function ProofAction({ path, label, onPreview }) {
   );
 }
 
+function IconZoomIn() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      <line x1="11" y1="8" x2="11" y2="14" />
+      <line x1="8" y1="11" x2="14" y2="11" />
+    </svg>
+  );
+}
+function IconZoomOut() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      <line x1="8" y1="11" x2="14" y2="11" />
+    </svg>
+  );
+}
+
 function ImagePreviewModal({ preview, onClose }) {
+  const [zoom, setZoom] = useState(1);
+
+  useEffect(() => {
+    setZoom(1);
+  }, [preview]);
+
   if (!preview) return null;
+
   return (
     <div className="rd-modal-overlay" role="presentation" onClick={onClose}>
       <div className="rd-modal" role="dialog" aria-modal="true" aria-label={preview.label} onClick={(e) => e.stopPropagation()}>
@@ -210,12 +215,18 @@ function ImagePreviewModal({ preview, onClose }) {
           <h3>{preview.label}</h3>
           <button type="button" className="rd-modal-close" onClick={onClose} aria-label="Tutup preview">×</button>
         </div>
-        <div className="rd-zoom-body">
-          <img src={preview.src} alt={preview.label} />
+        <div className={`rd-zoom-body${zoom > 1 ? ' rd-zoom-body--zoomed' : ''}`}>
+          <img src={preview.src} alt={preview.label} style={{ transform: `scale(${zoom})` }} />
         </div>
-        <a href={preview.src} target="_blank" rel="noreferrer" className="rd-zoom-link">
-          Buka di tab baru <IconExternal />
-        </a>
+        <div className="rd-zoom-controls">
+          <button type="button" className="rd-zoom-btn" onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))} disabled={zoom <= 1} aria-label="Perkecil">
+            <IconZoomOut />
+          </button>
+          <span className="rd-zoom-level">{Math.round(zoom * 100)}%</span>
+          <button type="button" className="rd-zoom-btn" onClick={() => setZoom((z) => Math.min(3, +(z + 0.5).toFixed(1)))} disabled={zoom >= 3} aria-label="Perbesar">
+            <IconZoomIn />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -502,25 +513,23 @@ export default function ProfileReturnDetailPage() {
               </div>
 
               <div className="rd-card">
-                <p className="rd-section-label">Alasan Retur</p>
-                <p className="rd-reason-text">{detail.reason || '-'}</p>
-              </div>
-            </div>
-
-            <div className="rd-col-side">
-              <div className="rd-card">
                 <p className="rd-section-label">Bukti Pengajuan</p>
                 <div className="rd-meta-list">
                   <MetaRow label="Foto Produk" value={<ProofAction path={detail.product_photo} label="Foto Produk Retur" onPreview={setImagePreview} />} />
                   <MetaRow
                     label="E-Receipt"
                     value={detail.ereceipt_proof ? (
-                      <a className="rd-view-proof-btn" href={fileUrl(detail.ereceipt_proof)} target="_blank" rel="noreferrer">
-                        <IconFileText /> Buka File
-                      </a>
+                      <span className="rd-meta-val--muted">File PDF terupload</span>
                     ) : <span className="rd-meta-val--muted">-</span>}
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="rd-col-side">
+              <div className="rd-card">
+                <p className="rd-section-label">Alasan Retur</p>
+                <p className="rd-reason-text">{detail.reason || '-'}</p>
               </div>
 
               <div className="rd-card">
