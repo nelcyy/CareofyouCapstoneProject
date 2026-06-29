@@ -212,9 +212,23 @@
 
 .adm-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 13.5px;
 }
+
+/* Lebar kolom tetap supaya tabel selalu pas (kolom Status tidak ke-clip
+   oleh overflow:hidden pada .adm-table-card). */
+.adm-table th:nth-child(1),
+.adm-table td:nth-child(1) { width: 26%; }
+.adm-table th:nth-child(2),
+.adm-table td:nth-child(2) { width: 24%; }
+.adm-table th:nth-child(3),
+.adm-table td:nth-child(3) { width: 17%; }
+.adm-table th:nth-child(4),
+.adm-table td:nth-child(4) { width: 15%; }
+.adm-table th:nth-child(5),
+.adm-table td:nth-child(5) { width: 18%; }
 
 .adm-table th {
   padding: 14px 18px;
@@ -234,6 +248,21 @@
   border-bottom: 1px solid var(--adm-border);
   vertical-align: middle;
   color: var(--adm-text);
+}
+
+/* Kolom teks panjang dipotong rapi; pill tetap utuh. */
+.adm-table td:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adm-table td .adm-order-id {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .adm-table tbody tr:last-child td {

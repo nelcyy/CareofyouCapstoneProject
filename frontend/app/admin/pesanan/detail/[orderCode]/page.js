@@ -84,11 +84,6 @@ const RISK_META = {
   critical: { label: 'Kritis', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
 };
 
-// Daftar jasa pengiriman buat dropdown — mengikuti yang dipakai project ini
-// (sama seperti opsi kurir di halaman checkout). BUKAN aturan baru bikinan UI;
-// idealnya nanti di-pass dari backend. Lihat catatan di handleShipOrder.
-const COURIER_OPTIONS = ['JNE REG', 'J&T REG', 'SiCepat REG'];
-
 function statusMeta(status) {
   return STATUS_META[status] || { label: status || '-', color: '#c4706a', bg: 'rgba(214,134,124,0.12)' };
 }
@@ -427,14 +422,18 @@ export default function DetailPesananPage() {
   const [qrMessage, setQrMessage] = useState('');
   const [qrUnits, setQrUnits] = useState([]);
   const [qrIndex, setQrIndex] = useState(0);
-  const [showCompleteStep, setShowCompleteStep] = useState(false);
   const [completionProofFile, setCompletionProofFile] = useState(null);
+  const [completionPreview, setCompletionPreview] = useState(null);
+  const [completeModalOpen, setCompleteModalOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
+  const [pdfModalUrl, setPdfModalUrl] = useState(null);
   const completionProofInputRef = useRef(null);
   // popup input resi pengiriman
   const [shipModalOpen, setShipModalOpen] = useState(false);
   const [shipForm, setShipForm] = useState({ courier_name: '', tracking_number: '', shipping_notes: '' });
   const [shipError, setShipError] = useState('');
+  // notifikasi popup (toast)
+  const [toast, setToast] = useState(null);
 
   async function postAction(path, payload) {
     const res = await fetch(path, {
@@ -668,6 +667,13 @@ export default function DetailPesananPage() {
     const url = `${API}/ereceipt/${action}?order_code=${encodeURIComponent(
       detail.order_code,
     )}&admin_user_id=${encodeURIComponent(adminUser.id)}`;
+
+    // "Lihat PDF" -> tampil di popup pada halaman ini (tidak redirect).
+    if (mode === 'view') {
+      setPdfModalUrl(url);
+      return;
+    }
+    // Download tetap lewat browser.
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
@@ -756,22 +762,27 @@ export default function DetailPesananPage() {
 
   function handleCompletionProofChange(event) {
     const file = event.target.files?.[0] || null;
-    if (!file) {
-      setCompletionProofFile(null);
-      return;
-    }
+    if (!file) return;
     if (!isAllowedProofImage(file)) {
-      setCompletionProofFile(null);
       setError('Bukti selesai / terkirim harus berupa foto JPG, PNG, atau WebP.');
       return;
     }
     setError('');
     setCompletionProofFile(file);
+    setCompletionPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setCompleteModalOpen(true);
   }
 
   function resetCompleteStep() {
-    setShowCompleteStep(false);
+    setCompleteModalOpen(false);
     setCompletionProofFile(null);
+    setCompletionPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     if (completionProofInputRef.current) {
       completionProofInputRef.current.value = '';
     }
@@ -905,7 +916,7 @@ export default function DetailPesananPage() {
     if (!detail?.order_code || actionLoading || detail.status !== 'pengiriman') return;
     setError('');
     setActionMessage('');
-    setShowCompleteStep(true);
+    // langsung buka file picker; setelah foto dipilih -> popup konfirmasi.
     completionProofInputRef.current?.click();
   }
 
@@ -926,6 +937,34 @@ export default function DetailPesananPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [imagePreview]);
+
+  // Semua notif (sukses/error) tampil sebagai popup toast yang auto-hilang.
+  useEffect(() => {
+    const text = error || actionMessage || receiptMessage || qrMessage;
+    if (!text) return undefined;
+    setToast({ type: error ? 'error' : 'ok', text });
+    const t = setTimeout(() => {
+      setToast(null);
+      setError('');
+      setActionMessage('');
+      setReceiptMessage('');
+      setQrMessage('');
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [error, actionMessage, receiptMessage, qrMessage]);
+
+  function dismissToast() {
+    setToast(null);
+    setError('');
+    setActionMessage('');
+    setReceiptMessage('');
+    setQrMessage('');
+  }
+
+  // Bersihkan object URL preview bukti saat unmount.
+  useEffect(() => () => {
+    if (completionPreview) URL.revokeObjectURL(completionPreview);
+  }, [completionPreview]);
 
   const canProcess = detail?.status === 'waiting_admin_approval';
   const qrReady = isQrReadyStatus(detail?.status);
@@ -952,10 +991,7 @@ export default function DetailPesananPage() {
         <Link href="/admin/pesanan" className="adm-od-back">← Kembali ke daftar pesanan</Link>
 
         {!detail && !error && <p className="adm-od-loading">Memuat detail pesanan...</p>}
-        {error && <div className="adm-od-msg adm-od-msg--error">{error}</div>}
-        {actionMessage && <div className="adm-od-msg adm-od-msg--ok">{actionMessage}</div>}
-        {receiptMessage && <div className="adm-od-msg adm-od-msg--ok">{receiptMessage}</div>}
-        {qrMessage && <div className="adm-od-msg adm-od-msg--ok">{qrMessage}</div>}
+        {!detail && error && <div className="adm-od-msg adm-od-msg--error">{error}</div>}
 
         {detail && (
           <>
@@ -1043,6 +1079,8 @@ export default function DetailPesananPage() {
             </div>
 
             <div className="adm-od-layout">
+              {/* Kolom kiri: Produk + Pengiriman menumpuk langsung (tanpa gap besar) */}
+              <div className="adm-od-leftcol">
                 {/* Produk */}
                 <Card title="Produk Dipesan" className="adm-od-cell-produk">
                   <div className="adm-od-prods">
@@ -1109,17 +1147,13 @@ export default function DetailPesananPage() {
                             Lihat Bukti
                           </button>
                         )}
-                        <a className="adm-od-filebtn adm-od-filebtn--ghost" href={fileUrl(detail.delivery_proof)} target="_blank" rel="noreferrer">
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-                          Buka File
-                        </a>
                       </div>
                     ) : (
                       <span className="adm-od-files-empty">Belum ada bukti.</span>
                     )}
                   </div>
                 </Card>
-
+              </div>
 
                 {/* Monitoring */}
                 <Card title="Monitoring Risiko" className="adm-od-cell-mon">
@@ -1234,29 +1268,10 @@ export default function DetailPesananPage() {
                             disabled={actionLoading}
                             style={{ display: 'none' }}
                           />
-                          {!showCompleteStep && (
-                            <button type="button" className="adm-btn adm-btn--primary adm-btn--block" onClick={handleStartCompleteOrder} disabled={actionLoading}>
-                              Selesaikan Pesanan
-                            </button>
-                          )}
-                          {showCompleteStep && (
-                            <>
-                              <button type="button" className="adm-btn adm-btn--ghost adm-btn--block" onClick={() => completionProofInputRef.current?.click()} disabled={actionLoading}>
-                                {completionProofFile ? 'Ganti Bukti' : 'Pilih Bukti'}
-                              </button>
-                              <button type="button" className="adm-btn adm-btn--primary adm-btn--block" onClick={handleCompleteOrder} disabled={actionLoading || !completionProofFile}>
-                                {actionLoading ? 'Memproses...' : 'Konfirmasi Selesai'}
-                              </button>
-                              <button type="button" className="adm-btn adm-btn--ghost adm-btn--block" onClick={resetCompleteStep} disabled={actionLoading}>
-                                Batal
-                              </button>
-                              <p className="adm-od-note">
-                                {completionProofFile
-                                  ? `File terpilih: ${completionProofFile.name}`
-                                  : 'Pilih foto bukti terkirim JPG, PNG, atau WebP sebelum konfirmasi selesai.'}
-                              </p>
-                            </>
-                          )}
+                          <button type="button" className="adm-btn adm-btn--primary adm-btn--block" onClick={handleStartCompleteOrder} disabled={actionLoading}>
+                            Selesaikan Pesanan
+                          </button>
+                          <p className="adm-od-note">Klik untuk pilih foto bukti terkirim, lalu konfirmasi di popup.</p>
                         </>
                       )}
                     </div>
@@ -1340,10 +1355,6 @@ export default function DetailPesananPage() {
                             Lihat Bukti
                           </button>
                         )}
-                        <a className="adm-od-filebtn adm-od-filebtn--ghost" href={fileUrl(detail.payment_proof)} target="_blank" rel="noreferrer">
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-                          Buka File
-                        </a>
                       </div>
                     ) : (
                       <span className="adm-od-files-empty">Belum ada bukti.</span>
@@ -1462,7 +1473,13 @@ export default function DetailPesananPage() {
                                 )}
                                 {unit.qrImageUrl && (
                                   <>
-                                    <a className="adm-btn adm-btn--ghost adm-btn--sm" href={unit.qrImageUrl} target="_blank" rel="noreferrer">Buka</a>
+                                    <button
+                                      type="button"
+                                      className="adm-btn adm-btn--ghost adm-btn--sm"
+                                      onClick={() => openImagePreview({ src: unit.qrImageUrl, label: `QR ${unit.productName} unit ${unit.unitIndex}` })}
+                                    >
+                                      Lihat QR Code
+                                    </button>
                                     <button type="button" className="adm-btn adm-btn--ghost adm-btn--sm" onClick={() => handleDownloadQr(unit)}>Download</button>
                                   </>
                                 )}
@@ -1494,7 +1511,7 @@ export default function DetailPesananPage() {
                     </span>
                     <div className="adm-ship-head-text">
                       <h3 className="adm-ship-title">Kirim Pesanan</h3>
-                      <p className="adm-ship-sub">Pilih jasa pengiriman lalu masukkan nomor resi.</p>
+                      <p className="adm-ship-sub">Masukkan nomor resi pengiriman.</p>
                     </div>
                     <button className="adm-ship-close" onClick={closeShipModal} disabled={actionLoading} aria-label="Tutup">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -1504,22 +1521,18 @@ export default function DetailPesananPage() {
                   </div>
 
                   <div className="adm-ship-body">
-                    <label className="adm-ship-field">
+                    <div className="adm-ship-field">
                       <span className="adm-ship-label">Jasa Pengiriman</span>
-                      <select
-                        className="adm-ship-select"
-                        value={shipForm.courier_name}
-                        onChange={(e) => setShipForm((f) => ({ ...f, courier_name: e.target.value }))}
-                      >
-                        {!shipForm.courier_name && <option value="">— Pilih jasa pengiriman —</option>}
-                        {shipForm.courier_name && !COURIER_OPTIONS.includes(shipForm.courier_name) && (
-                          <option value={shipForm.courier_name}>{shipForm.courier_name}</option>
-                        )}
-                        {COURIER_OPTIONS.map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                    </label>
+                      <div className="adm-ship-courier">
+                        <span className="adm-ship-courier-ico">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="1" y="3" width="15" height="13" rx="1" /><path d="M16 8h4l3 5v3h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
+                          </svg>
+                        </span>
+                        <span className="adm-ship-courier-name">{detail.courier_name || '-'}</span>
+                        <span className="adm-ship-courier-note">dipilih customer</span>
+                      </div>
+                    </div>
 
                     <label className="adm-ship-field">
                       <span className="adm-ship-label">Nomor Resi <span className="adm-ship-req">*</span></span>
@@ -1575,8 +1588,61 @@ export default function DetailPesananPage() {
             <div className="adm-od-preview-body">
               <img src={imagePreview.src} alt={imagePreview.label} className="adm-od-preview-img" />
             </div>
-            <a className="adm-od-preview-open" href={imagePreview.src} target="_blank" rel="noreferrer">Buka di tab baru</a>
           </div>
+        </div>
+      )}
+
+      {/* Popup PDF e-receipt (tampil di halaman, tanpa redirect) */}
+      {pdfModalUrl && (
+        <div className="adm-od-preview-backdrop" role="presentation" onClick={() => setPdfModalUrl(null)}>
+          <div className="adm-od-preview-modal adm-od-pdf-modal" role="dialog" aria-modal="true" aria-label="E-Receipt PDF" onClick={(event) => event.stopPropagation()}>
+            <div className="adm-od-preview-head">
+              <strong>E-Receipt</strong>
+              <button type="button" className="adm-od-preview-close" onClick={() => setPdfModalUrl(null)} aria-label="Tutup">×</button>
+            </div>
+            <div className="adm-od-pdf-body">
+              <iframe src={pdfModalUrl} title="E-Receipt PDF" className="adm-od-pdf-frame" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup konfirmasi bukti terkirim saat menyelesaikan pesanan */}
+      {completeModalOpen && (
+        <div className="adm-od-preview-backdrop" role="presentation" onClick={() => !actionLoading && resetCompleteStep()}>
+          <div className="adm-od-preview-modal adm-od-complete-modal" role="dialog" aria-modal="true" aria-label="Konfirmasi bukti terkirim" onClick={(event) => event.stopPropagation()}>
+            <div className="adm-od-preview-head">
+              <strong>Bukti Terkirim</strong>
+              <button type="button" className="adm-od-preview-close" onClick={resetCompleteStep} disabled={actionLoading} aria-label="Tutup">×</button>
+            </div>
+            <div className="adm-od-complete-body">
+              {completionPreview && <img src={completionPreview} alt="Preview bukti terkirim" className="adm-od-complete-img" />}
+              <p className="adm-od-complete-name">{completionProofFile?.name}</p>
+            </div>
+            <div className="adm-od-complete-actions">
+              <button type="button" className="adm-btn adm-btn--ghost" onClick={() => completionProofInputRef.current?.click()} disabled={actionLoading}>
+                Ganti Foto
+              </button>
+              <button type="button" className="adm-btn adm-btn--primary" onClick={handleCompleteOrder} disabled={actionLoading || !completionProofFile}>
+                {actionLoading ? 'Memproses...' : 'Konfirmasi Selesai'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast notifikasi */}
+      {toast && (
+        <div className={`adm-od-toast adm-od-toast--${toast.type}`} role="status">
+          <span className="adm-od-toast-ico">
+            {toast.type === 'error' ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            )}
+          </span>
+          <span className="adm-od-toast-text">{toast.text}</span>
+          <button type="button" className="adm-od-toast-close" onClick={dismissToast} aria-label="Tutup">×</button>
         </div>
       )}
     </div>

@@ -1225,6 +1225,43 @@ export default function AdminReturnDetailPage() {
   })();
   const currentQrItem = (qrUnits || [])[currentQrIndex] || null;
 
+  // Saat status "Menunggu Review Admin", kolom kiri minim (Pengiriman Balik &
+  // Penyelesaian belum muncul) -> Item Retur dipindah ke kiri biar seimbang.
+  const isAdminReview = detail?.status === 'waiting_admin_review';
+  const itemReturSection = (
+    <section className="adm-rd-card adm-rd-card--wide">
+      <h3 className="adm-rd-card-title">Item Retur</h3>
+      <div className="adm-rd-items">
+        {(detail?.items || []).map((item, index) => (
+          <div key={item.id || index} className="adm-rd-item">
+            <span className="adm-rd-item-ico">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
+              </svg>
+            </span>
+            <div className="adm-rd-item-info">
+              <span className="adm-rd-item-name">{item.product_name || '-'}</span>
+              <span className="adm-rd-item-meta">Retur {item.quantity || 0} dari {item.ordered_quantity || 0} dibeli</span>
+            </div>
+            <span className="adm-rd-item-qty">×{item.quantity || 0}</span>
+            <span className="adm-rd-item-price">Rp {formatRibuan(item.subtotal)}</span>
+          </div>
+        ))}
+        {(detail?.items || []).length === 0 && (
+          <div className="adm-rd-item-empty">Tidak ada item retur.</div>
+        )}
+      </div>
+      {(detail?.items || []).length > 0 && (
+        <div className="adm-rd-item-total">
+          <span>Total Refund</span>
+          <span className="adm-rd-item-total-val">
+            Rp {formatRibuan((detail?.items || []).reduce((sum, it) => sum + (Number(it.subtotal) || 0), 0))}
+          </span>
+        </div>
+      )}
+    </section>
+  );
+
   return (
     <div className="adm-rd-page">
       <div className="adm-rd-inner">
@@ -1648,6 +1685,8 @@ export default function AdminReturnDetailPage() {
               </p>
             </section>
           )}
+
+          {isAdminReview && itemReturSection}
           </div>
 
           <div className="adm-rd-col adm-rd-col--right">
@@ -1785,37 +1824,7 @@ export default function AdminReturnDetailPage() {
             </section>
           )}
 
-          <section className="adm-rd-card adm-rd-card--wide">
-          <h3 className="adm-rd-card-title">Item Retur</h3>
-          <div className="adm-rd-items">
-            {(detail.items || []).map((item, index) => (
-              <div key={item.id || index} className="adm-rd-item">
-                <span className="adm-rd-item-ico">
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
-                  </svg>
-                </span>
-                <div className="adm-rd-item-info">
-                  <span className="adm-rd-item-name">{item.product_name || '-'}</span>
-                  <span className="adm-rd-item-meta">Retur {item.quantity || 0} dari {item.ordered_quantity || 0} dibeli</span>
-                </div>
-                <span className="adm-rd-item-qty">×{item.quantity || 0}</span>
-                <span className="adm-rd-item-price">Rp {formatRibuan(item.subtotal)}</span>
-              </div>
-            ))}
-            {(detail.items || []).length === 0 && (
-              <div className="adm-rd-item-empty">Tidak ada item retur.</div>
-            )}
-          </div>
-          {(detail.items || []).length > 0 && (
-            <div className="adm-rd-item-total">
-              <span>Total Refund</span>
-              <span className="adm-rd-item-total-val">
-                Rp {formatRibuan((detail.items || []).reduce((sum, it) => sum + (Number(it.subtotal) || 0), 0))}
-              </span>
-            </div>
-          )}
-          </section>
+          {!isAdminReview && itemReturSection}
           </div>
         </div>
         </>
