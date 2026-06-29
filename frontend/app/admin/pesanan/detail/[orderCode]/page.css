@@ -1494,6 +1494,13 @@
   font-family: monospace;
   letter-spacing: 0.3px;
 }
+.adm-od-meta-row--sig {
+  align-items: flex-start;
+}
+.adm-od-sig-hash {
+  font-size: 10.5px !important;
+  max-width: 220px;
+}
 
 /* ── Produk dipesan ── */
 .adm-od-prods {
@@ -2227,23 +2234,6 @@
   color: var(--adm-text-3);
 }
 
-/* ── Popup PDF e-receipt ── */
-.adm-od-pdf-modal {
-  width: min(900px, 100%);
-  max-height: 90vh;
-}
-.adm-od-pdf-body {
-  flex: 1;
-  min-height: 0;
-  padding: 0;
-}
-.adm-od-pdf-frame {
-  width: 100%;
-  height: 78vh;
-  border: 0;
-  display: block;
-}
-
 /* ── Popup konfirmasi bukti terkirim ── */
 .adm-od-complete-modal {
   width: min(440px, 100%);
@@ -2275,6 +2265,93 @@
 }
 .adm-od-complete-actions .adm-btn {
   flex: 1;
+}
+
+/* ── Popup hasil approve ── */
+.adm-od-approved-modal {
+  position: relative;
+  width: min(400px, 100%);
+  background: #fff;
+  border-radius: 24px;
+  border: 1.5px solid rgba(255, 255, 255, 0.86);
+  box-shadow: 0 28px 80px rgba(45, 45, 45, 0.28);
+  padding: 40px 30px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.adm-od-approved-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 9px;
+  background: #f5eeec;
+  color: #7a7a7a;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.adm-od-approved-close:hover {
+  background: #fce8e6;
+  color: #c4706a;
+}
+
+.adm-od-approved-icon {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, #34d399, #16a34a);
+  box-shadow: 0 14px 30px rgba(22, 163, 74, 0.32);
+  margin-bottom: 18px;
+}
+
+.adm-od-approved-title {
+  margin: 0 0 8px;
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--adm-text);
+}
+
+.adm-od-approved-sub {
+  margin: 0 0 22px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--adm-text-2);
+  max-width: 320px;
+}
+
+.adm-od-approved-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-bottom: 26px;
+}
+
+.adm-od-approved-pill--ok {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.adm-od-approved-pill--pending {
+  background: rgba(224, 154, 58, 0.1);
+  color: #c47c10;
+}
+
+.adm-od-approved-okbtn {
+  width: 100%;
 }
 
 /* ── Toast notifikasi ── */
@@ -2331,4 +2408,301 @@
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+/* ── Receipt preview modal (e-receipt, render ulang custom — bukan PDF) ── */
+.adm-rp-modal {
+  max-width: 460px;
+  width: 92vw;
+}
+
+.adm-rp-scroll {
+  margin: 0 0 22px;
+  max-height: 75vh;
+  overflow-y: auto;
+  padding: 0 22px;
+}
+
+.adm-rp-receipt {
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1.5px solid #f0d5d2;
+}
+
+.adm-rp-head {
+  background: linear-gradient(135deg, #d6867c 0%, #c97269 40%, #b05a52 100%);
+  padding: 26px 22px 18px;
+  text-align: center;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+.adm-rp-head::before {
+  content: '';
+  position: absolute;
+  top: -36px;
+  right: -36px;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.adm-rp-logo-text {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  margin-bottom: 6px;
+  position: relative;
+}
+
+.adm-rp-tagline {
+  font-size: 10px;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  opacity: 0.85;
+  position: relative;
+}
+
+.adm-rp-head-id {
+  display: inline-block;
+  margin-top: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50px;
+  padding: 4px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  position: relative;
+}
+
+.adm-rp-success {
+  background: linear-gradient(90deg, #f0fdf4, #ecfdf5);
+  border-bottom: 1.5px dashed #86efac;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #15803d;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.adm-rp-success-dot {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.adm-rp-success-dot svg {
+  width: 11px;
+  height: 11px;
+}
+
+.adm-rp-body {
+  padding: 18px 18px 0;
+}
+
+.adm-rp-section-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #c97269;
+  margin: 0 0 9px;
+}
+
+.adm-rp-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+
+.adm-rp-info-box {
+  background: linear-gradient(135deg, #fffaf9, #fdf5f3);
+  border-radius: 9px;
+  padding: 9px 11px;
+  border: 1.5px solid #f0d5d2;
+}
+
+.adm-rp-info-label {
+  font-size: 9px;
+  color: #b0a8a6;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 3px;
+}
+
+.adm-rp-info-val {
+  font-size: 12px;
+  font-weight: 800;
+  color: #2d2d2d;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.adm-rp-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.adm-rp-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #fffaf9, #fdf5f3);
+  border-radius: 9px;
+  border: 1.5px solid #f0d5d2;
+}
+
+.adm-rp-item-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d6867c, #c97269);
+  flex-shrink: 0;
+}
+
+.adm-rp-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-rp-item-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #2d2d2d;
+}
+
+.adm-rp-item-qty {
+  font-size: 10.5px;
+  color: #b0a8a6;
+  font-weight: 500;
+}
+
+.adm-rp-item-total {
+  font-size: 13px;
+  font-weight: 900;
+  color: #c97269;
+  white-space: nowrap;
+}
+
+.adm-rp-summary {
+  border-top: 1.5px dashed #f0d5d2;
+  padding: 12px 0;
+  margin: 4px 18px 0;
+}
+
+.adm-rp-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  color: #7a7a7a;
+  margin-bottom: 5px;
+}
+
+.adm-rp-summary-row:last-child {
+  margin-bottom: 0;
+}
+
+.adm-rp-summary-val {
+  font-weight: 700;
+  color: #2d2d2d;
+}
+
+.adm-rp-summary-free {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #22c55e;
+  font-weight: 700;
+}
+
+.adm-rp-summary-free svg {
+  width: 11px;
+  height: 11px;
+}
+
+.adm-rp-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(201, 114, 105, 0.1) 0%, rgba(201, 114, 105, 0.05) 100%);
+  border-top: 2px solid #f0d5d2;
+}
+
+.adm-rp-total-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2d2d2d;
+}
+
+.adm-rp-total-val {
+  font-size: 21px;
+  font-weight: 900;
+  color: #c97269;
+  letter-spacing: -0.4px;
+}
+
+.adm-rp-barcode-wrap {
+  padding: 16px 18px 12px;
+  text-align: center;
+  border-top: 1px solid #f5eeec;
+  background: #fffcfb;
+}
+
+.adm-rp-barcode-num {
+  margin-top: 6px;
+  font-size: 10px;
+  color: #b0a8a6;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+}
+
+.adm-rp-footer {
+  background: linear-gradient(135deg, #fdf0ef, #fff5f3);
+  border-top: 1.5px solid #f0d5d2;
+  padding: 14px 20px;
+  text-align: center;
+}
+
+.adm-rp-footer-main {
+  font-size: 12.5px;
+  color: #2d2d2d;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.adm-rp-footer-sub {
+  font-size: 10.5px;
+  color: #b0a8a6;
+  font-weight: 500;
+}
+
+.adm-rp-footer-brand {
+  margin-top: 8px;
+  font-size: 9.5px;
+  color: #c97269;
+  font-weight: 700;
+  letter-spacing: 0.8px;
 }

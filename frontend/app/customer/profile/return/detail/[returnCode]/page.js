@@ -89,6 +89,33 @@ function IconCheck() {
     </svg>
   );
 }
+function IconReceipt() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  );
+}
+function IconShieldX() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <line x1="9.5" y1="9.5" x2="14.5" y2="14.5" />
+      <line x1="14.5" y1="9.5" x2="9.5" y2="14.5" />
+    </svg>
+  );
+}
+function IconShieldCheck() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11.5 14.5 16 9.5" />
+    </svg>
+  );
+}
 function IconTruck() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -232,6 +259,40 @@ function ImagePreviewModal({ preview, onClose }) {
   );
 }
 
+function EReceiptVerificationModal({ open, onClose, verification }) {
+  if (!open) return null;
+  const v = verification || {};
+  const kind = v.status === 'valid' ? 'valid' : v.status === 'invalid' ? 'invalid' : 'pending';
+
+  return (
+    <div className="rd-modal-overlay" role="presentation" onClick={onClose}>
+      <div className="rd-modal rd-verify-modal" role="dialog" aria-modal="true" aria-label="Hasil Verifikasi E-Receipt" onClick={(e) => e.stopPropagation()}>
+        <div className="rd-modal-header">
+          <h3><IconReceipt /> Hasil Verifikasi E-Receipt</h3>
+          <button type="button" className="rd-modal-close" onClick={onClose} aria-label="Tutup">×</button>
+        </div>
+        <div className="rd-verify-body">
+          <div className={`rd-verify-status rd-verify-status--${kind}`}>
+            {kind === 'valid' && <><IconShieldCheck /> E-Receipt Asli &amp; Terverifikasi</>}
+            {kind === 'invalid' && <><IconShieldX /> E-Receipt Tidak Valid</>}
+            {kind === 'pending' && <><IconClock /> Menunggu Verifikasi Admin</>}
+          </div>
+
+          {kind === 'valid' && (
+            <p className="rd-verify-note">E-receipt yang kamu upload sudah kami periksa dan sesuai dengan pesanan ini.</p>
+          )}
+          {kind === 'invalid' && (
+            <p className="rd-verify-note">E-receipt yang kamu upload tidak dapat kami verifikasi keasliannya. Jika menurutmu ini keliru, silakan hubungi admin.</p>
+          )}
+          {kind === 'pending' && (
+            <p className="rd-verify-note">File e-receipt sudah kami terima. Admin belum memeriksa keasliannya.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfileReturnDetailPage() {
   const params = useParams();
   const returnCode = decodeURIComponent(params?.returnCode || '');
@@ -243,6 +304,7 @@ export default function ProfileReturnDetailPage() {
   const [shipLoading, setShipLoading] = useState(false);
   const [shipMessage, setShipMessage] = useState('');
   const [imagePreview, setImagePreview] = useState(null);
+  const [showVerification, setShowVerification] = useState(false);
 
   const refundInfo = detail?.refund_info || {};
   const exchangeInfo = detail?.exchange_info || {};
@@ -519,7 +581,9 @@ export default function ProfileReturnDetailPage() {
                   <MetaRow
                     label="E-Receipt"
                     value={detail.ereceipt_proof ? (
-                      <span className="rd-meta-val--muted">File PDF terupload</span>
+                      <button type="button" className="rd-view-proof-btn" onClick={() => setShowVerification(true)}>
+                        <IconReceipt /> Lihat Hasil Verifikasi
+                      </button>
                     ) : <span className="rd-meta-val--muted">-</span>}
                   />
                 </div>
@@ -568,6 +632,7 @@ export default function ProfileReturnDetailPage() {
       )}
 
       <ImagePreviewModal preview={imagePreview} onClose={() => setImagePreview(null)} />
+      <EReceiptVerificationModal open={showVerification} onClose={() => setShowVerification(false)} verification={detail?.ereceipt_verification} />
     </div>
   );
 }

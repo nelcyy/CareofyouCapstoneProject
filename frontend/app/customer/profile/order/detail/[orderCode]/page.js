@@ -18,7 +18,7 @@ const RETURN_REASON_OPTIONS = [
   'Produk kedaluwarsa',
   'Lainnya',
 ];
-const PROOF_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
+const PROOF_IMAGE_ACCEPT = 'image/jpeg,image/png';
 const PROOF_IMAGE_TYPES = new Set(PROOF_IMAGE_ACCEPT.split(','));
 const RECEIPT_PDF_ACCEPT = 'application/pdf,.pdf';
 const EXCHANGE_COURIERS = [
@@ -63,7 +63,7 @@ function isPreviewableProof(path) {
 function isAllowedProofImage(file) {
   if (!file) return false;
   const hasAllowedType = !file.type || PROOF_IMAGE_TYPES.has(file.type);
-  const hasAllowedName = /\.(jpe?g|png|webp)$/i.test(file.name || '');
+  const hasAllowedName = /\.(jpe?g|png)$/i.test(file.name || '');
   return hasAllowedType && hasAllowedName;
 }
 
@@ -342,14 +342,6 @@ function IconBan() {
     </svg>
   );
 }
-function IconStar(props) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={props?.filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  );
-}
-
 function IconPartyPopper() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -428,7 +420,7 @@ function Barcode({ value, width = 200, height = 44 }) {
     return el;
   });
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block' }}>
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', margin: '0 auto' }}>
       {rects}
     </svg>
   );
@@ -607,7 +599,10 @@ export default function ProfileOrderDetailPage() {
   const [returnReason, setReturnReason] = useState('');
   const [returnReasonCustom, setReturnReasonCustom] = useState('');
   const [productPhoto, setProductPhoto] = useState(null);
+  const [productPhotoPreview, setProductPhotoPreview] = useState(null);
+  const [productPhotoDrag, setProductPhotoDrag] = useState(false);
   const [receiptProof, setReceiptProof] = useState(null);
+  const [receiptDrag, setReceiptDrag] = useState(false);
   const [returnResolutionType, setReturnResolutionType] = useState('');
   const [refundForm, setRefundForm] = useState(buildInitialRefundForm());
   const [exchangeForm, setExchangeForm] = useState(buildInitialExchangeForm());
@@ -621,12 +616,6 @@ export default function ProfileOrderDetailPage() {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [cancelTimeLeft, setCancelTimeLeft] = useState(null);
-
-  // Rating produk — UI siap, nunggu field status-sudah-dirating & endpoint
-  // submit rating dari backend.
-  const [ratingMap, setRatingMap] = useState({});
-  const [ratingSubmitting, setRatingSubmitting] = useState(false);
-  const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   async function loadAddresses({ silent = true } = {}) {
     const user = getStoredUser();
@@ -709,27 +698,29 @@ export default function ProfileOrderDetailPage() {
     setImagePreview(null);
   }
 
-  function handleProductPhotoChange(event) {
-    const file = event.target.files?.[0] || null;
-    if (!file) {
-      setProductPhoto(null);
-      return;
-    }
+  function pickProductPhoto(file) {
+    if (!file) return;
     if (!isAllowedProofImage(file)) {
       setProductPhoto(null);
-      setError('Foto produk harus berupa JPG, PNG, atau WebP.');
+      setError('Foto produk harus berupa JPG atau PNG.');
       return;
     }
     setError('');
     setProductPhoto(file);
   }
 
-  function handleReceiptProofChange(event) {
-    const file = event.target.files?.[0] || null;
-    if (!file) {
-      setReceiptProof(null);
-      return;
-    }
+  function handleProductPhotoChange(event) {
+    pickProductPhoto(event.target.files?.[0] || null);
+  }
+
+  function handleProductPhotoDrop(event) {
+    event.preventDefault();
+    setProductPhotoDrag(false);
+    pickProductPhoto(event.dataTransfer.files?.[0] || null);
+  }
+
+  function pickReceiptProof(file) {
+    if (!file) return;
     if (!isAllowedPdf(file)) {
       setReceiptProof(null);
       setError('E-receipt wajib berupa file PDF.');
@@ -737,6 +728,16 @@ export default function ProfileOrderDetailPage() {
     }
     setError('');
     setReceiptProof(file);
+  }
+
+  function handleReceiptProofDrop(event) {
+    event.preventDefault();
+    setReceiptDrag(false);
+    pickReceiptProof(event.dataTransfer.files?.[0] || null);
+  }
+
+  function handleReceiptProofChange(event) {
+    pickReceiptProof(event.target.files?.[0] || null);
   }
 
   function handleStartReturn() {
@@ -881,41 +882,15 @@ export default function ProfileOrderDetailPage() {
     }
   }
 
-  // ── Rating produk — placeholder pending backend (lihat catatan di akhir chat) ──
-  async function handleSubmitRatings() {
-    if (!detail) return;
-    const user = getStoredUser();
-    if (!user || user.role !== 'customer') {
-      setError('Login dulu sebagai customer untuk memberi rating.');
-      return;
+  useEffect(() => {
+    if (!productPhoto) {
+      setProductPhotoPreview(null);
+      return undefined;
     }
-    const entries = Object.entries(ratingMap).filter(([, v]) => v > 0);
-    if (entries.length === 0) return;
-
-    setRatingSubmitting(true);
-    setError('');
-    try {
-      const res = await fetch(`${ORDER_API}/rate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user.id,
-          order_code: orderCode,
-          ratings: entries.map(([orderItemId, rating]) => ({ order_item_id: orderItemId, rating })),
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Gagal mengirim rating.');
-      }
-      setRatingSubmitted(true);
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Gagal mengirim rating. Fitur ini menunggu endpoint rating dari backend.');
-    } finally {
-      setRatingSubmitting(false);
-    }
-  }
+    const url = URL.createObjectURL(productPhoto);
+    setProductPhotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [productPhoto]);
 
   useEffect(() => {
     setLoading(true);
@@ -979,9 +954,6 @@ export default function ProfileOrderDetailPage() {
   // Tombol cancel hanya nongol kalau backend secara eksplisit ngirim
   // `can_cancel: true` — sampai field itu ada, kartu ini gak pernah tampil.
   const showCancelCard = Boolean(detail?.can_cancel);
-  // Kartu rating hanya nongol di status "delivered", dicocokin lewat
-  // statusStyle() yang sama dipakai timeline & badge — bukan rule baru.
-  const showRatingCard = status.group === 'delivered' && (detail?.items || []).length > 0 && !ratingSubmitted;
 
   return (
     <div className="od-wrap">
@@ -1176,45 +1148,6 @@ export default function ProfileOrderDetailPage() {
                   <MetaRow label="Bukti Terkirim" value={<ProofAction path={detail.delivery_proof} label="Bukti Terkirim" onPreview={openImagePreview} />} />
                 </div>
               </div>
-
-              {/* ── Rating produk — nongol kalau status sudah delivered ── */}
-              {showRatingCard && (
-                <div className="od-card">
-                  <p className="od-section-label">Nilai Produk Kamu</p>
-                  <p className="od-card-subtitle">Beri bintang 1–5 untuk setiap produk yang sudah kamu terima.</p>
-                  {(detail.items || []).map((item) => (
-                    <div key={item.id} className="od-rating-row">
-                      <p className="od-rating-item-name">{item.product_name}</p>
-                      <div className="od-stars">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            className="od-star-btn"
-                            onClick={() => setRatingMap((prev) => ({ ...prev, [item.id]: star }))}
-                            aria-label={`${star} bintang`}
-                          >
-                            <IconStar filled={(ratingMap[item.id] ?? 0) >= star} />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    className="od-btn-primary"
-                    style={{ marginTop: 14 }}
-                    disabled={ratingSubmitting || Object.keys(ratingMap).length === 0}
-                    onClick={handleSubmitRatings}
-                  >
-                    {ratingSubmitting ? 'Menyimpan...' : 'Kirim Penilaian'}
-                  </button>
-                </div>
-              )}
-
-              {ratingSubmitted && (
-                <p className="od-banner od-banner--success">Terima kasih sudah memberi penilaian!</p>
-              )}
 
               {/* ── Return panel ── */}
               {returnInfo.eligible && !showReturnWizard && (
@@ -1438,18 +1371,26 @@ export default function ProfileOrderDetailPage() {
                     </div>
                   </div>
                   <p className="od-field-label" style={{ marginTop: 14 }}>Upload foto produk</p>
-                  <label className={`od-dropzone${productPhoto ? ' od-dropzone--filled' : ''}`}>
+                  <label
+                    className={`od-dropzone${productPhotoDrag ? ' od-dropzone--drag' : ''}${productPhoto ? ' od-dropzone--filled' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); setProductPhotoDrag(true); }}
+                    onDragLeave={() => setProductPhotoDrag(false)}
+                    onDrop={handleProductPhotoDrop}
+                  >
                     <input type="file" accept={PROOF_IMAGE_ACCEPT} onChange={handleProductPhotoChange} hidden />
                     {productPhoto ? (
-                      <div className="od-file-chip">
-                        <IconImage /> {productPhoto.name}
-                        <span className="od-file-ok"><IconCheck /></span>
+                      <div className="od-photo-preview-wrap">
+                        <img src={productPhotoPreview} alt="Preview foto produk" className="od-photo-preview-img" />
+                        <div className="od-photo-preview-info">
+                          <span className="od-photo-preview-name">✓ {productPhoto.name}</span>
+                          <span className="od-photo-preview-change">Ketuk untuk ganti</span>
+                        </div>
                       </div>
                     ) : (
                       <div className="od-dropzone-empty">
                         <IconUploadCloud />
-                        <p>Klik untuk pilih foto</p>
-                        <p className="od-dropzone-hint">JPG, PNG, atau WebP</p>
+                        <p>Drag &amp; drop atau klik untuk pilih foto</p>
+                        <p className="od-dropzone-hint">JPG atau PNG</p>
                       </div>
                     )}
                   </label>
@@ -1460,21 +1401,31 @@ export default function ProfileOrderDetailPage() {
               {returnStep === 3 && (
                 <>
                   <p className="od-field-label">Upload e-receipt / bukti pembelian</p>
-                  <div className="od-info-banner">
-                    <IconReceipt />
-                    <p>Mohon upload e-receipt resmi dari careofyou ya.</p>
+                  <div className="od-warning-banner">
+                    <IconAlert size={20} />
+                    <div>
+                      <p className="od-warning-title">Wajib e-receipt resmi</p>
+                      <p className="od-warning-desc">Unggah salinan e-receipt asli dari careofyou yang sesuai dengan pesanan ini. Dokumen lain tidak akan diproses.</p>
+                    </div>
                   </div>
-                  <label className={`od-dropzone${receiptProof ? ' od-dropzone--filled' : ''}`}>
+                  <label
+                    className={`od-dropzone${receiptDrag ? ' od-dropzone--drag' : ''}${receiptProof ? ' od-dropzone--filled' : ''}`}
+                    style={{ marginTop: 14 }}
+                    onDragOver={(e) => { e.preventDefault(); setReceiptDrag(true); }}
+                    onDragLeave={() => setReceiptDrag(false)}
+                    onDrop={handleReceiptProofDrop}
+                  >
                     <input type="file" accept={RECEIPT_PDF_ACCEPT} onChange={handleReceiptProofChange} hidden />
                     {receiptProof ? (
                       <div className="od-file-chip">
                         <IconReceipt /> {receiptProof.name}
                         <span className="od-file-ok"><IconCheck /></span>
+                        <span className="od-file-change">Ketuk untuk ganti</span>
                       </div>
                     ) : (
                       <div className="od-dropzone-empty">
                         <IconUploadCloud />
-                        <p>Klik untuk pilih file</p>
+                        <p>Drag &amp; drop atau klik untuk pilih file</p>
                         <p className="od-dropzone-hint">PDF saja — maks 5 MB</p>
                       </div>
                     )}
@@ -1533,47 +1484,54 @@ export default function ProfileOrderDetailPage() {
                   )}
 
                   {returnResolutionType === 'exchange' && (
-                    <>
-                      <p className="od-field-label">Kurir &amp; alamat exchange</p>
-                      <select
-                        className="od-select"
-                        value={exchangeForm.exchange_courier_id}
-                        onChange={(e) => setExchangeForm((cur) => ({ ...cur, exchange_courier_id: e.target.value }))}
-                      >
-                        <option value="">Pilih kurir</option>
-                        {EXCHANGE_COURIERS.map((courier) => (
-                          <option key={courier.id} value={courier.id}>{courier.name}</option>
-                        ))}
-                      </select>
+                    <div className="od-exchange-block">
+                      <p className="od-field-label">Kurir &amp; Alamat Pengiriman Baru</p>
 
-                      {addressesLoading && <p className="od-meta-note">Memuat alamat customer...</p>}
-                      {!addressesLoading && addresses.length === 0 && (
-                        <p className="od-meta-note">
-                          Belum ada alamat tersimpan. Tambah dulu di{' '}
-                          <Link href="/customer/profile/address">halaman address</Link>.
-                        </p>
-                      )}
-                      {!addressesLoading && addresses.length > 0 && (
+                      <div className="od-field-group">
+                        <label className="od-field-sublabel">Kurir Pengiriman</label>
                         <select
                           className="od-select"
-                          value={exchangeForm.exchange_address_id}
-                          onChange={(e) => setExchangeForm((cur) => ({ ...cur, exchange_address_id: e.target.value }))}
+                          value={exchangeForm.exchange_courier_id}
+                          onChange={(e) => setExchangeForm((cur) => ({ ...cur, exchange_courier_id: e.target.value }))}
                         >
-                          <option value="">Pilih alamat</option>
-                          {addresses.map((address) => (
-                            <option key={address.id} value={address.id}>{address.label} - {address.recipient_name}</option>
+                          <option value="">Pilih kurir</option>
+                          {EXCHANGE_COURIERS.map((courier) => (
+                            <option key={courier.id} value={courier.id}>{courier.name}</option>
                           ))}
                         </select>
-                      )}
+                      </div>
+
+                      <div className="od-field-group">
+                        <label className="od-field-sublabel">Alamat Tujuan</label>
+                        {addressesLoading && <p className="od-meta-note">Memuat alamat customer...</p>}
+                        {!addressesLoading && addresses.length === 0 && (
+                          <p className="od-meta-note">
+                            Belum ada alamat tersimpan. Tambah dulu di{' '}
+                            <Link href="/customer/profile/address">halaman address</Link>.
+                          </p>
+                        )}
+                        {!addressesLoading && addresses.length > 0 && (
+                          <select
+                            className="od-select"
+                            value={exchangeForm.exchange_address_id}
+                            onChange={(e) => setExchangeForm((cur) => ({ ...cur, exchange_address_id: e.target.value }))}
+                          >
+                            <option value="">Pilih alamat</option>
+                            {addresses.map((address) => (
+                              <option key={address.id} value={address.id}>{address.label} - {address.recipient_name}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
 
                       {selectedExchangeAddress && (
-                        <div className="od-meta-list" style={{ marginTop: 10 }}>
+                        <div className="od-meta-list od-exchange-preview">
                           <MetaRow label="Penerima" value={selectedExchangeAddress.recipient_name || '-'} />
                           <MetaRow label="Alamat" value={selectedExchangeAddress.address_line || '-'} />
                           <MetaRow label="Kota" value={selectedExchangeAddress.city || '-'} />
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
 
                   <div className="od-confirm-summary">

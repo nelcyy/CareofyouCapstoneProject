@@ -409,6 +409,135 @@ function mergeQrUnits(baseSlots, backendUnits) {
   });
 }
 
+function formatPaymentLabel(method, target) {
+  const label = String(method || '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return target ? `${label || '-'} - ${target}` : (label || '-');
+}
+
+function Barcode({ value, width = 200, height = 44 }) {
+  const BARS = 58;
+  let seed = 0;
+  for (const ch of String(value || '')) {
+    seed = ((seed << 5) - seed + ch.charCodeAt(0)) | 0;
+  }
+  const bars = Array.from({ length: BARS }, (_, i) => {
+    const v = Math.abs(seed ^ (i * 2654435761)) % 100;
+    return { h: 14 + (v % 30), w: v % 3 === 0 ? 3 : v % 2 === 0 ? 2 : 1 };
+  });
+  const totalW = bars.reduce((s, b) => s + b.w + 1, 0);
+  const scale = width / totalW;
+  let x = 0;
+  const rects = bars.map((b, i) => {
+    const el = (
+      <rect key={i} x={x * scale} y={height - b.h} width={Math.max(1, b.w * scale - 0.5)} height={b.h} fill="#2d2d2d" rx="0.5" />
+    );
+    x += b.w + 1;
+    return el;
+  });
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', margin: '0 auto' }}>
+      {rects}
+    </svg>
+  );
+}
+
+function AdminReceiptPreviewModal({ open, onClose, detail }) {
+  if (!open || !detail) return null;
+  const shippingFee = detail.shipping_fee || 0;
+  const orderRef = `${String(detail.order_code || '').replace(/-/g, '')} 0 1 7 5 8 3`;
+  return (
+    <div className="adm-od-preview-backdrop" role="presentation" onClick={onClose}>
+      <div className="adm-od-preview-modal adm-rp-modal" role="dialog" aria-modal="true" aria-label="Preview E-Receipt" onClick={(e) => e.stopPropagation()}>
+        <div className="adm-od-preview-head">
+          <strong>Preview E-Receipt</strong>
+          <button type="button" className="adm-od-preview-close" onClick={onClose} aria-label="Tutup">×</button>
+        </div>
+        <div className="adm-rp-scroll">
+          <div className="adm-rp-receipt">
+            <div className="adm-rp-head">
+              <div className="adm-rp-logo-text">careofyou</div>
+              <p className="adm-rp-tagline">Struk Pembelian Resmi</p>
+              <div className="adm-rp-head-id">{detail.order_code}</div>
+            </div>
+            <div className="adm-rp-success">
+              <span className="adm-rp-success-dot">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              </span>
+              Pembayaran Berhasil Dikonfirmasi
+            </div>
+            <div className="adm-rp-body">
+              <p className="adm-rp-section-label">Info Transaksi</p>
+              <div className="adm-rp-info-grid">
+                <div className="adm-rp-info-box">
+                  <div className="adm-rp-info-label">No. Pesanan</div>
+                  <div className="adm-rp-info-val">{detail.order_code}</div>
+                </div>
+                <div className="adm-rp-info-box">
+                  <div className="adm-rp-info-label">Tanggal</div>
+                  <div className="adm-rp-info-val">{formatTanggal(detail.processed_at || detail.created_at)}</div>
+                </div>
+                <div className="adm-rp-info-box">
+                  <div className="adm-rp-info-label">Metode Bayar</div>
+                  <div className="adm-rp-info-val">{formatPaymentLabel(detail.payment_method, detail.payment_target)}</div>
+                </div>
+                <div className="adm-rp-info-box">
+                  <div className="adm-rp-info-label">Penerima</div>
+                  <div className="adm-rp-info-val">{detail.recipient_name || '-'}</div>
+                </div>
+              </div>
+              <p className="adm-rp-section-label">Produk Dipesan</p>
+              <div className="adm-rp-items">
+                {(detail.items || []).map((item, i) => (
+                  <div key={item.id || i} className="adm-rp-item">
+                    <div className="adm-rp-item-dot" />
+                    <div className="adm-rp-item-left">
+                      <span className="adm-rp-item-name">{item.product_name}</span>
+                      <span className="adm-rp-item-qty">{item.quantity} pcs x Rp {formatRibuan(item.product_price)}</span>
+                    </div>
+                    <span className="adm-rp-item-total">Rp {formatRibuan(item.subtotal)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="adm-rp-summary">
+              <div className="adm-rp-summary-row">
+                <span>Subtotal</span>
+                <span className="adm-rp-summary-val">Rp {formatRibuan(detail.subtotal)}</span>
+              </div>
+              <div className="adm-rp-summary-row">
+                <span>Ongkos Kirim</span>
+                {shippingFee > 0 ? (
+                  <span className="adm-rp-summary-val">Rp {formatRibuan(shippingFee)}</span>
+                ) : (
+                  <span className="adm-rp-summary-free">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    Gratis
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="adm-rp-total-row">
+              <span className="adm-rp-total-label">Total Pembayaran</span>
+              <span className="adm-rp-total-val">Rp {formatRibuan(detail.grand_total)}</span>
+            </div>
+            <div className="adm-rp-barcode-wrap">
+              <Barcode value={detail.order_code || ''} width={200} height={40} />
+              <p className="adm-rp-barcode-num">{orderRef}</p>
+            </div>
+            <div className="adm-rp-footer">
+              <p className="adm-rp-footer-main">Terima kasih sudah belanja di careofyou</p>
+              <p className="adm-rp-footer-sub">Simpan struk ini sebagai bukti pembelian resmi kamu</p>
+              <p className="adm-rp-footer-brand">careofyou.id</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DetailPesananPage() {
   const params = useParams();
   const orderCode = decodeURIComponent(params?.orderCode || '');
@@ -426,7 +555,8 @@ export default function DetailPesananPage() {
   const [completionPreview, setCompletionPreview] = useState(null);
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
-  const [pdfModalUrl, setPdfModalUrl] = useState(null);
+  const [showApprovedModal, setShowApprovedModal] = useState(false);
+  const [showReceiptPreview, setShowReceiptPreview] = useState(false);
   const completionProofInputRef = useRef(null);
   // popup input resi pengiriman
   const [shipModalOpen, setShipModalOpen] = useState(false);
@@ -614,7 +744,11 @@ export default function DetailPesananPage() {
 
       setDetail(data.order || null);
       await loadQrUnits(data.order || null);
-      setActionMessage(data.message || `Pesanan berhasil di-${actionSlug}.`);
+      if (action === 'Approve') {
+        setShowApprovedModal(true);
+      } else {
+        setActionMessage(data.message || `Pesanan berhasil di-${actionSlug}.`);
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || `Gagal ${actionSlug} pesanan.`);
@@ -654,7 +788,12 @@ export default function DetailPesananPage() {
     }
   }
 
-  function handleOpenReceipt(mode) {
+  function handleOpenReceipt() {
+    if (!detail?.ereceipt_eligible) return;
+    setShowReceiptPreview(true);
+  }
+
+  function handleDownloadReceipt() {
     if (!detail?.ereceipt_eligible) return;
 
     const adminUser = getAdminUser();
@@ -663,17 +802,9 @@ export default function DetailPesananPage() {
       return;
     }
 
-    const action = mode === 'download' ? 'download' : 'view';
-    const url = `${API}/ereceipt/${action}?order_code=${encodeURIComponent(
+    const url = `${API}/ereceipt/download?order_code=${encodeURIComponent(
       detail.order_code,
     )}&admin_user_id=${encodeURIComponent(adminUser.id)}`;
-
-    // "Lihat PDF" -> tampil di popup pada halaman ini (tidak redirect).
-    if (mode === 'view') {
-      setPdfModalUrl(url);
-      return;
-    }
-    // Download tetap lewat browser.
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
@@ -1375,9 +1506,18 @@ export default function DetailPesananPage() {
                   <div className="adm-od-meta">
                     <div className="adm-od-meta-row"><span>Receipt ID</span><span className="adm-od-mono">{detail.ereceipt_id || '-'}</span></div>
                     <div className="adm-od-meta-row"><span>Generated At</span><span>{formatTanggal(detail.ereceipt_generated_at)}</span></div>
+                    {detail.ereceipt_available && (
+                      <>
+                        <div className="adm-od-meta-row"><span>Nama Customer</span><span>{detail.ereceipt_customer_name || '-'}</span></div>
+                        <div className="adm-od-meta-row"><span>Email Customer</span><span>{detail.ereceipt_customer_email || '-'}</span></div>
+                        <div className="adm-od-meta-row"><span>Total</span><span>Rp {formatRibuan(detail.ereceipt_total)}</span></div>
+                        <div className="adm-od-meta-row"><span>Status</span><span>{detail.ereceipt_is_revoked ? 'Direvoke' : 'Aktif'}</span></div>
+                        <div className="adm-od-meta-row adm-od-meta-row--sig"><span>Signature Hash</span><span className="adm-od-mono adm-od-sig-hash">{detail.ereceipt_signature_hash || '-'}</span></div>
+                      </>
+                    )}
                   </div>
                   <div className="adm-od-btn-row">
-                    {!detail.ereceipt_available && (
+                    {!detail.ereceipt_available ? (
                       <button
                         type="button"
                         className="adm-btn adm-btn--primary"
@@ -1386,13 +1526,16 @@ export default function DetailPesananPage() {
                       >
                         {receiptLoading ? 'Memproses...' : 'Generate E-Receipt'}
                       </button>
+                    ) : (
+                      <>
+                        <button type="button" className="adm-btn adm-btn--ghost" onClick={handleOpenReceipt}>
+                          Lihat PDF
+                        </button>
+                        <button type="button" className="adm-btn adm-btn--ghost" onClick={handleDownloadReceipt}>
+                          Download PDF
+                        </button>
+                      </>
                     )}
-                    <button type="button" className="adm-btn adm-btn--ghost" onClick={() => handleOpenReceipt('view')} disabled={!detail.ereceipt_eligible}>
-                      Lihat PDF
-                    </button>
-                    <button type="button" className="adm-btn adm-btn--ghost" onClick={() => handleOpenReceipt('download')} disabled={!detail.ereceipt_eligible}>
-                      Download PDF
-                    </button>
                   </div>
                   {!detail.ereceipt_eligible && (
                     <p className="adm-od-note">E-receipt baru tersedia setelah order di-approve admin.</p>
@@ -1592,20 +1735,7 @@ export default function DetailPesananPage() {
         </div>
       )}
 
-      {/* Popup PDF e-receipt (tampil di halaman, tanpa redirect) */}
-      {pdfModalUrl && (
-        <div className="adm-od-preview-backdrop" role="presentation" onClick={() => setPdfModalUrl(null)}>
-          <div className="adm-od-preview-modal adm-od-pdf-modal" role="dialog" aria-modal="true" aria-label="E-Receipt PDF" onClick={(event) => event.stopPropagation()}>
-            <div className="adm-od-preview-head">
-              <strong>E-Receipt</strong>
-              <button type="button" className="adm-od-preview-close" onClick={() => setPdfModalUrl(null)} aria-label="Tutup">×</button>
-            </div>
-            <div className="adm-od-pdf-body">
-              <iframe src={pdfModalUrl} title="E-Receipt PDF" className="adm-od-pdf-frame" />
-            </div>
-          </div>
-        </div>
-      )}
+      <AdminReceiptPreviewModal open={showReceiptPreview} onClose={() => setShowReceiptPreview(false)} detail={detail} />
 
       {/* Popup konfirmasi bukti terkirim saat menyelesaikan pesanan */}
       {completeModalOpen && (
@@ -1627,6 +1757,35 @@ export default function DetailPesananPage() {
                 {actionLoading ? 'Memproses...' : 'Konfirmasi Selesai'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup hasil approve — konfirmasi status e-receipt, tanpa aksi PDF (sudah ada di card E-Receipt) */}
+      {showApprovedModal && (
+        <div className="adm-od-preview-backdrop" role="presentation" onClick={() => setShowApprovedModal(false)}>
+          <div className="adm-od-approved-modal" role="dialog" aria-modal="true" aria-label="Pesanan Disetujui" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="adm-od-approved-close" onClick={() => setShowApprovedModal(false)} aria-label="Tutup">×</button>
+
+            <div className="adm-od-approved-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            </div>
+
+            <h3 className="adm-od-approved-title">Pesanan Disetujui!</h3>
+            <p className="adm-od-approved-sub">Pembayaran sudah dikonfirmasi dan pesanan masuk ke proses pengemasan.</p>
+
+            <div className={`adm-od-approved-pill${detail?.ereceipt_available ? ' adm-od-approved-pill--ok' : ' adm-od-approved-pill--pending'}`}>
+              {detail?.ereceipt_available ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+              )}
+              {detail?.ereceipt_available ? 'E-receipt resmi sudah selesai diproses' : 'E-receipt resmi sedang diproses sistem'}
+            </div>
+
+            <button type="button" className="adm-btn adm-btn--primary adm-od-approved-okbtn" onClick={() => setShowApprovedModal(false)}>
+              OK
+            </button>
           </div>
         </div>
       )}

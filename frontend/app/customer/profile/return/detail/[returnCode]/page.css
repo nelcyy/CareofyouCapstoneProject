@@ -574,6 +574,48 @@
   color: #c4706a;
 }
 
+.rd-modal-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rd-verify-body {
+  padding: 0 22px 24px;
+}
+
+.rd-verify-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.rd-verify-status--valid {
+  background: #e9f9ef;
+  color: #16a34a;
+}
+
+.rd-verify-status--invalid {
+  background: #fdecea;
+  color: #c0392b;
+}
+
+.rd-verify-status--pending {
+  background: #fdf6f0;
+  color: #b9762f;
+}
+
+.rd-verify-note {
+  margin: 10px 2px 0;
+  font-size: 13px;
+  color: #7a7a7a;
+  line-height: 1.6;
+}
+
 .rd-zoom-body {
   min-height: 220px;
   max-height: 60vh;

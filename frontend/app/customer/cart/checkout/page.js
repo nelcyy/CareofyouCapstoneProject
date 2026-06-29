@@ -42,13 +42,13 @@ const PAYMENT_OPTIONS = [
   { id: 'ovo', name: 'OVO', target: '5678', targetLabel: 'Nomor OVO' },
   { id: 'bca-transfer', name: 'Transfer Bank BCA', target: '23456', targetLabel: 'No. Rekening BCA' },
 ];
-const PROOF_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
+const PROOF_IMAGE_ACCEPT = 'image/jpeg,image/png';
 const PROOF_IMAGE_TYPES = new Set(PROOF_IMAGE_ACCEPT.split(','));
 
 function isAllowedProofImage(file) {
   if (!file) return false;
   const hasAllowedType = !file.type || PROOF_IMAGE_TYPES.has(file.type);
-  const hasAllowedName = /\.(jpe?g|png|webp)$/i.test(file.name || '');
+  const hasAllowedName = /\.(jpe?g|png)$/i.test(file.name || '');
   return hasAllowedType && hasAllowedName;
 }
 
@@ -232,7 +232,7 @@ export default function CheckoutPage() {
     if (!file) return;
     if (!isAllowedProofImage(file)) {
       setPaymentProofFile(null);
-      setOrderError('Bukti transfer harus berupa foto JPG, PNG, atau WebP.');
+      setOrderError('Bukti transfer harus berupa foto JPG atau PNG.');
       return;
     }
     setPaymentProofFile(file);
@@ -711,7 +711,7 @@ export default function CheckoutPage() {
                 <div className="co-proof-dropzone-inner">
                   <IconUploadCloud />
                   <p className="co-proof-drop-text">Drag &amp; drop foto bukti transfer</p>
-                  <p className="co-proof-drop-sub">JPG, PNG, atau WebP</p>
+                  <p className="co-proof-drop-sub">JPG atau PNG</p>
                 </div>
               )}
             </label>
