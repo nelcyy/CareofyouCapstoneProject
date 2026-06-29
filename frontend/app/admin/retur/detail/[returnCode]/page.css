@@ -1297,6 +1297,22 @@
   transform: translateY(-1px);
 }
 
+/* Foto Produk kini <button>; cegah ke-override style tombol gradient global. */
+.adm-rd-card button.adm-rd-filebtn {
+  margin: 0;
+  padding: 8px 14px;
+  background: #fff;
+  border: 1.5px solid var(--adm-brand-border);
+  box-shadow: none;
+  cursor: pointer;
+}
+.adm-rd-card button.adm-rd-filebtn:hover:not(:disabled) {
+  background: var(--adm-brand-bg);
+  border-color: var(--adm-brand);
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+
 .adm-rd-files-empty {
   font-size: 12.5px;
   color: var(--adm-text-3);
@@ -2029,4 +2045,65 @@
 .adm-rd-mono {
   font-family: monospace;
   letter-spacing: 0.3px;
+}
+
+/* ── Popup foto produk ── */
+.adm-rd-photo-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(45, 45, 45, 0.58);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.adm-rd-photo-modal {
+  width: min(620px, 100%);
+  max-height: min(88vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 72px rgba(45, 45, 45, 0.28);
+}
+.adm-rd-photo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--adm-border);
+  color: var(--adm-text);
+  font-size: 14px;
+}
+.adm-rd-photo-close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--adm-brand-bg);
+  color: var(--adm-brand);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.adm-rd-photo-body {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  background: var(--adm-bg);
+}
+.adm-rd-photo-img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 10px;
 }

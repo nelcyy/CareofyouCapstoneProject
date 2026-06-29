@@ -746,6 +746,7 @@ export default function AdminReturnDetailPage() {
   const [refundDrag, setRefundDrag] = useState(false);
   const [exchangeTracking, setExchangeTracking] = useState('');
   const [scanResultByItem, setScanResultByItem] = useState({});
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [reasonAction, setReasonAction] = useState('approve');
   const [reasonValue, setReasonValue] = useState('');
@@ -1729,12 +1730,12 @@ export default function AdminReturnDetailPage() {
           {/* Lampiran */}
           <div className="adm-rd-files">
             {detail.product_photo && (
-              <a className="adm-rd-filebtn" href={fileUrl(detail.product_photo)} target="_blank" rel="noreferrer">
+              <button type="button" className="adm-rd-filebtn" onClick={() => setPhotoPreview(fileUrl(detail.product_photo))}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
                 </svg>
                 Foto Produk
-              </a>
+              </button>
             )}
             {detail.ereceipt_proof && (
               <a className="adm-rd-filebtn" href={fileUrl(detail.ereceipt_proof)} target="_blank" rel="noreferrer">
@@ -1857,6 +1858,20 @@ export default function AdminReturnDetailPage() {
 
         {scannerOpen && (
           <CameraScanner onScan={handleScanned} onClose={() => setScannerOpen(false)} />
+        )}
+
+        {photoPreview && (
+          <div className="adm-rd-photo-backdrop" role="presentation" onClick={() => setPhotoPreview(null)}>
+            <div className="adm-rd-photo-modal" role="dialog" aria-modal="true" aria-label="Foto Produk" onClick={(e) => e.stopPropagation()}>
+              <div className="adm-rd-photo-head">
+                <strong>Foto Produk</strong>
+                <button type="button" className="adm-rd-photo-close" onClick={() => setPhotoPreview(null)} aria-label="Tutup">×</button>
+              </div>
+              <div className="adm-rd-photo-body">
+                <img src={photoPreview} alt="Foto Produk" className="adm-rd-photo-img" />
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
