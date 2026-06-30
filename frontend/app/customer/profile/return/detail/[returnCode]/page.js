@@ -521,7 +521,7 @@ export default function ProfileReturnDetailPage() {
             </div>
           )}
 
-          {/* ── Info pengiriman balik ── */}
+          {/* ── Info pengiriman balik + penyelesaian (digabung satu card biar gak kebanyakan kotak) ── */}
           {['shipped_back', 'received', 'completed'].includes(status) && (
             <div className="rd-card">
               <p className="rd-section-label"><IconTruck /> Pengiriman Balik</p>
@@ -532,22 +532,22 @@ export default function ProfileReturnDetailPage() {
                 <MetaRow label="Diterima Toko" value={formatTanggal(detail.received_at)} />
                 {detail.received_by_name && <MetaRow label="Diterima Oleh" value={detail.received_by_name} />}
               </div>
-            </div>
-          )}
 
-          {/* ── Penyelesaian ── */}
-          {status === 'completed' && (
-            <div className="rd-card">
-              <p className="rd-section-label"><IconCheck /> Penyelesaian</p>
-              <div className="rd-meta-list">
-                {detail.resolution_type === 'refund' ? (
-                  <MetaRow label="Bukti Transfer Refund" value={<ProofAction path={completion.refund_proof} label="Bukti Transfer Refund" onPreview={setImagePreview} />} />
-                ) : (
-                  <MetaRow label="Resi Barang Pengganti" value={completion.exchange_shipment_tracking || '-'} />
-                )}
-                <MetaRow label="Diselesaikan Pada" value={formatTanggal(completion.completed_at)} />
-                {completion.completed_by_name && <MetaRow label="Diselesaikan Oleh" value={completion.completed_by_name} />}
-              </div>
+              {status === 'completed' && (
+                <>
+                  <div className="rd-section-divider" />
+                  <p className="rd-section-label"><IconCheck /> Penyelesaian</p>
+                  <div className="rd-meta-list">
+                    {detail.resolution_type === 'refund' ? (
+                      <MetaRow label="Bukti Transfer Refund" value={<ProofAction path={completion.refund_proof} label="Bukti Transfer Refund" onPreview={setImagePreview} />} />
+                    ) : (
+                      <MetaRow label="Resi Barang Pengganti" value={completion.exchange_shipment_tracking || '-'} />
+                    )}
+                    <MetaRow label="Diselesaikan Pada" value={formatTanggal(completion.completed_at)} />
+                    {completion.completed_by_name && <MetaRow label="Diselesaikan Oleh" value={completion.completed_by_name} />}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -575,6 +575,21 @@ export default function ProfileReturnDetailPage() {
               </div>
 
               <div className="rd-card">
+                <p className="rd-section-label">Alasan Retur</p>
+                <p className="rd-reason-text">{detail.reason || '-'}</p>
+
+                <div className="rd-section-divider" />
+
+                <p className="rd-section-label">Info Pengajuan</p>
+                <div className="rd-meta-list">
+                  <MetaRow label="Diajukan Pada" value={formatTanggal(detail.created_at)} />
+                  <MetaRow label="Customer" value={detail.customer_name || '-'} />
+                </div>
+              </div>
+            </div>
+
+            <div className="rd-col-side">
+              <div className="rd-card">
                 <p className="rd-section-label">Bukti Pengajuan</p>
                 <div className="rd-meta-list">
                   <MetaRow label="Foto Produk" value={<ProofAction path={detail.product_photo} label="Foto Produk Retur" onPreview={setImagePreview} />} />
@@ -587,13 +602,6 @@ export default function ProfileReturnDetailPage() {
                     ) : <span className="rd-meta-val--muted">-</span>}
                   />
                 </div>
-              </div>
-            </div>
-
-            <div className="rd-col-side">
-              <div className="rd-card">
-                <p className="rd-section-label">Alasan Retur</p>
-                <p className="rd-reason-text">{detail.reason || '-'}</p>
               </div>
 
               <div className="rd-card">
@@ -617,14 +625,6 @@ export default function ProfileReturnDetailPage() {
                     {exchangeInfo.notes && <MetaRow label="Catatan" value={exchangeInfo.notes} />}
                   </div>
                 )}
-              </div>
-
-              <div className="rd-card">
-                <p className="rd-section-label">Info Pengajuan</p>
-                <div className="rd-meta-list">
-                  <MetaRow label="Diajukan Pada" value={formatTanggal(detail.created_at)} />
-                  <MetaRow label="Customer" value={detail.customer_name || '-'} />
-                </div>
               </div>
             </div>
           </div>

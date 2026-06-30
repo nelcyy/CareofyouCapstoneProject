@@ -381,7 +381,7 @@
 .od-wrap {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
   width: 100%;
   max-width: 1040px;
   margin: 0 auto;
@@ -500,42 +500,55 @@
 
 /* ── Card ── */
 .od-card {
-  background: #fff;
-  border: 1px solid #f0e0de;
-  border-radius: 18px;
-  padding: 20px 22px;
-  box-shadow: 0 2px 14px rgba(214, 134, 124, 0.06);
+  position: relative;
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf9 100%);
+  border: 1px solid rgba(240, 213, 210, 0.55);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 2px 10px rgba(201, 114, 105, 0.05), 0 18px 36px rgba(201, 114, 105, 0.06);
 }
 
 .od-card-subtitle {
-  margin: -8px 0 14px;
-  font-size: 12.5px;
-  color: #a59b99;
+  margin: -10px 0 16px;
+  font-size: 13px;
+  color: #9a9290;
 }
 
 .od-meta-note {
   margin: 0;
   font-size: 13px;
-  color: #a59b99;
+  color: #9a9290;
 }
 
 /* ── Section label (sub-bagian di dalam satu od-card) ── */
 .od-section-label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 14px;
-  font-size: 11.5px;
+  gap: 12px;
+  margin: 0 0 20px;
+  font-size: 15px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: #c4706a;
+  letter-spacing: -0.1px;
+  color: #2b211f;
+}
+
+.od-section-label svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  padding: 9px;
+  box-sizing: content-box;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8907f, #c97269);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(201, 114, 105, 0.32);
 }
 
 .od-section-divider {
-  height: 1px;
-  background: #f5eeec;
-  margin: 18px 0;
+  height: 0;
+  border-top: 1.5px dashed #ecd3cf;
+  background: none;
+  margin: 22px 0;
 }
 
 .od-timeline-foot {
@@ -663,7 +676,7 @@
 .od-grid {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
-  gap: 18px;
+  gap: 20px;
   align-items: start;
 }
 
@@ -671,7 +684,7 @@
 .od-col-side {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
 @media (max-width: 860px) {
@@ -690,23 +703,25 @@
 .od-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px;
-  border: 1px solid #f5eeec;
-  border-radius: 12px;
+  gap: 14px;
+  padding: 12px;
+  background: #fdf6f5;
+  border: 1px solid transparent;
+  border-radius: 14px;
 }
 
 .od-item-img {
   flex-shrink: 0;
-  width: 52px;
-  height: 52px;
-  border-radius: 10px;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
   overflow: hidden;
-  background: #fce8e6;
+  background: linear-gradient(135deg, #f9d4cf, #f0b8b2);
+  box-shadow: 0 4px 10px rgba(214, 134, 124, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #d6867c;
+  color: #fff;
   font-weight: 700;
 }
 
@@ -767,29 +782,56 @@
 }
 
 .od-summary-divider {
-  height: 1px;
-  background: #f5eeec;
-  margin: 2px 0;
+  height: 0;
+  border-top: 1.5px dashed #ecd3cf;
+  background: none;
+  margin: 6px 0;
 }
 
 .od-summary-total {
-  font-size: 15px;
-  font-weight: 800;
+  align-items: center;
+  margin-top: 4px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(232, 144, 127, 0.12), rgba(201, 114, 105, 0.05));
+  border-radius: 14px;
+}
+
+.od-summary-total span:first-child {
+  font-size: 13.5px;
+  font-weight: 700;
   color: #2d2d2d;
+}
+
+.od-summary-total span:last-child {
+  font-size: 24px;
+  font-weight: 800;
+  color: #c4706a;
+  letter-spacing: -0.4px;
 }
 
 /* ── Meta list (label/value rows) ── */
 .od-meta-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
 .od-meta-row {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 14px;
   font-size: 13px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5eeec;
+}
+
+.od-meta-row:first-child {
+  padding-top: 0;
+}
+
+.od-meta-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .od-meta-label {
