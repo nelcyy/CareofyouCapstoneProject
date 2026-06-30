@@ -13,6 +13,15 @@ function formatTanggal(value) {
   return date.toLocaleString('id-ID');
 }
 
+function IconUser() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
 function getStoredUser() {
   if (typeof window === 'undefined') return null;
   try {
@@ -203,6 +212,10 @@ export default function ProfileEditPage() {
           </div>
 
           <div className="profile-edit-card">
+            <p className="profile-edit-card-title">
+              <span className="profile-edit-card-icon"><IconUser /></span>
+              Informasi Akun
+            </p>
             <div className="profile-edit-row">
               <span className="profile-edit-label">Email</span>
               <span className="profile-edit-value">{form.email || '-'}</span>

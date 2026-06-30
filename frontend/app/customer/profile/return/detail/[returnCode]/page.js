@@ -558,11 +558,17 @@ export default function ProfileReturnDetailPage() {
                 <div className="rd-items">
                   {(detail.items || []).map((item, i) => (
                     <div key={item.id || i} className="rd-item">
+                      <div className="rd-item-img">
+                        <span>{(item.product_name || '?')[0]}</span>
+                      </div>
                       <div className="rd-item-info">
                         <p className="rd-item-name">{item.product_name || '-'}</p>
                         <p className="rd-item-qty">Diretur {item.quantity || 0} dari {item.ordered_quantity || 0} pcs dibeli</p>
                       </div>
-                      <p className="rd-item-subtotal">Rp {formatRibuan(item.subtotal)}</p>
+                      <div className="rd-item-right">
+                        <p className="rd-item-unit">Rp {formatRibuan(item.product_price)} / pcs</p>
+                        <p className="rd-item-subtotal">Rp {formatRibuan(item.subtotal)}</p>
+                      </div>
                     </div>
                   ))}
                   {(detail.items || []).length === 0 && <p className="rd-meta-note">Tidak ada item retur.</p>}
@@ -572,39 +578,9 @@ export default function ProfileReturnDetailPage() {
                   <span>Total Diajukan ({detail.total_requested_quantity || 0} pcs)</span>
                   <span>Rp {formatRibuan(detail.total_requested_amount)}</span>
                 </div>
-              </div>
-
-              <div className="rd-card">
-                <p className="rd-section-label">Alasan Retur</p>
-                <p className="rd-reason-text">{detail.reason || '-'}</p>
 
                 <div className="rd-section-divider" />
 
-                <p className="rd-section-label">Info Pengajuan</p>
-                <div className="rd-meta-list">
-                  <MetaRow label="Diajukan Pada" value={formatTanggal(detail.created_at)} />
-                  <MetaRow label="Customer" value={detail.customer_name || '-'} />
-                </div>
-              </div>
-            </div>
-
-            <div className="rd-col-side">
-              <div className="rd-card">
-                <p className="rd-section-label">Bukti Pengajuan</p>
-                <div className="rd-meta-list">
-                  <MetaRow label="Foto Produk" value={<ProofAction path={detail.product_photo} label="Foto Produk Retur" onPreview={setImagePreview} />} />
-                  <MetaRow
-                    label="E-Receipt"
-                    value={detail.ereceipt_proof ? (
-                      <button type="button" className="rd-view-proof-btn" onClick={() => setShowVerification(true)}>
-                        <IconReceipt /> Lihat Hasil Verifikasi
-                      </button>
-                    ) : <span className="rd-meta-val--muted">-</span>}
-                  />
-                </div>
-              </div>
-
-              <div className="rd-card">
                 <p className="rd-section-label">{detail.resolution_type_label || 'Penyelesaian'}</p>
                 {detail.resolution_type === 'refund' && (
                   <div className="rd-meta-list">
@@ -625,6 +601,36 @@ export default function ProfileReturnDetailPage() {
                     {exchangeInfo.notes && <MetaRow label="Catatan" value={exchangeInfo.notes} />}
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div className="rd-col-side">
+              <div className="rd-card">
+                <p className="rd-section-label">Alasan Retur</p>
+                <p className="rd-reason-text">{detail.reason || '-'}</p>
+
+                <div className="rd-section-divider" />
+
+                <p className="rd-section-label">Info Pengajuan</p>
+                <div className="rd-meta-list">
+                  <MetaRow label="Diajukan Pada" value={formatTanggal(detail.created_at)} />
+                  <MetaRow label="Customer" value={detail.customer_name || '-'} />
+                </div>
+
+                <div className="rd-section-divider" />
+
+                <p className="rd-section-label">Bukti Pengajuan</p>
+                <div className="rd-meta-list">
+                  <MetaRow label="Foto Produk" value={<ProofAction path={detail.product_photo} label="Foto Produk Retur" onPreview={setImagePreview} />} />
+                  <MetaRow
+                    label="E-Receipt"
+                    value={detail.ereceipt_proof ? (
+                      <button type="button" className="rd-view-proof-btn" onClick={() => setShowVerification(true)}>
+                        <IconReceipt /> Lihat Hasil Verifikasi
+                      </button>
+                    ) : <span className="rd-meta-val--muted">-</span>}
+                  />
+                </div>
               </div>
             </div>
           </div>

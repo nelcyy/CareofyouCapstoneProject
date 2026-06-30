@@ -6,6 +6,15 @@ import './page.css';
 
 const API = apiUrl('/api/customer/profile/address');
 
+function IconPin() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
 function getStoredUser() {
   if (typeof window === 'undefined') return null;
   try {
@@ -274,6 +283,7 @@ export default function ProfileAddressPage() {
             <div key={item.id} className="profile-address-card">
               <div className="profile-address-card-top">
                 <div className="profile-address-card-heading">
+                  <span className="profile-address-card-icon"><IconPin /></span>
                   <span className="profile-address-card-label">{item.label || 'Rumah'}</span>
                   {item.is_default && (
                     <span className="profile-address-card-badge">Utama</span>

@@ -248,7 +248,11 @@ export default function HomePage() {
         ) : (
           <div className="home-card-img-placeholder" />
         )}
-        <span className="home-card-new-tag">Baru</span>
+        {product.stock <= 0 ? (
+          <span className="home-card-badge home-card-badge--out">Stok Habis</span>
+        ) : (
+          <span className="home-card-new-tag">Baru</span>
+        )}
         <button
           className={`home-fav-btn${favMap[product.id] ? ' home-fav-btn--active' : ''}`}
           onClick={(e) => { e.stopPropagation(); toggleFav(product); }}
@@ -265,6 +269,7 @@ export default function HomePage() {
             className={`home-card-cart-btn${addedId === product.id ? ' home-card-cart-btn--added' : ''}`}
             onClick={(e) => { e.stopPropagation(); tambah(product); }}
             title="Tambah ke keranjang"
+            disabled={product.stock <= 0}
           >
             {addedId === product.id ? <CheckIcon /> : <CartIcon />}
           </button>
@@ -528,8 +533,12 @@ export default function HomePage() {
                 <div className="home-qv-divider" />
                 <span className="home-qv-price">Rp {formatRibuan(quickView.price)}</span>
                 <div className="home-qv-actions">
-                  <button className="home-qv-add-btn" onClick={() => { tambah(quickView); setQuickView(null); }}>
-                    <CartIcon /> Tambah ke Keranjang
+                  <button
+                    className="home-qv-add-btn"
+                    onClick={() => { tambah(quickView); setQuickView(null); }}
+                    disabled={quickView.stock <= 0}
+                  >
+                    <CartIcon /> {quickView.stock <= 0 ? 'Stok Habis' : 'Tambah ke Keranjang'}
                   </button>
                   <button
                     className={`home-qv-fav-btn${favMap[quickView.id] ? ' home-qv-fav-btn--active' : ''}`}

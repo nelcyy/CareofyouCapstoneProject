@@ -39,6 +39,34 @@ const RETURN_STATUS_META = {
   completed: { color: '#16a34a', bg: 'rgba(34,197,94,0.12)' },
 };
 
+function IconCalendar() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+
+function IconRotate() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="1 4 1 10 7 10" />
+      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    </svg>
+  );
+}
+
+function IconChevronRight() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
 export default function ProfileReturnPage() {
   const router = useRouter();
   const [items, setItems] = useState([]);
@@ -104,46 +132,43 @@ export default function ProfileReturnPage() {
       )}
 
       {!loading && userFound && items.length > 0 && (
-        <div className="profile-return-table-wrap">
-          <div className="profile-return-table-scroll">
-            <table className="profile-return-table">
-              <thead>
-                <tr>
-                  <th>Kode Retur</th>
-                  <th>Kode Order</th>
-                  <th>Tanggal</th>
-                  <th>Qty</th>
-                  <th>Nominal</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => {
-                  const statusMeta = RETURN_STATUS_META[item.status] || { color: '#c4706a', bg: 'rgba(214,134,124,0.12)' };
-                  return (
-                    <tr
-                      key={item.return_code}
-                      className="profile-return-row"
-                      onClick={() => openDetail(item.return_code)}
-                    >
-                      <td>
-                        <strong>{item.return_code}</strong>
-                      </td>
-                      <td>{item.order_code || '-'}</td>
-                      <td>{formatTanggal(item.created_at)}</td>
-                      <td>{item.total_requested_quantity || 0} pcs</td>
-                      <td>Rp {formatRibuan(item.total_requested_amount)}</td>
-                      <td>
-                        <span className="profile-return-status-pill" style={{ color: statusMeta.color, background: statusMeta.bg }}>
-                          {item.status_label || item.status || '-'}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        <div className="profile-return-list">
+          {items.map((item) => {
+            const statusMeta = RETURN_STATUS_META[item.status] || { color: '#c4706a', bg: 'rgba(214,134,124,0.12)' };
+            const qty = item.total_requested_quantity || 0;
+            return (
+              <div
+                key={item.return_code}
+                className="profile-return-card"
+                onClick={() => openDetail(item.return_code)}
+              >
+                <div className="profile-return-card-top">
+                  <span className="profile-return-status-pill" style={{ color: statusMeta.color, background: statusMeta.bg }}>
+                    {item.status_label || item.status || '-'}
+                  </span>
+                  <span className="profile-return-card-date">
+                    <IconCalendar /> {formatTanggal(item.created_at)}
+                  </span>
+                </div>
+
+                <div className="profile-return-card-body">
+                  <span className="profile-return-code-icon"><IconRotate /></span>
+                  <span className="profile-return-code-label">Kode Retur</span>
+                  <span className="profile-return-code">{item.return_code}</span>
+                  {qty > 0 && <span className="profile-return-qty">{qty} pcs</span>}
+                </div>
+
+                <p className="profile-return-order-ref">Dari pesanan <strong>{item.order_code || '-'}</strong></p>
+
+                <div className="profile-return-card-bottom">
+                  <span className="profile-return-see-detail">
+                    Lihat Detail <IconChevronRight />
+                  </span>
+                  <span className="profile-return-card-total">Rp {formatRibuan(item.total_requested_amount)}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

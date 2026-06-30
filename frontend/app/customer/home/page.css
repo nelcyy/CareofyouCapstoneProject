@@ -590,7 +590,8 @@
 
 .home-card-img-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, #fceae8, #fad4d0); }
 
-.home-card-new-tag {
+.home-card-new-tag,
+.home-card-badge {
   position: absolute;
   top: 10px;
   left: 10px;
@@ -601,6 +602,10 @@
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.4px;
+}
+
+.home-card-badge--out {
+  background: #8b8b8b;
 }
 
 .home-fab-wrap, .home-fab-main, .home-fab-menu { } /* see below */
@@ -639,6 +644,13 @@
   transition: transform 0.18s, box-shadow 0.18s;
 }
 .home-card-cart-btn:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(201,114,105,0.35); }
+
+.home-card-cart-btn:disabled {
+  background: #c9c2c0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 
 .home-card-cart-btn--added {
   background: #22c55e;
@@ -1040,6 +1052,11 @@
   background: linear-gradient(135deg, var(--rose-light) 0%, var(--rose) 100%);
   color: white; border: none; border-radius: 50px; font-size: 13px; font-weight: 700;
   cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+
+.home-qv-add-btn:disabled {
+  background: #c9c2c0;
+  cursor: not-allowed;
 }
 
 .home-qv-fav-btn {

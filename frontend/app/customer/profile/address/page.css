@@ -86,20 +86,51 @@
 }
 
 .profile-address-card {
-  border: 1px solid #f0e0de;
-  border-radius: 18px;
-  background: #fff;
-  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(214, 134, 124, 0.16);
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 22px 24px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  box-shadow: 0 2px 14px rgba(214, 134, 124, 0.06);
+  box-shadow: 0 1px 3px rgba(120, 60, 56, 0.08), 0 10px 28px rgba(120, 60, 56, 0.1);
   transition: box-shadow 0.2s, transform 0.2s;
 }
 
+.profile-address-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e8907f, #c97269);
+}
+
+.profile-address-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 9px;
+  box-sizing: content-box;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8907f, #c97269);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(201, 114, 105, 0.32);
+}
+
+.profile-address-card > * {
+  position: relative;
+  z-index: 1;
+}
+
 .profile-address-card:hover {
-  box-shadow: 0 6px 22px rgba(214, 134, 124, 0.12);
-  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(201, 114, 105, 0.1), 0 22px 44px rgba(201, 114, 105, 0.1);
+  transform: translateY(-2px);
 }
 
 .profile-address-card-top {

@@ -145,9 +145,14 @@
 }
 
 .profile-content {
+  position: relative;
   margin-left: 248px;
   min-height: calc(100vh - 72px);
   padding: 32px;
+  background:
+    radial-gradient(55% 45% at 88% 0%, rgba(232, 144, 127, 0.22) 0%, transparent 68%),
+    radial-gradient(45% 38% at 6% 96%, rgba(232, 144, 127, 0.16) 0%, transparent 68%);
+  background-attachment: fixed;
 }
 
 @media (max-width: 860px) {
